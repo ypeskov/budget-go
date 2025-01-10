@@ -14,7 +14,13 @@ import (
 func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo.Echo {
 	e := echo.New()
 	//e.Use(middleware.Logger())
+	e.Pre(middleware.RemoveTrailingSlash())
 	e.Use(middleware.Recover())
+
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.DELETE},
+	}))
 
 	e.GET("/health", Health)
 
