@@ -44,7 +44,11 @@ func GetAccounts(c echo.Context) error {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
 
-	log.Infof("Authenticated user: %v", user)
+	userAccounts, err := sm.AccountsService.GetUserAccounts(user.ID)
+	if err != nil {
+		log.Error("Error getting user accounts: ", err)
+		return c.String(http.StatusInternalServerError, "Internal server error")
+	}
 
-	return c.String(http.StatusOK, "OK")
+	return c.JSON(http.StatusOK, userAccounts)
 }
