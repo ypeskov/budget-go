@@ -18,7 +18,7 @@ type UserLogin struct {
 	Password string `json:"password"`
 }
 
-type jwtCustomClaims struct {
+type JWTCustomClaims struct {
 	Id    int    `json:"id"`
 	Email string `json:"email"`
 	jwt.RegisteredClaims
@@ -54,7 +54,7 @@ func Login(c echo.Context) error {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
 
-	claims := &jwtCustomClaims{
+	claims := &JWTCustomClaims{
 		Id: user.ID,
 		Email: user.Email,
 		RegisteredClaims: jwt.RegisteredClaims{
