@@ -23,8 +23,10 @@ func (a *RepositoryInstance) GetUserAccounts(userId int) ([]models.Account, erro
 	const getAccountsQuery = `
 SELECT 
     a.id, a.user_id, a.name, a.balance, a.credit_limit, a.opening_date, a.comment,
+    a.currency_id, a.account_type_id,
     a.is_hidden, a.show_in_reports, a.is_deleted, a.archived_at, a.created_at, a.updated_at,
-    c.id AS "currency.id", c.code AS "currency.code", c.name AS "currency.name",
+    c.id AS "currency.id", c.code AS "currency.code", c.name AS "currency.name", 
+    c.created_at AS "currency.created_at", c.updated_at AS "currency.updated_at",
     at.id AS "account_type.id", at.type_name AS "account_type.type_name"
 FROM accounts a
 JOIN currencies c ON a.currency_id = c.id
