@@ -5,6 +5,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"time"
+	"ypeskov/budget-go/internal/middleware"
 
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
@@ -34,6 +35,7 @@ func RegisterAuthRoutes(g *echo.Group, cfgGlobal *config.Config, manager *servic
 	sm = manager
 
 	g.POST("/login", Login)
+	g.GET("/profile", Profile)
 }
 
 func Login(c echo.Context) error {
@@ -55,7 +57,7 @@ func Login(c echo.Context) error {
 	}
 
 	claims := &JWTCustomClaims{
-		Id: user.ID,
+		Id:    user.ID,
 		Email: user.Email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 1)),
@@ -76,6 +78,44 @@ func Login(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"accessToken": signedToken,
 		"tokenType":   "Bearer",
+	})
+}
+
+type ProfileDTO struct {
+	ID           int               `json:"id"`
+	FirstName    string            `json:"first_name"`
+	LastName     string            `json:"last_name"`
+	Email        string            `json:"email"`
+	Settings     map[string]string `json:"settings"`
+	BaseCurrency string            `json:"base_currency"`
+}
+
+func Profile(c echo.Context) error {
+	claims, err := middleware.GetUserFromToken(c.Request().Header.Get("auth-token"))
+	if err != nil || claims == nil {
+		log.Error("Failed to cast user to jwt.MapClaims")
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or missing user")
+	}
+
+	email, emailOk := claims["email"].(string)
+	if !emailOk {
+		log.Error("Email not found in claims")
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid user data")
+	}
+
+	user, err := sm.UserService.GetUserByEmail(email)
+	if err != nil {
+		log.Error("Error getting user by email: ", err)
+		return c.String(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	return c.JSON(http.StatusOK, ProfileDTO{
+		ID:           user.ID,
+		FirstName:    user.FirstName,
+		LastName:     user.LastName,
+		Email:        user.Email,
+		Settings:     map[string]string{},
+		BaseCurrency: "USD",
 	})
 }
 

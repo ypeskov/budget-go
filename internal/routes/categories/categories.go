@@ -1,10 +1,11 @@
-package accounts
+package categories
 
 import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+
 	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/services"
 )
@@ -14,16 +15,14 @@ var (
 	sm  *services.Manager
 )
 
-func RegisterAccountsRoutes(g *echo.Group, cfgGlobal *config.Config, manager *services.Manager) {
+func RegisterCategoriesRoutes(g *echo.Group, cfgGlobal *config.Config, manager *services.Manager) {
 	cfg = cfgGlobal
 	sm = manager
 
-	g.GET("", GetAccounts)
+	g.GET("", GetCategories)
 }
 
-
-func GetAccounts(c echo.Context) error {
-	log.Debug("GetAccounts")
+func GetCategories(c echo.Context) error {
 	userRaw := c.Get("user")
 
 	claims, ok := userRaw.(jwt.MapClaims)
@@ -44,17 +43,25 @@ func GetAccounts(c echo.Context) error {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
 
-	userAccounts, err := sm.AccountsService.GetUserAccounts(user.ID)
+	userCategories, err := sm.CategoriesService.GetUserCategories(user.ID)
 	if err != nil {
-		log.Error("Error getting user accounts: ", err)
-		return c.String(http.StatusInternalServerError, "Internal server error")
+		return c.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	var accounts []UserAccountDTO
-	for i := range userAccounts {
-		account := AccountToDTO(userAccounts[i])
-		accounts = append(accounts, account)
+	var categories []UserCategoryDTO
+	for i := range userCategories {
+		category := UserCategoryDTO{
+			ID:        userCategories[i].ID,
+			Name:      userCategories[i].Name,
+			ParentID:  userCategories[i].ParentID,
+			IsIncome:  userCategories[i].IsIncome,
+			UserID:    userCategories[i].UserID,
+			IsDeleted: userCategories[i].IsDeleted,
+			CreatedAt: userCategories[i].CreatedAt,
+			UpdatedAt: userCategories[i].UpdatedAt,
+		}
+		categories = append(categories, category)
 	}
 
-	return c.JSON(http.StatusOK, accounts)
+	return c.JSON(200, categories)
 }

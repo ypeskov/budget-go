@@ -1,8 +1,8 @@
 package routes
 
 import (
-	log "github.com/sirupsen/logrus"
 	"net/http"
+	"ypeskov/budget-go/internal/routes/categories"
 	"ypeskov/budget-go/internal/services"
 
 	"github.com/labstack/echo/v4"
@@ -28,7 +28,6 @@ func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo
 	e.GET("/health", Health)
 
 	authRoutesGroup := e.Group("/auth")
-	// authRoutesGroup.Use(echojwt.WithConfig(jwtConfig))
 	auth.RegisterAuthRoutes(authRoutesGroup, cfg, servicesManager)
 
 	// Routes that require JWT
@@ -38,11 +37,8 @@ func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo
 	accountsRoutesGroup := protectedRoutes.Group("/accounts")
 	accounts.RegisterAccountsRoutes(accountsRoutesGroup, cfg, servicesManager)
 
-	//e.Use(customMiddleware.CheckJWT)
-	e.GET("/test", func(c echo.Context) error {
-		log.Info(c)
-		return c.String(http.StatusOK, "Test")
-	})
+	categoriesRoutesGroup := protectedRoutes.Group("/categories")
+	categories.RegisterCategoriesRoutes(categoriesRoutesGroup, cfg, servicesManager)
 
 	return e
 }
