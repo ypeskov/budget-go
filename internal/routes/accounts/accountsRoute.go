@@ -44,7 +44,27 @@ func GetAccounts(c echo.Context) error {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
 
-	userAccounts, err := sm.AccountsService.GetUserAccounts(user.ID)
+	var includeHidden, includeDeleted, archivedOnly bool
+
+	if c.QueryParam("includeHidden") == "true" {
+		includeHidden = true
+	} else {
+		includeHidden = false
+	}
+
+	if c.QueryParam("includeDeleted") == "true" {
+		includeDeleted = true
+	} else {
+		includeDeleted = false
+	}
+
+	if c.QueryParam("archivedOnly") == "true" {
+		archivedOnly = true
+	} else {
+		archivedOnly = false
+	}
+
+	userAccounts, err := sm.AccountsService.GetUserAccounts(user.ID, includeHidden, includeDeleted, archivedOnly)
 	if err != nil {
 		log.Error("Error getting user accounts: ", err)
 		return c.String(http.StatusInternalServerError, "Internal server error")

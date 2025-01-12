@@ -1,12 +1,13 @@
 package accounts
 
 import (
+	log "github.com/sirupsen/logrus"
 	"ypeskov/budget-go/internal/database"
 	"ypeskov/budget-go/internal/models"
 )
 
 type Repository interface {
-	GetUserAccounts(userId int) ([]models.Account, error)
+	GetUserAccounts(userId int, includeHidden bool, includeDeleted bool, archivedOnly bool) ([]models.Account, error)
 }
 
 type RepositoryInstance struct {
@@ -19,8 +20,14 @@ func NewAccountsService(dbInstance *database.Database) Repository {
 	}
 }
 
-func (a *RepositoryInstance) GetUserAccounts(userId int) ([]models.Account, error) {
-	const getAccountsQuery = `
+func (a *RepositoryInstance) GetUserAccounts(
+	userId int,
+	includeHidden bool,
+	includeDeleted bool,
+	archivedOnly bool) ([]models.Account, error) {
+
+	log.Debug("GetUserAccounts repository")
+	var getAccountsQuery = `
 SELECT 
     a.id, a.user_id, a.name, a.balance, a.credit_limit, a.opening_date, a.comment,
     a.currency_id, a.account_type_id,
@@ -31,10 +38,22 @@ SELECT
 FROM accounts a
 JOIN currencies c ON a.currency_id = c.id
 JOIN account_types at ON a.account_type_id = at.id
-WHERE a.user_id = $1 AND a.is_deleted = false;
 `
 	var accounts []models.Account
-	err := a.db.Db.Select(&accounts, getAccountsQuery, userId)
+	var err error
+	if archivedOnly {
+		getAccountsQuery += `WHERE a.user_id = $1 AND a.archived_at IS NOT NULL`
+		err = a.db.Db.Select(&accounts, getAccountsQuery, userId)
+	} else {
+		getAccountsQuery += `WHERE a.user_id = $1 AND a.archived_at IS NULL`
+		if !includeHidden {
+			getAccountsQuery += ` AND a.is_hidden = false`
+		}
+		if !includeDeleted {
+			getAccountsQuery += ` AND a.is_deleted = false`
+		}
+		err = a.db.Db.Select(&accounts, getAccountsQuery, userId)
+	}
 	if err != nil {
 		return nil, err
 	}

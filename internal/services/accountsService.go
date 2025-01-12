@@ -6,7 +6,10 @@ import (
 )
 
 type AccountsService interface {
-	GetUserAccounts(userId int) ([]models.Account, error)
+	GetUserAccounts(userId int,
+		includeHidden bool,
+		includeDeleted bool,
+		archivedOnly bool) ([]models.Account, error)
 }
 
 type AccountsServiceInstance struct {
@@ -19,8 +22,12 @@ func NewAccountsService(accountsRepository accounts.Repository) AccountsService 
 	}
 }
 
-func (a *AccountsServiceInstance) GetUserAccounts(userId int) ([]models.Account, error) {
-	userAccounts, err := a.accountsRepo.GetUserAccounts(userId)
+func (a *AccountsServiceInstance) GetUserAccounts(userId int,
+	includeHidden bool,
+	includeDeleted bool,
+	archivedOnly bool) ([]models.Account, error) {
+
+	userAccounts, err := a.accountsRepo.GetUserAccounts(userId, includeHidden, includeDeleted, archivedOnly)
 	if err != nil {
 		return nil, err
 	}
