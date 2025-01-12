@@ -87,7 +87,7 @@ type ProfileDTO struct {
 	LastName     string            `json:"last_name"`
 	Email        string            `json:"email"`
 	Settings     map[string]string `json:"settings"`
-	BaseCurrency string            `json:"base_currency"`
+	BaseCurrency string            `json:"baseCurrency"`
 }
 
 func Profile(c echo.Context) error {
@@ -114,7 +114,9 @@ func Profile(c echo.Context) error {
 		FirstName:    user.FirstName,
 		LastName:     user.LastName,
 		Email:        user.Email,
-		Settings:     map[string]string{},
+		Settings:     map[string]string{
+			"language": "uk",
+		},
 		BaseCurrency: "USD",
 	})
 }

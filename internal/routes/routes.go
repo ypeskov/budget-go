@@ -3,6 +3,7 @@ package routes
 import (
 	"net/http"
 	"ypeskov/budget-go/internal/routes/categories"
+	"ypeskov/budget-go/internal/routes/reports"
 	"ypeskov/budget-go/internal/services"
 
 	"github.com/labstack/echo/v4"
@@ -39,6 +40,9 @@ func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo
 
 	categoriesRoutesGroup := protectedRoutes.Group("/categories")
 	categories.RegisterCategoriesRoutes(categoriesRoutesGroup, cfg, servicesManager)
+
+	reportsRoutesGroup := protectedRoutes.Group("/reports")
+	reports.RegisterReportsRoutes(reportsRoutesGroup, cfg, servicesManager)
 
 	return e
 }
