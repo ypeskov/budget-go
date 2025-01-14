@@ -1,26 +1,27 @@
 package accounts
 
 import (
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/services"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/labstack/echo/v4"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
-	cfg *config.Config
-	sm  *services.Manager
+	// cfg *config.Config
+	sm *services.Manager
 )
 
 func RegisterAccountsRoutes(g *echo.Group, cfgGlobal *config.Config, manager *services.Manager) {
-	cfg = cfgGlobal
+	// cfg = cfgGlobal
 	sm = manager
 
 	g.GET("", GetAccounts)
+	g.GET("/types", GetAccountsTypes)
 }
-
 
 func GetAccounts(c echo.Context) error {
 	log.Debug("GetAccounts")
@@ -77,4 +78,20 @@ func GetAccounts(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, accounts)
+}
+
+func GetAccountsTypes(c echo.Context) error {
+	log.Debug("GetAccountsTypes Route")
+	accountTypes, err := sm.AccountsService.GetAccountTypes()
+	if err != nil {
+		log.Error("Error getting account types: ", err)
+		return c.String(http.StatusInternalServerError, "Internal server error")
+	}
+
+	var accountTypesDTO []AccountTypeDTO
+	for _, accountType := range accountTypes {
+		accountTypesDTO = append(accountTypesDTO, AccountTypeToDTO(accountType))
+	}
+
+	return c.JSON(http.StatusOK, accountTypesDTO)
 }

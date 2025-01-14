@@ -1,28 +1,27 @@
 package categories
 
 import (
+	"net/http"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
-	"net/http"
 
-	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/services"
 )
 
 var (
-	cfg *config.Config
-	sm  *services.Manager
+	sm *services.Manager
 )
 
-func RegisterCategoriesRoutes(g *echo.Group, cfgGlobal *config.Config, manager *services.Manager) {
-	cfg = cfgGlobal
+func RegisterCategoriesRoutes(g *echo.Group, manager *services.Manager) {
 	sm = manager
 
 	g.GET("", GetCategories)
 }
 
 func GetCategories(c echo.Context) error {
+	log.Debug("GetCategories Route")
 	userRaw := c.Get("user")
 
 	claims, ok := userRaw.(jwt.MapClaims)

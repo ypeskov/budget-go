@@ -3,7 +3,9 @@ package routes
 import (
 	"net/http"
 	"ypeskov/budget-go/internal/routes/categories"
+	"ypeskov/budget-go/internal/routes/currencies"
 	"ypeskov/budget-go/internal/routes/reports"
+	settings "ypeskov/budget-go/internal/routes/userSettings"
 	"ypeskov/budget-go/internal/services"
 
 	"github.com/labstack/echo/v4"
@@ -39,10 +41,16 @@ func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo
 	accounts.RegisterAccountsRoutes(accountsRoutesGroup, cfg, servicesManager)
 
 	categoriesRoutesGroup := protectedRoutes.Group("/categories")
-	categories.RegisterCategoriesRoutes(categoriesRoutesGroup, cfg, servicesManager)
+	categories.RegisterCategoriesRoutes(categoriesRoutesGroup, servicesManager)
+
+	settingsRoutesGroup := protectedRoutes.Group("/settings")
+	settings.RegisterSettingsRoutes(settingsRoutesGroup, servicesManager)
 
 	reportsRoutesGroup := protectedRoutes.Group("/reports")
 	reports.RegisterReportsRoutes(reportsRoutesGroup, cfg, servicesManager)
+
+	currenciesRoutesGroup := protectedRoutes.Group("/currencies")
+	currencies.RegisterCurrenciesRoutes(currenciesRoutesGroup, servicesManager)
 
 	return e
 }

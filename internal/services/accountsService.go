@@ -10,6 +10,7 @@ type AccountsService interface {
 		includeHidden bool,
 		includeDeleted bool,
 		archivedOnly bool) ([]models.Account, error)
+	GetAccountTypes() ([]models.AccountType, error)
 }
 
 type AccountsServiceInstance struct {
@@ -33,4 +34,13 @@ func (a *AccountsServiceInstance) GetUserAccounts(userId int,
 	}
 
 	return userAccounts, nil
+}
+
+func (a *AccountsServiceInstance) GetAccountTypes() ([]models.AccountType, error) {
+	accountTypes, err := a.accountsRepo.GetAccountTypes()
+	if err != nil {
+		return nil, err
+	}
+
+	return accountTypes, nil
 }

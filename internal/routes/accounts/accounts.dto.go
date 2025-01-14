@@ -97,3 +97,17 @@ func AccountToDTO(account models.Account) UserAccountDTO {
 		BalanceInBaseCurrency: 0,
 	}
 }
+
+type AccountTypeDTO struct {
+	ID       int    `json:"id"`
+	TypeName string `json:"type_name"`
+	IsCredit bool   `json:"is_credit"`
+}
+
+func AccountTypeToDTO(accountType models.AccountType) AccountTypeDTO {
+	return AccountTypeDTO{
+		ID:       accountType.ID,
+		TypeName: accountType.TypeName,
+		IsCredit: accountType.IsCredit,
+	}
+}

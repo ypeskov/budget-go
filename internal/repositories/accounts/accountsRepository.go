@@ -1,23 +1,24 @@
 package accounts
 
 import (
-	log "github.com/sirupsen/logrus"
-	"ypeskov/budget-go/internal/database"
 	"ypeskov/budget-go/internal/models"
+
+	"github.com/jmoiron/sqlx"
+	log "github.com/sirupsen/logrus"
 )
 
 type Repository interface {
 	GetUserAccounts(userId int, includeHidden bool, includeDeleted bool, archivedOnly bool) ([]models.Account, error)
+	GetAccountTypes() ([]models.AccountType, error)
 }
 
-type RepositoryInstance struct {
-	db *database.Database
-}
+type RepositoryInstance struct{}
 
-func NewAccountsService(dbInstance *database.Database) Repository {
-	return &RepositoryInstance{
-		db: dbInstance,
-	}
+var db *sqlx.DB
+
+func NewAccountsService(dbInstance *sqlx.DB) Repository {
+	db = dbInstance
+	return &RepositoryInstance{}
 }
 
 func (a *RepositoryInstance) GetUserAccounts(
@@ -43,7 +44,7 @@ JOIN account_types at ON a.account_type_id = at.id
 	var err error
 	if archivedOnly {
 		getAccountsQuery += `WHERE a.user_id = $1 AND a.archived_at IS NOT NULL`
-		err = a.db.Db.Select(&accounts, getAccountsQuery, userId)
+		err = db.Select(&accounts, getAccountsQuery, userId)
 	} else {
 		getAccountsQuery += `WHERE a.user_id = $1 AND a.archived_at IS NULL`
 		if !includeHidden {
@@ -52,11 +53,27 @@ JOIN account_types at ON a.account_type_id = at.id
 		if !includeDeleted {
 			getAccountsQuery += ` AND a.is_deleted = false`
 		}
-		err = a.db.Db.Select(&accounts, getAccountsQuery, userId)
+		err = db.Select(&accounts, getAccountsQuery, userId)
 	}
 	if err != nil {
 		return nil, err
 	}
 
 	return accounts, nil
+}
+
+func (a *RepositoryInstance) GetAccountTypes() ([]models.AccountType, error) {
+	const getAccountTypesQuery = `
+SELECT 
+	id, type_name, is_credit, is_deleted, created_at, updated_at
+FROM account_types
+WHERE is_deleted = false;
+`
+	var accountTypes []models.AccountType
+	err := db.Select(&accountTypes, getAccountTypesQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	return accountTypes, nil
 }

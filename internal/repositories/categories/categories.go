@@ -1,22 +1,22 @@
 package categories
 
 import (
-	"ypeskov/budget-go/internal/database"
 	"ypeskov/budget-go/internal/models"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type Repository interface {
 	GetUserCategories(userId int) ([]models.UserCategory, error)
 }
 
-type RepositoryInstance struct {
-	db *database.Database
-}
+type RepositoryInstance struct{}
 
-func NewCategoriesRepository(dbInstance *database.Database) Repository {
-	return &RepositoryInstance{
-		db: dbInstance,
-	}
+var db *sqlx.DB
+
+func NewCategoriesRepository(dbInstance *sqlx.DB) Repository {
+	db = dbInstance
+	return &RepositoryInstance{}
 }
 
 func (r *RepositoryInstance) GetUserCategories(userId int) ([]models.UserCategory, error) {
@@ -27,7 +27,7 @@ FROM user_categories c
 WHERE c.user_id = $1 AND c.is_deleted = false;
 `
 	var categories []models.UserCategory
-	err := r.db.Db.Select(&categories, getUserCategoriesQuery, userId)
+	err := db.Select(&categories, getUserCategoriesQuery, userId)
 	if err != nil {
 		return nil, err
 	}
