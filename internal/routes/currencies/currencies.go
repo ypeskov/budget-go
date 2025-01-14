@@ -5,7 +5,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	settings "ypeskov/budget-go/internal/routes/userSettings"
 	"ypeskov/budget-go/internal/services"
 )
 
@@ -25,9 +24,9 @@ func GetCurrencies(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	var currenciesResponse []settings.BaseCurrencyDTO
+	var currenciesResponse []CurrencyDTO
 	for _, currency := range currencies {
-		currenciesResponse = append(currenciesResponse, settings.BaseCurrencyDTO{
+		currenciesResponse = append(currenciesResponse, CurrencyDTO{
 			ID:   currency.ID,
 			Code: currency.Code,
 			Name: currency.Name,

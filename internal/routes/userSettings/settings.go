@@ -1,4 +1,4 @@
-package settings
+package userSettings
 
 import (
 	"net/http"
