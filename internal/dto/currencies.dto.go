@@ -1,4 +1,4 @@
-package currencies
+package dto
 
 type CurrencyDTO struct {
 	ID   int    `json:"id"`

@@ -3,6 +3,7 @@ package accounts
 import (
 	"net/http"
 	"ypeskov/budget-go/internal/config"
+	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/services"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -45,6 +46,12 @@ func GetAccounts(c echo.Context) error {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
 
+	baseCurrency, err := sm.CurrenciesService.GetCurrency(user.BaseCurrencyID)
+	if err != nil {
+		log.Error("Error getting base currency: ", err)
+		return c.String(http.StatusInternalServerError, "Internal server error")
+	}
+
 	var includeHidden, includeDeleted, archivedOnly bool
 
 	if c.QueryParam("includeHidden") == "true" {
@@ -71,9 +78,9 @@ func GetAccounts(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
-	var accounts []UserAccountDTO
+	var accounts []dto.AccountDTO
 	for i := range userAccounts {
-		account := AccountToDTO(userAccounts[i])
+		account := dto.AccountToDTO(userAccounts[i], baseCurrency, userAccounts[i].AccountType, userAccounts[i].Currency)
 		accounts = append(accounts, account)
 	}
 

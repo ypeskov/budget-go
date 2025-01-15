@@ -47,9 +47,9 @@ func GetCategories(c echo.Context) error {
 		return c.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	var categories []UserCategoryDTO
+	var categories []CategoryDTO
 	for i := range userCategories {
-		category := UserCategoryDTO{
+		category := CategoryDTO{
 			ID:        userCategories[i].ID,
 			Name:      userCategories[i].Name,
 			ParentID:  userCategories[i].ParentID,

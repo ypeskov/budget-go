@@ -11,6 +11,7 @@ type AccountsService interface {
 		includeDeleted bool,
 		archivedOnly bool) ([]models.Account, error)
 	GetAccountTypes() ([]models.AccountType, error)
+	GetAccountById(id int) (models.Account, error)
 }
 
 type AccountsServiceInstance struct {
@@ -43,4 +44,12 @@ func (a *AccountsServiceInstance) GetAccountTypes() ([]models.AccountType, error
 	}
 
 	return accountTypes, nil
+}
+
+func (a *AccountsServiceInstance) GetAccountById(id int) (models.Account, error) {
+	account, err := a.accountsRepo.GetAccountById(id)
+	if err != nil {
+		return models.Account{}, err
+	}
+	return account, nil
 }

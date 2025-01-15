@@ -5,6 +5,7 @@ import (
 	"ypeskov/budget-go/internal/routes/categories"
 	"ypeskov/budget-go/internal/routes/currencies"
 	"ypeskov/budget-go/internal/routes/reports"
+	"ypeskov/budget-go/internal/routes/transactions"
 	settings "ypeskov/budget-go/internal/routes/userSettings"
 	"ypeskov/budget-go/internal/services"
 
@@ -51,6 +52,9 @@ func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo
 
 	currenciesRoutesGroup := protectedRoutes.Group("/currencies")
 	currencies.RegisterCurrenciesRoutes(currenciesRoutesGroup, servicesManager)
+
+	transactionsRoutesGroup := protectedRoutes.Group("/transactions")
+	transactions.RegisterTransactionsRoutes(transactionsRoutesGroup, servicesManager)
 
 	return e
 }

@@ -1,4 +1,4 @@
-package userSettings
+package dto
 
 type BaseCurrencyDTO struct {
 	ID   int    `json:"id"`

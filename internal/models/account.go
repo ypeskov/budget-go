@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -22,9 +23,6 @@ type Account struct {
 	ArchivedAt     *string          `db:"archived_at"`
 	CreatedAt      string           `db:"created_at"`
 	UpdateAt       string           `db:"updated_at"`
-
-	Currency    Currency    `db:"currency"`
-	AccountType AccountType `db:"account_type"`
 }
 
 func (a *Account) String() string {

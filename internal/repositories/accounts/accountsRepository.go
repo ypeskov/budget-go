@@ -10,6 +10,7 @@ import (
 type Repository interface {
 	GetUserAccounts(userId int, includeHidden bool, includeDeleted bool, archivedOnly bool) ([]models.Account, error)
 	GetAccountTypes() ([]models.AccountType, error)
+	GetAccountById(id int) (models.Account, error)
 }
 
 type RepositoryInstance struct{}
@@ -76,4 +77,21 @@ WHERE is_deleted = false;
 	}
 
 	return accountTypes, nil
+}
+
+func (a *RepositoryInstance) GetAccountById(id int) (models.Account, error) {
+	const getAccountByIdQuery = `
+	SELECT id, user_id, name, balance, credit_limit, opening_date, comment,
+		currency_id, account_type_id, is_hidden, show_in_reports, is_deleted, archived_at, created_at, updated_at
+	FROM accounts 
+	WHERE id = $1
+	`
+	var account models.Account
+	err := db.Get(&account, getAccountByIdQuery, id)
+	if err != nil {
+		log.Error("Error getting account by id: ", err)
+		return models.Account{}, err
+	}
+
+	return account, nil
 }

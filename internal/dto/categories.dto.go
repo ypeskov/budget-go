@@ -1,6 +1,6 @@
-package categories
+package dto
 
-type UserCategoryDTO struct {
+type CategoryDTO struct {
 	ID        int    `json:"id"`
 	Name      string `json:"name"`
 	ParentID  *int   `json:"parentId"`
