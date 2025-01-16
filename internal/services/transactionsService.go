@@ -1,11 +1,12 @@
 package services
 
 import (
+	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/repositories/transactions"
 )
 
 type TransactionsService interface {
-	GetTransactionsWithAccounts(userId int) ([]transactions.TransactionWithAccount, error)
+	GetTransactionsWithAccounts(userId int) ([]dto.TransactionWithAccount, error)
 }
 
 type TransactionsServiceInstance struct {
@@ -16,6 +17,6 @@ func NewTransactionsService(transactionsRepository transactions.Repository) Tran
 	return &TransactionsServiceInstance{transactionsRepository: transactionsRepository}
 }
 
-func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int) ([]transactions.TransactionWithAccount, error) {
+func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int) ([]dto.TransactionWithAccount, error) {
 	return s.transactionsRepository.GetTransactionsWithAccounts(userId)
 }

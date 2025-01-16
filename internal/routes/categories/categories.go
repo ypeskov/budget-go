@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 
+	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/services"
 )
 
@@ -47,9 +48,9 @@ func GetCategories(c echo.Context) error {
 		return c.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	var categories []CategoryDTO
+	var categories []dto.CategoryDTO
 	for i := range userCategories {
-		category := CategoryDTO{
+		category := dto.CategoryDTO{
 			ID:        userCategories[i].ID,
 			Name:      userCategories[i].Name,
 			ParentID:  userCategories[i].ParentID,

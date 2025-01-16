@@ -5,85 +5,32 @@ import (
 )
 
 type AccountDTO struct {
-	ID                    int      `json:"id"`
-	UserID                int      `json:"userId"`
-	AccountTypeId         int      `json:"accountTypeId"`
-	CurrencyId            int      `json:"currencyId"`
-	Name                  string   `json:"name"`
-	Balance               float64  `json:"balance"`
-	InitialBalance        float64  `json:"initialBalance"`
-	CreditLimit           *float64 `json:"creditLimit"`
-	OpeningDate           string   `json:"openingDate"`
-	Comment               string   `json:"comment"`
-	IsHidden              bool     `json:"isHidden"`
-	ShowInReports         bool     `json:"showInReports"`
-	IsDeleted             bool     `json:"isDeleted"`
-	ArchivedAt            *string  `json:"archivedAt"`
-	CreatedAt             string   `json:"createdAt"`
-	UpdateAt              string   `json:"updatedAt"`
-	BalanceInBaseCurrency *float64 `json:"balanceInBaseCurrency"`
+	ID                    int      `json:"id" db:"id"`
+	UserID                int      `json:"userId" db:"user_id"`
+	AccountTypeId         int      `json:"accountTypeId" db:"account_type_id"`
+	CurrencyId            int      `json:"currencyId" db:"currency_id"`
+	Name                  string   `json:"name" db:"name"`
+	Balance               float64  `json:"balance" db:"balance"`
+	InitialBalance        *float64 `json:"initialBalance" db:"initial_balance"`
+	CreditLimit           *float64 `json:"creditLimit" db:"credit_limit"`
+	OpeningDate           string   `json:"openingDate" db:"opening_date"`
+	Comment               string   `json:"comment" db:"comment"`
+	IsHidden              bool     `json:"isHidden" db:"is_hidden"`
+	ShowInReports         bool     `json:"showInReports" db:"show_in_reports"`
+	IsDeleted             bool     `json:"isDeleted" db:"is_deleted"`
+	ArchivedAt            *string  `json:"archivedAt" db:"archived_at"`
+	CreatedAt             string   `json:"createdAt" db:"created_at"`
+	UpdateAt              string   `json:"updatedAt" db:"updated_at"`
+	BalanceInBaseCurrency *float64 `json:"balanceInBaseCurrency" db:"balance_in_base_currency"`
 
-	Currency    CurrencyDTO    `json:"currency"`
-	AccountType AccountTypeDTO `json:"accountType"`
-}
-
-func AccountToDTO(account models.Account, baseCurrency models.Currency, accountType models.AccountType, currency models.Currency) AccountDTO {
-	balance, _ := account.Balance.Float64()
-
-	var initialBalance float64
-	if account.InitialBalance != nil {
-		if val, ok := account.InitialBalance.Float64(); ok {
-			initialBalance = val
-		}
-	} else {
-		initialBalance = 0
-	}
-
-	var creditLimit float64
-	if account.CreditLimit != nil {
-		if val, ok := account.CreditLimit.Float64(); ok {
-			creditLimit = val
-		}
-	} else {
-		creditLimit = 0
-	}
-
-	return AccountDTO{
-		ID:             account.ID,
-		UserID:         account.UserID,
-		AccountTypeId:  account.AccountTypeId,
-		CurrencyId:     account.CurrencyId,
-		Name:           account.Name,
-		Balance:        balance,
-		InitialBalance: initialBalance,
-		CreditLimit:    &creditLimit,
-		OpeningDate:    account.OpeningDate,
-		Comment:        account.Comment,
-		IsHidden:       account.IsHidden,
-		ShowInReports:  account.ShowInReports,
-		IsDeleted:      account.IsDeleted,
-		ArchivedAt:     account.ArchivedAt,
-		CreatedAt:      account.CreatedAt,
-		UpdateAt:       account.UpdateAt,
-
-		Currency: CurrencyDTO{
-			ID:   currency.ID,
-			Code: currency.Code,
-			Name: currency.Name,
-		},
-		AccountType: AccountTypeDTO{
-			ID:       accountType.ID,
-			TypeName: accountType.TypeName,
-			IsCredit: accountType.IsCredit,
-		},
-		BalanceInBaseCurrency: nil,
-	}
+	Currency    CurrencyDTO    `json:"currency" db:"currency"`
+	AccountType AccountTypeDTO `json:"accountType" db:"account_type"`
 }
 
 type AccountTypeDTO struct {
-	ID       int    `json:"id"`
-	TypeName string `json:"type_name"`
-	IsCredit bool   `json:"is_credit"`
+	ID       int    `json:"id" db:"id"`
+	TypeName string `json:"type_name" db:"type_name"`
+	IsCredit bool   `json:"is_credit" db:"is_credit"`
 }
 
 func AccountTypeToDTO(accountType models.AccountType) AccountTypeDTO {

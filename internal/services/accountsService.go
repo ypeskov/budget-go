@@ -1,6 +1,7 @@
 package services
 
 import (
+	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/accounts"
 )
@@ -9,7 +10,7 @@ type AccountsService interface {
 	GetUserAccounts(userId int,
 		includeHidden bool,
 		includeDeleted bool,
-		archivedOnly bool) ([]models.Account, error)
+		archivedOnly bool) ([]dto.AccountDTO, error)
 	GetAccountTypes() ([]models.AccountType, error)
 	GetAccountById(id int) (models.Account, error)
 }
@@ -27,7 +28,7 @@ func NewAccountsService(accountsRepository accounts.Repository) AccountsService 
 func (a *AccountsServiceInstance) GetUserAccounts(userId int,
 	includeHidden bool,
 	includeDeleted bool,
-	archivedOnly bool) ([]models.Account, error) {
+	archivedOnly bool) ([]dto.AccountDTO, error) {
 
 	userAccounts, err := a.accountsRepo.GetUserAccounts(userId, includeHidden, includeDeleted, archivedOnly)
 	if err != nil {

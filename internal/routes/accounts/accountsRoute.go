@@ -46,11 +46,11 @@ func GetAccounts(c echo.Context) error {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
 
-	baseCurrency, err := sm.CurrenciesService.GetCurrency(user.BaseCurrencyID)
-	if err != nil {
-		log.Error("Error getting base currency: ", err)
-		return c.String(http.StatusInternalServerError, "Internal server error")
-	}
+	// baseCurrency, err := sm.CurrenciesService.GetCurrency(user.BaseCurrencyID)
+	// if err != nil {
+	// 	log.Error("Error getting base currency: ", err)
+	// 	return c.String(http.StatusInternalServerError, "Internal server error")
+	// }
 
 	var includeHidden, includeDeleted, archivedOnly bool
 
@@ -77,14 +77,25 @@ func GetAccounts(c echo.Context) error {
 		log.Error("Error getting user accounts: ", err)
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
+	for i, account := range userAccounts {
+		if account.InitialBalance == nil {
+			zero := 0.0
+			userAccounts[i].InitialBalance = &zero
+		}
 
-	var accounts []dto.AccountDTO
-	for i := range userAccounts {
-		account := dto.AccountToDTO(userAccounts[i], baseCurrency, userAccounts[i].AccountType, userAccounts[i].Currency)
-		accounts = append(accounts, account)
+		if account.CreditLimit == nil {
+			zero := 0.0
+			userAccounts[i].CreditLimit = &zero
+		}
+
+		// TODO: remove this after base currency is implemented
+		if account.BalanceInBaseCurrency == nil {
+			zero := 0.0
+			userAccounts[i].BalanceInBaseCurrency = &zero
+		}
 	}
 
-	return c.JSON(http.StatusOK, accounts)
+	return c.JSON(http.StatusOK, userAccounts)
 }
 
 func GetAccountsTypes(c echo.Context) error {
@@ -95,9 +106,9 @@ func GetAccountsTypes(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
-	var accountTypesDTO []AccountTypeDTO
+	var accountTypesDTO []dto.AccountTypeDTO
 	for _, accountType := range accountTypes {
-		accountTypesDTO = append(accountTypesDTO, AccountTypeToDTO(accountType))
+		accountTypesDTO = append(accountTypesDTO, dto.AccountTypeToDTO(accountType))
 	}
 
 	return c.JSON(http.StatusOK, accountTypesDTO)

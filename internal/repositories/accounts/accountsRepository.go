@@ -1,6 +1,7 @@
 package accounts
 
 import (
+	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
 
 	"github.com/jmoiron/sqlx"
@@ -8,7 +9,7 @@ import (
 )
 
 type Repository interface {
-	GetUserAccounts(userId int, includeHidden bool, includeDeleted bool, archivedOnly bool) ([]models.Account, error)
+	GetUserAccounts(userId int, includeHidden bool, includeDeleted bool, archivedOnly bool) ([]dto.AccountDTO, error)
 	GetAccountTypes() ([]models.AccountType, error)
 	GetAccountById(id int) (models.Account, error)
 }
@@ -26,7 +27,7 @@ func (a *RepositoryInstance) GetUserAccounts(
 	userId int,
 	includeHidden bool,
 	includeDeleted bool,
-	archivedOnly bool) ([]models.Account, error) {
+	archivedOnly bool) ([]dto.AccountDTO, error) {
 
 	log.Debug("GetUserAccounts repository")
 	var getAccountsQuery = `
@@ -41,7 +42,7 @@ FROM accounts a
 JOIN currencies c ON a.currency_id = c.id
 JOIN account_types at ON a.account_type_id = at.id
 `
-	var accounts []models.Account
+	var accounts []dto.AccountDTO
 	var err error
 	if archivedOnly {
 		getAccountsQuery += `WHERE a.user_id = $1 AND a.archived_at IS NOT NULL`

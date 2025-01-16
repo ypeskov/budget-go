@@ -1,12 +1,14 @@
 package transactions
 
 import (
+	"ypeskov/budget-go/internal/dto"
+
 	"github.com/jmoiron/sqlx"
 	log "github.com/sirupsen/logrus"
 )
 
 type Repository interface {
-	GetTransactionsWithAccounts(userId int) ([]TransactionWithAccount, error)
+	GetTransactionsWithAccounts(userId int) ([]dto.TransactionWithAccount, error)
 }
 
 type RepositoryInstance struct{}
@@ -18,7 +20,7 @@ func NewTransactionsRepository(dbInstance *sqlx.DB) Repository {
 	return &RepositoryInstance{}
 }
 
-func (r *RepositoryInstance) GetTransactionsWithAccounts(userId int) ([]TransactionWithAccount, error) {
+func (r *RepositoryInstance) GetTransactionsWithAccounts(userId int) ([]dto.TransactionWithAccount, error) {
 	const getTransactionsQuery = `
 	SELECT 
 		transactions.id, transactions.user_id, transactions.account_id, transactions.category_id, 
@@ -48,14 +50,17 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(userId int) ([]Transact
 	ORDER BY transactions.date_time DESC
 	LIMIT 10`
 
-	var transactions []TransactionWithAccount
+	var transactions []dto.TransactionWithAccount
 	err := db.Select(&transactions, getTransactionsQuery, userId)
 	if err != nil {
 		log.Error("Error getting transactions: ", err)
 		return nil, err
 	}
-	for _, transaction := range transactions {
-		log.Info(transaction.Account.Currency)
+
+	// copy currency and account type to account struct
+	for i, transaction := range transactions {
+		transactions[i].Account.Currency = transaction.Currency
+		transactions[i].Account.AccountType = transaction.AccountType
 	}
 
 	return transactions, nil

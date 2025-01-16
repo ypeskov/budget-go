@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 
+	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/services"
 )
 
@@ -21,7 +22,7 @@ func RegisterTransactionsRoutes(g *echo.Group, manager *services.Manager) {
 }
 
 func GetTransactions(c echo.Context) error {
-	log.Debug("GetTransactions")
+	log.Debug("GetTransactions Route")
 	userRaw := c.Get("user")
 
 	claims, ok := userRaw.(jwt.MapClaims)
@@ -48,9 +49,9 @@ func GetTransactions(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	var transactionsDTO []ResponseTransactionDTO
+	var transactionsDTO []dto.ResponseTransactionDTO
 	for _, transaction := range transactions {
-		transactionsDTO = append(transactionsDTO, TransactionWithAccountToResponseTransactionDTO(transaction, baseCurrency))
+		transactionsDTO = append(transactionsDTO, dto.TransactionWithAccountToResponseTransactionDTO(transaction, baseCurrency))
 	}
 
 	return c.JSON(http.StatusOK, transactionsDTO)
