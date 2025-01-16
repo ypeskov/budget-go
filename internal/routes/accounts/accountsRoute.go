@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/dto"
+	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/services"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
@@ -25,32 +25,13 @@ func RegisterAccountsRoutes(g *echo.Group, cfgGlobal *config.Config, manager *se
 }
 
 func GetAccounts(c echo.Context) error {
-	log.Debug("GetAccounts")
-	userRaw := c.Get("user")
+	log.Debug("GetAccounts Route")
 
-	claims, ok := userRaw.(jwt.MapClaims)
-	if !ok || claims == nil {
-		log.Error("Failed to cast user to jwt.MapClaims")
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or missing user")
+	user, ok := c.Get("authenticated_user").(*models.User)
+	if !ok || user == nil {
+		log.Errorf("User %v not found\n", user.Email)
+		return echo.NewHTTPError(http.StatusInternalServerError, "User not found")
 	}
-
-	email, emailOk := claims["email"].(string)
-	if !emailOk {
-		log.Error("Email not found in claims")
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid user data")
-	}
-
-	user, err := sm.UserService.GetUserByEmail(email)
-	if err != nil {
-		log.Error("Error getting user by email: ", err)
-		return c.String(http.StatusUnauthorized, "Unauthorized")
-	}
-
-	// baseCurrency, err := sm.CurrenciesService.GetCurrency(user.BaseCurrencyID)
-	// if err != nil {
-	// 	log.Error("Error getting base currency: ", err)
-	// 	return c.String(http.StatusInternalServerError, "Internal server error")
-	// }
 
 	var includeHidden, includeDeleted, archivedOnly bool
 

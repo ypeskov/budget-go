@@ -3,11 +3,11 @@ package userSettings
 import (
 	"net/http"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 
 	"ypeskov/budget-go/internal/dto"
+	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/services"
 )
 
@@ -23,16 +23,13 @@ func RegisterSettingsRoutes(g *echo.Group, manager *services.Manager) {
 
 func GetBaseCurrency(c echo.Context) error {
 	log.Debug("GetBaseCurrency Route")
-	userRaw := c.Get("user")
 
-	claims, ok := userRaw.(jwt.MapClaims)
-	if !ok || claims == nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or missing user")
+	user, ok := c.Get("authenticated_user").(*models.User)
+	if !ok || user == nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "User not found")
 	}
 
-	userId := int(claims["id"].(float64))
-
-	baseCurrency, err := sm.UserSettingsService.GetBaseCurrency(userId)
+	baseCurrency, err := sm.UserSettingsService.GetBaseCurrency(user.ID)
 	if err != nil {
 		log.Error("Failed to get base currency: ", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get base currency")

@@ -36,7 +36,7 @@ func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo
 
 	// Routes that require JWT
 	protectedRoutes := e.Group("")
-	protectedRoutes.Use(customMiddleware.CheckJWT)
+	protectedRoutes.Use(customMiddleware.AuthMiddleware(servicesManager))
 
 	accountsRoutesGroup := protectedRoutes.Group("/accounts")
 	accounts.RegisterAccountsRoutes(accountsRoutesGroup, cfg, servicesManager)
