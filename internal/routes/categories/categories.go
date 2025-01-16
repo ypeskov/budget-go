@@ -37,14 +37,14 @@ func GetCategories(c echo.Context) error {
 	var categories []dto.CategoryDTO
 	for i := range userCategories {
 		category := dto.CategoryDTO{
-			ID:        userCategories[i].ID,
-			Name:      userCategories[i].Name,
+			ID:        &userCategories[i].ID,
+			Name:      &userCategories[i].Name,
 			ParentID:  userCategories[i].ParentID,
-			IsIncome:  userCategories[i].IsIncome,
-			UserID:    userCategories[i].UserID,
-			IsDeleted: userCategories[i].IsDeleted,
-			CreatedAt: userCategories[i].CreatedAt,
-			UpdatedAt: userCategories[i].UpdatedAt,
+			IsIncome:  &userCategories[i].IsIncome,
+			UserID:    &userCategories[i].UserID,
+			IsDeleted: &userCategories[i].IsDeleted,
+			CreatedAt: &userCategories[i].CreatedAt,
+			UpdatedAt: &userCategories[i].UpdatedAt,
 		}
 		categories = append(categories, category)
 	}

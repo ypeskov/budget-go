@@ -10,7 +10,7 @@ type TransactionWithAccount struct {
 	Account     AccountDTO     `db:"accounts"`
 	Currency    CurrencyDTO    `db:"currencies"`
 	AccountType AccountTypeDTO `db:"account_types"`
-	Category    CategoryDTO    `db:"user_categories"`
+	Category    *CategoryDTO   `db:"user_categories"`
 }
 
 type CreateTransactionDTO struct {

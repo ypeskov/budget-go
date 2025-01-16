@@ -79,7 +79,7 @@ func AuthMiddleware(sm *services.Manager) echo.MiddlewareFunc {
 			}
 
 			// Save claims and user to the context
-			c.Set("user", claims)
+			// c.Set("user", claims)
 			c.Set("authenticated_user", user)
 
 			// Continue to the next handler

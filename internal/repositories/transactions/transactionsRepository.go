@@ -8,7 +8,7 @@ import (
 )
 
 type Repository interface {
-	GetTransactionsWithAccounts(userId int) ([]dto.TransactionWithAccount, error)
+	GetTransactionsWithAccounts(userId int, perPage int, page int) ([]dto.TransactionWithAccount, error)
 }
 
 type RepositoryInstance struct{}
@@ -20,7 +20,7 @@ func NewTransactionsRepository(dbInstance *sqlx.DB) Repository {
 	return &RepositoryInstance{}
 }
 
-func (r *RepositoryInstance) GetTransactionsWithAccounts(userId int) ([]dto.TransactionWithAccount, error) {
+func (r *RepositoryInstance) GetTransactionsWithAccounts(userId int, perPage int, page int) ([]dto.TransactionWithAccount, error) {
 	const getTransactionsQuery = `
 	SELECT 
 		transactions.id, transactions.user_id, transactions.account_id, transactions.category_id, 
@@ -38,9 +38,10 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(userId int) ([]dto.Tran
 		currencies.id AS "currencies.id", currencies.code AS "currencies.code", currencies.name AS "currencies.name", 
 		account_types.id AS "account_types.id", account_types.type_name AS "account_types.type_name", 
 		account_types.is_credit AS "account_types.is_credit", 
-		user_categories.id AS "user_categories.id", user_categories.name AS "user_categories.name", 
-		user_categories.is_deleted AS "user_categories.is_deleted", 
-		user_categories.created_at AS "user_categories.created_at", user_categories.updated_at AS "user_categories.updated_at"
+		COALESCE(user_categories.id, NULL) AS "user_categories.id",COALESCE(user_categories.name, '') AS "user_categories.name", 
+		COALESCE(user_categories.is_deleted, FALSE) AS "user_categories.is_deleted", 
+		COALESCE(user_categories.created_at, NULL) AS "user_categories.created_at", 
+		COALESCE(user_categories.updated_at, NULL) AS "user_categories.updated_at"
 	FROM transactions 
 	LEFT JOIN accounts ON transactions.account_id = accounts.id
 	LEFT JOIN currencies ON accounts.currency_id = currencies.id
@@ -48,10 +49,12 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(userId int) ([]dto.Tran
 	LEFT JOIN user_categories ON transactions.category_id = user_categories.id
 	WHERE transactions.user_id = $1
 	ORDER BY transactions.date_time DESC
-	LIMIT 10`
+	LIMIT $2 
+	OFFSET $3`
 
 	var transactions []dto.TransactionWithAccount
-	err := db.Select(&transactions, getTransactionsQuery, userId)
+	offset := (page - 1) * perPage
+	err := db.Select(&transactions, getTransactionsQuery, userId, perPage, offset)
 	if err != nil {
 		log.Error("Error getting transactions: ", err)
 		return nil, err

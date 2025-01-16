@@ -2,6 +2,7 @@ package transactions
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
@@ -29,7 +30,30 @@ func GetTransactions(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "User not found")
 	}
 
-	transactions, err := sm.TransactionsService.GetTransactionsWithAccounts(user.ID)
+	var err error
+	var perPage int
+	perPageStr := c.QueryParam("per_page")
+	if perPageStr == "" {
+		perPage = 10
+	} else {
+		perPage, err = strconv.Atoi(perPageStr)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Invalid perPage value")
+		}
+	}
+
+	var page int
+	pageStr := c.QueryParam("page")
+	if pageStr == "" {
+		page = 1
+	} else {
+		page, err = strconv.Atoi(pageStr)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Invalid page value")
+		}
+	}
+
+	transactions, err := sm.TransactionsService.GetTransactionsWithAccounts(user.ID, sm, perPage, page)
 	if err != nil {
 		log.Error("Error getting transactions: ", err)
 		return c.JSON(http.StatusInternalServerError, err.Error())
