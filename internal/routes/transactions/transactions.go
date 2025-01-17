@@ -1,8 +1,8 @@
 package transactions
 
 import (
+	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
@@ -30,30 +30,42 @@ func GetTransactions(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "User not found")
 	}
 
-	var err error
-	var perPage int
-	perPageStr := c.QueryParam("per_page")
-	if perPageStr == "" {
-		perPage = 10
-	} else {
-		perPage, err = strconv.Atoi(perPageStr)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "Invalid perPage value")
-		}
+	perPage, err := getPerPage(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid per_page value")
 	}
 
-	var page int
-	pageStr := c.QueryParam("page")
-	if pageStr == "" {
-		page = 1
-	} else {
-		page, err = strconv.Atoi(pageStr)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, "Invalid page value")
-		}
+	page, err := getPage(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid page value")
 	}
 
-	transactions, err := sm.TransactionsService.GetTransactionsWithAccounts(user.ID, sm, perPage, page)
+	accountIds, err := getAccountIds(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid account_ids value")
+	}
+
+	fromDate, err := getFromDate(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid from_date value")
+	}
+
+	toDate, err := getToDate(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid to_date value")
+	}
+
+	currencies, err := getCurrencies(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid currencies value")
+	}
+
+	fmt.Println("accountIds", accountIds)
+	fmt.Println("fromDate", fromDate)
+	fmt.Println("toDate", toDate)
+	fmt.Println("currencies", currencies)
+
+	transactions, err := sm.TransactionsService.GetTransactionsWithAccounts(user.ID, sm, perPage, page, accountIds)
 	if err != nil {
 		log.Error("Error getting transactions: ", err)
 		return c.JSON(http.StatusInternalServerError, err.Error())

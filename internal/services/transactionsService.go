@@ -10,7 +10,7 @@ import (
 )
 
 type TransactionsService interface {
-	GetTransactionsWithAccounts(userId int, sm *Manager, perPage int, page int) ([]dto.TransactionWithAccount, error)
+	GetTransactionsWithAccounts(userId int, sm *Manager, perPage int, page int, accountIds []int) ([]dto.TransactionWithAccount, error)
 }
 
 type TransactionsServiceInstance struct {
@@ -22,10 +22,15 @@ func NewTransactionsService(transactionsRepository transactions.Repository, sMan
 	return &TransactionsServiceInstance{transactionsRepository: transactionsRepository, sm: sManager}
 }
 
-func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int, sm *Manager, perPage int, page int) ([]dto.TransactionWithAccount, error) {
+func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int,
+	sm *Manager,
+	perPage int,
+	page int,
+	accountIds []int,
+) ([]dto.TransactionWithAccount, error) {
 	log.Debug("GetTransactionsWithAccounts Service")
 
-	transactions, err := s.transactionsRepository.GetTransactionsWithAccounts(userId, perPage, page)
+	transactions, err := s.transactionsRepository.GetTransactionsWithAccounts(userId, perPage, page, accountIds)
 	if err != nil {
 		log.Error("Error getting transactions: ", err)
 		return nil, err

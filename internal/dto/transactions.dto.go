@@ -55,11 +55,15 @@ type ResponseTransactionDTO struct {
 }
 
 func TransactionWithAccountToResponseTransactionDTO(twa TransactionWithAccount, baseCurrency models.Currency) ResponseTransactionDTO {
-	var creditLimitInBaseCurrency float64
+	var creditLimit float64
 	if twa.Account.AccountType.IsCredit {
-		creditLimitInBaseCurrency = *twa.Account.CreditLimit
+		if twa.Account.CreditLimit != nil {
+			creditLimit = *twa.Account.CreditLimit
+		} else {
+			creditLimit = 0
+		}
 	} else {
-		creditLimitInBaseCurrency = 0
+		creditLimit = 0
 	}
 
 	var balanceInBaseCurrency float64
@@ -97,7 +101,7 @@ func TransactionWithAccountToResponseTransactionDTO(twa TransactionWithAccount, 
 			ID:          twa.Account.ID,
 			Name:        twa.Account.Name,
 			Balance:     twa.Account.Balance,
-			CreditLimit: &creditLimitInBaseCurrency,
+			CreditLimit: &creditLimit,
 			OpeningDate: twa.Account.OpeningDate,
 			Comment:     twa.Account.Comment,
 			Currency: CurrencyDTO{

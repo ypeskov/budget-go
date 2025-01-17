@@ -1,6 +1,8 @@
 package transactions
 
 import (
+	"fmt"
+	"strings"
 	"ypeskov/budget-go/internal/dto"
 
 	"github.com/jmoiron/sqlx"
@@ -8,7 +10,7 @@ import (
 )
 
 type Repository interface {
-	GetTransactionsWithAccounts(userId int, perPage int, page int) ([]dto.TransactionWithAccount, error)
+	GetTransactionsWithAccounts(userId int, perPage int, page int, accountIds []int) ([]dto.TransactionWithAccount, error)
 }
 
 type RepositoryInstance struct{}
@@ -20,8 +22,13 @@ func NewTransactionsRepository(dbInstance *sqlx.DB) Repository {
 	return &RepositoryInstance{}
 }
 
-func (r *RepositoryInstance) GetTransactionsWithAccounts(userId int, perPage int, page int) ([]dto.TransactionWithAccount, error) {
-	const getTransactionsQuery = `
+func (r *RepositoryInstance) GetTransactionsWithAccounts(
+	userId int,
+	perPage int,
+	page int,
+	accountIds []int,
+) ([]dto.TransactionWithAccount, error) {
+	getTransactionsQuery := `
 	SELECT 
 		transactions.id, transactions.user_id, transactions.account_id, transactions.category_id, 
 		transactions.amount, transactions.new_balance, transactions.label, transactions.notes, transactions.date_time, 
@@ -51,20 +58,49 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(userId int, perPage int
 	LEFT JOIN account_types ON accounts.account_type_id = account_types.id
 	LEFT JOIN user_categories ON transactions.category_id = user_categories.id
 	
-	WHERE transactions.user_id = $1
-	ORDER BY transactions.date_time DESC
-	LIMIT $2 
-	OFFSET $3`
+	WHERE transactions.user_id = :user_id
+	`
 
-	var transactions []dto.TransactionWithAccount
-	offset := (page - 1) * perPage
-	err := db.Select(&transactions, getTransactionsQuery, userId, perPage, offset)
-	if err != nil {
-		log.Error("Error getting transactions: ", err)
-		return nil, err
+	params := map[string]interface{}{
+		"user_id":  userId,
+		"per_page": perPage,
+		"offset":   (page - 1) * perPage,
 	}
 
-	// copy currency and account type to account struct
+	if len(accountIds) > 0 {
+		placeholders := make([]string, len(accountIds))
+		for i, id := range accountIds {
+			placeholder := fmt.Sprintf(":account_id_%d", i)
+			placeholders[i] = placeholder
+			params[placeholder[1:]] = id
+		}
+
+		getTransactionsQuery += " AND transactions.account_id IN (" + strings.Join(placeholders, ", ") + ")"
+	}
+
+	getTransactionsQuery += `
+	ORDER BY transactions.date_time DESC
+	LIMIT :per_page 
+	OFFSET :offset`
+
+	rows, err := db.NamedQuery(getTransactionsQuery, params)
+	if err != nil {
+		log.Error("Error executing query: ", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var transactions []dto.TransactionWithAccount
+	for rows.Next() {
+		var transaction dto.TransactionWithAccount
+		if err := rows.StructScan(&transaction); err != nil {
+			log.Error("Error scanning row: ", err)
+			return nil, err
+		}
+
+		transactions = append(transactions, transaction)
+	}
+
 	for i, transaction := range transactions {
 		transactions[i].Account.Currency = transaction.Currency
 		transactions[i].Account.AccountType = transaction.AccountType
