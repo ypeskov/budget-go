@@ -47,10 +47,7 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(
 	if len(filters) > 0 {
 		query += " AND " + filters
 	}
-	query += `
-	ORDER BY transactions.date_time DESC
-	LIMIT :per_page 
-	OFFSET :offset`
+	query += ` ORDER BY transactions.date_time DESC LIMIT :per_page OFFSET :offset`
 
 	rows, err := db.NamedQuery(query, params)
 	if err != nil {
