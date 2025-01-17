@@ -3,6 +3,7 @@ package transactions
 import (
 	"fmt"
 	"strings"
+	"time"
 	"ypeskov/budget-go/internal/dto"
 
 	"github.com/jmoiron/sqlx"
@@ -10,7 +11,13 @@ import (
 )
 
 type Repository interface {
-	GetTransactionsWithAccounts(userId int, perPage int, page int, accountIds []int) ([]dto.TransactionWithAccount, error)
+	GetTransactionsWithAccounts(userId int,
+		perPage int,
+		page int,
+		accountIds []int,
+		fromDate time.Time,
+		toDate time.Time,
+	) ([]dto.TransactionWithAccount, error)
 }
 
 type RepositoryInstance struct{}
@@ -27,6 +34,8 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(
 	perPage int,
 	page int,
 	accountIds []int,
+	fromDate time.Time,
+	toDate time.Time,
 ) ([]dto.TransactionWithAccount, error) {
 	getTransactionsQuery := `
 	SELECT 
@@ -78,10 +87,23 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(
 		getTransactionsQuery += " AND transactions.account_id IN (" + strings.Join(placeholders, ", ") + ")"
 	}
 
+	if !fromDate.IsZero() {
+		getTransactionsQuery += " AND transactions.date_time >= :from_date"
+		params["from_date"] = fromDate.Format(time.DateOnly)
+	}
+
+	if !toDate.IsZero() {
+		getTransactionsQuery += " AND transactions.date_time < :to_date"
+		params["to_date"] = toDate.Add(time.Hour * 24).Format(time.DateOnly)
+	}
+
 	getTransactionsQuery += `
 	ORDER BY transactions.date_time DESC
 	LIMIT :per_page 
 	OFFSET :offset`
+
+	fmt.Println("getTransactionsQuery", getTransactionsQuery)
+	fmt.Println("params", params)
 
 	rows, err := db.NamedQuery(getTransactionsQuery, params)
 	if err != nil {

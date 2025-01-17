@@ -1,6 +1,7 @@
 package services
 
 import (
+	"time"
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/transactions"
@@ -10,7 +11,14 @@ import (
 )
 
 type TransactionsService interface {
-	GetTransactionsWithAccounts(userId int, sm *Manager, perPage int, page int, accountIds []int) ([]dto.TransactionWithAccount, error)
+	GetTransactionsWithAccounts(userId int,
+		sm *Manager,
+		perPage int,
+		page int,
+		accountIds []int,
+		fromDate time.Time,
+		toDate time.Time,
+	) ([]dto.TransactionWithAccount, error)
 }
 
 type TransactionsServiceInstance struct {
@@ -27,10 +35,12 @@ func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int,
 	perPage int,
 	page int,
 	accountIds []int,
+	fromDate time.Time,
+	toDate time.Time,
 ) ([]dto.TransactionWithAccount, error) {
 	log.Debug("GetTransactionsWithAccounts Service")
 
-	transactions, err := s.transactionsRepository.GetTransactionsWithAccounts(userId, perPage, page, accountIds)
+	transactions, err := s.transactionsRepository.GetTransactionsWithAccounts(userId, perPage, page, accountIds, fromDate, toDate)
 	if err != nil {
 		log.Error("Error getting transactions: ", err)
 		return nil, err

@@ -65,7 +65,14 @@ func GetTransactions(c echo.Context) error {
 	fmt.Println("toDate", toDate)
 	fmt.Println("currencies", currencies)
 
-	transactions, err := sm.TransactionsService.GetTransactionsWithAccounts(user.ID, sm, perPage, page, accountIds)
+	transactions, err := sm.TransactionsService.GetTransactionsWithAccounts(user.ID,
+		sm,
+		perPage,
+		page,
+		accountIds,
+		fromDate,
+		toDate,
+	)
 	if err != nil {
 		log.Error("Error getting transactions: ", err)
 		return c.JSON(http.StatusInternalServerError, err.Error())
