@@ -1,6 +1,7 @@
 package transactions
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -9,67 +10,77 @@ import (
 )
 
 func getPerPage(c echo.Context) (int, error) {
-	perPageStr := c.QueryParam("per_page")
-	if perPageStr == "" {
-		return 10, nil
+	perPage, err := getQueryParamAsInt(c, "per_page", 10)
+	if err != nil {
+		return 0, err
 	}
-	return strconv.Atoi(perPageStr)
+	if perPage < 1 {
+		return 0, errors.New("per_page must be greater than 0")
+	}
+	return perPage, nil
 }
 
 func getPage(c echo.Context) (int, error) {
-	pageStr := c.QueryParam("page")
-	if pageStr == "" {
-		return 1, nil
-	}
-	return strconv.Atoi(pageStr)
+	return getQueryParamAsInt(c, "page", 1)
 }
 
 func getCurrencies(c echo.Context) ([]string, error) {
-	currenciesStr := c.QueryParam("currencies")
-	if currenciesStr == "" {
-		return []string{}, nil
-	}
-	return strings.Split(currenciesStr, ","), nil
+	return getQueryParamAsStringSlice(c, "currencies")
 }
 
 func getFromDate(c echo.Context) (time.Time, error) {
-	fromDateStr := c.QueryParam("from_date")
-	if fromDateStr == "" {
-		return time.Time{}, nil
-	}
-	return time.Parse(time.DateOnly, fromDateStr)
+	return getQueryParamAsTime(c, "from_date")
 }
 
 func getToDate(c echo.Context) (time.Time, error) {
-	toDateStr := c.QueryParam("to_date")
-	if toDateStr == "" {
-		return time.Time{}, nil
-	}
-	return time.Parse(time.DateOnly, toDateStr)
+	return getQueryParamAsTime(c, "to_date")
 }
 
 func getAccountIds(c echo.Context) ([]int, error) {
-	accountIdsStr := c.QueryParam("accounts")
-	if accountIdsStr == "" {
-		return []int{}, nil
-	}
-	accountIds := strings.Split(accountIdsStr, ",")
-	var ids []int
-	for _, idStr := range accountIds {
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			return []int{}, err
-		}
-		ids = append(ids, id)
-	}
-	return ids, nil
+	return getQueryParamAsIntSlice(c, "accounts")
 }
 
 func getTypes(c echo.Context) ([]string, error) {
-	typesStr := c.QueryParam("types")
+	return getQueryParamAsStringSlice(c, "types")
+}
 
-	if typesStr == "" {
+func getQueryParamAsInt(c echo.Context, paramName string, defaultValue int) (int, error) {
+	paramStr := c.QueryParam(paramName)
+	if paramStr == "" {
+		return defaultValue, nil // Return the default value if the parameter is not provided
+	}
+	return strconv.Atoi(paramStr) // Convert string to integer
+}
+
+func getQueryParamAsIntSlice(c echo.Context, paramName string) ([]int, error) {
+	paramStr := c.QueryParam(paramName)
+	if paramStr == "" {
+		return []int{}, nil
+	}
+	strSlice := strings.Split(paramStr, ",")
+	var intSlice []int
+	for _, str := range strSlice {
+		val, err := strconv.Atoi(str)
+		if err != nil {
+			return nil, err
+		}
+		intSlice = append(intSlice, val)
+	}
+	return intSlice, nil
+}
+
+func getQueryParamAsStringSlice(c echo.Context, paramName string) ([]string, error) {
+	paramStr := c.QueryParam(paramName)
+	if paramStr == "" {
 		return []string{}, nil
 	}
-	return strings.Split(typesStr, ","), nil
+	return strings.Split(paramStr, ","), nil
+}
+
+func getQueryParamAsTime(c echo.Context, paramName string) (time.Time, error) {
+	paramStr := c.QueryParam(paramName)
+	if paramStr == "" {
+		return time.Time{}, nil
+	}
+	return time.Parse(time.DateOnly, paramStr)
 }
