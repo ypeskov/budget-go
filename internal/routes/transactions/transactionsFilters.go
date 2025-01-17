@@ -64,3 +64,11 @@ func getAccountIds(c echo.Context) ([]int, error) {
 	}
 	return ids, nil
 }
+
+func getTypes(c echo.Context) ([]string, error) {
+	typesStr := c.QueryParam("types")
+	if typesStr == "" {
+		return []string{}, nil
+	}
+	return strings.Split(typesStr, ","), nil
+}

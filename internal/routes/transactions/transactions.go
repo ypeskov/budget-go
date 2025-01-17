@@ -60,11 +60,16 @@ func GetTransactions(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid currencies value")
 	}
 
+	types, err := getTypes(c)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid types value")
+	}
+
 	fmt.Println("accountIds", accountIds)
 	fmt.Println("fromDate", fromDate)
 	fmt.Println("toDate", toDate)
 	fmt.Println("currencies", currencies)
-
+	fmt.Println("types", types)
 	transactions, err := sm.TransactionsService.GetTransactionsWithAccounts(user.ID,
 		sm,
 		perPage,
@@ -72,6 +77,7 @@ func GetTransactions(c echo.Context) error {
 		accountIds,
 		fromDate,
 		toDate,
+		types,
 	)
 	if err != nil {
 		log.Error("Error getting transactions: ", err)

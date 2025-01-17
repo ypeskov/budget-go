@@ -18,6 +18,7 @@ type TransactionsService interface {
 		accountIds []int,
 		fromDate time.Time,
 		toDate time.Time,
+		types []string,
 	) ([]dto.TransactionWithAccount, error)
 }
 
@@ -37,10 +38,18 @@ func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int,
 	accountIds []int,
 	fromDate time.Time,
 	toDate time.Time,
+	types []string,
 ) ([]dto.TransactionWithAccount, error) {
 	log.Debug("GetTransactionsWithAccounts Service")
 
-	transactions, err := s.transactionsRepository.GetTransactionsWithAccounts(userId, perPage, page, accountIds, fromDate, toDate)
+	transactions, err := s.transactionsRepository.GetTransactionsWithAccounts(userId,
+		perPage,
+		page,
+		accountIds,
+		fromDate,
+		toDate,
+		types,
+	)
 	if err != nil {
 		log.Error("Error getting transactions: ", err)
 		return nil, err

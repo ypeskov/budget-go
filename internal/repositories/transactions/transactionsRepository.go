@@ -17,6 +17,7 @@ type Repository interface {
 		accountIds []int,
 		fromDate time.Time,
 		toDate time.Time,
+		types []string,
 	) ([]dto.TransactionWithAccount, error)
 }
 
@@ -36,6 +37,7 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(
 	accountIds []int,
 	fromDate time.Time,
 	toDate time.Time,
+	types []string,
 ) ([]dto.TransactionWithAccount, error) {
 	query := getTransactionsQuery
 	params := map[string]interface{}{
@@ -43,7 +45,7 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(
 		"per_page": perPage,
 		"offset":   (page - 1) * perPage,
 	}
-	filters := buildFilters(accountIds, fromDate, toDate, params)
+	filters := buildFilters(accountIds, fromDate, toDate, params, types)
 	if len(filters) > 0 {
 		query += " AND " + filters
 	}
@@ -72,7 +74,7 @@ func updateTransactionsWithAccountData(transactions []dto.TransactionWithAccount
 	}
 }
 
-func buildFilters(accountIds []int, fromDate, toDate time.Time, params map[string]interface{}) string {
+func buildFilters(accountIds []int, fromDate, toDate time.Time, params map[string]interface{}, types []string) string {
 	var filters []string
 
 	if len(accountIds) > 0 {
@@ -88,6 +90,18 @@ func buildFilters(accountIds []int, fromDate, toDate time.Time, params map[strin
 	if !toDate.IsZero() {
 		filters = append(filters, "transactions.date_time < :to_date")
 		params["to_date"] = toDate.Add(24 * time.Hour).Format(time.DateOnly)
+	}
+
+	if len(types) > 0 {
+		for _, transactionType := range types {
+			if transactionType == "income" {
+				filters = append(filters, "transactions.is_income = TRUE")
+			} else if transactionType == "expense" {
+				filters = append(filters, "transactions.is_income = FALSE")
+			} else if transactionType == "transfer" {
+				filters = append(filters, "transactions.is_transfer = TRUE")
+			}
+		}
 	}
 
 	if len(filters) == 0 {
