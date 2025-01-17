@@ -53,27 +53,10 @@ func GetAccounts(c echo.Context) error {
 		archivedOnly = false
 	}
 
-	userAccounts, err := sm.AccountsService.GetUserAccounts(user.ID, includeHidden, includeDeleted, archivedOnly)
+	userAccounts, err := sm.AccountsService.GetUserAccounts(user.ID, sm, includeHidden, includeDeleted, archivedOnly)
 	if err != nil {
 		log.Error("Error getting user accounts: ", err)
 		return c.String(http.StatusInternalServerError, "Internal server error")
-	}
-	for i, account := range userAccounts {
-		if account.InitialBalance == nil {
-			zero := 0.0
-			userAccounts[i].InitialBalance = &zero
-		}
-
-		if account.CreditLimit == nil {
-			zero := 0.0
-			userAccounts[i].CreditLimit = &zero
-		}
-
-		// TODO: remove this after base currency is implemented
-		if account.BalanceInBaseCurrency == nil {
-			zero := 0.0
-			userAccounts[i].BalanceInBaseCurrency = &zero
-		}
 	}
 
 	return c.JSON(http.StatusOK, userAccounts)

@@ -1,13 +1,17 @@
 package services
 
 import (
+	"time"
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/accounts"
+
+	"github.com/shopspring/decimal"
 )
 
 type AccountsService interface {
 	GetUserAccounts(userId int,
+		sm *Manager,
 		includeHidden bool,
 		includeDeleted bool,
 		archivedOnly bool) ([]dto.AccountDTO, error)
@@ -25,7 +29,9 @@ func NewAccountsService(accountsRepository accounts.Repository) AccountsService 
 	}
 }
 
-func (a *AccountsServiceInstance) GetUserAccounts(userId int,
+func (a *AccountsServiceInstance) GetUserAccounts(
+	userId int,
+	sm *Manager,
 	includeHidden bool,
 	includeDeleted bool,
 	archivedOnly bool) ([]dto.AccountDTO, error) {
@@ -33,6 +39,35 @@ func (a *AccountsServiceInstance) GetUserAccounts(userId int,
 	userAccounts, err := a.accountsRepo.GetUserAccounts(userId, includeHidden, includeDeleted, archivedOnly)
 	if err != nil {
 		return nil, err
+	}
+
+	baseCurrency, err := sm.UserSettingsService.GetBaseCurrency(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, account := range userAccounts {
+		if account.InitialBalance == nil {
+			zero := 0.0
+			userAccounts[i].InitialBalance = &zero
+		}
+
+		if account.CreditLimit == nil {
+			zero := 0.0
+			userAccounts[i].CreditLimit = &zero
+		}
+
+		amount, err := sm.ExchangeRatesService.CalcAmountFromCurrency(
+			time.Now(),
+			decimal.NewFromFloat(account.Balance),
+			account.Currency.Code,
+			baseCurrency.Code,
+		)
+		if err != nil {
+			return nil, err
+		}
+		amountValue := amount.InexactFloat64()
+		userAccounts[i].BalanceInBaseCurrency = &amountValue
 	}
 
 	return userAccounts, nil

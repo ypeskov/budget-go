@@ -2,8 +2,10 @@ package services
 
 import (
 	"ypeskov/budget-go/internal/dto"
+	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/transactions"
 
+	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -13,10 +15,11 @@ type TransactionsService interface {
 
 type TransactionsServiceInstance struct {
 	transactionsRepository transactions.Repository
+	sm                     *Manager
 }
 
-func NewTransactionsService(transactionsRepository transactions.Repository) TransactionsService {
-	return &TransactionsServiceInstance{transactionsRepository: transactionsRepository}
+func NewTransactionsService(transactionsRepository transactions.Repository, sManager *Manager) TransactionsService {
+	return &TransactionsServiceInstance{transactionsRepository: transactionsRepository, sm: sManager}
 }
 
 func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int, sm *Manager, perPage int, page int) ([]dto.TransactionWithAccount, error) {
@@ -28,10 +31,27 @@ func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int, sm
 		return nil, err
 	}
 
-	// TODO: Convert transactions to base currency
-	for _, transaction := range transactions {
-		var zero float64 = 0
-		transaction.BaseCurrencyAmount = &zero
+	var baseCurrency models.Currency
+	baseCurrency, err = s.sm.UserSettingsService.GetBaseCurrency(userId)
+	if err != nil {
+		log.Error("Error getting base currency: ", err)
+		return nil, err
+	}
+
+	for i, transaction := range transactions {
+		amount, err := s.sm.ExchangeRatesService.CalcAmountFromCurrency(
+			*transaction.DateTime,
+			decimal.NewFromFloat(transaction.Amount),
+			transaction.Currency.Code,
+			baseCurrency.Code,
+		)
+		if err != nil {
+			log.Error("Error calculating amount: ", err)
+			return nil, err
+		}
+
+		amountFloat := amount.InexactFloat64()
+		transactions[i].BaseCurrencyAmount = &amountFloat
 	}
 
 	return transactions, nil
