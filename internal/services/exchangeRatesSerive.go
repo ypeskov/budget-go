@@ -144,8 +144,9 @@ func (s *ExchangeRatesServiceInstance) GetExchangeRateByDate(date time.Time) (ma
 		}
 	}
 
-	log.Errorf("No exchange rates found for any prior date starting from: %s", date.Format(time.DateOnly))
-	return nil, fmt.Errorf("no exchange rates found for date: %s", date.Format(time.DateOnly))
+	err := fmt.Errorf("no exchange rates found for any prior date starting from: %s", date.Format(time.DateOnly))
+	log.Error(err)
+	return nil, err
 }
 
 func (s *ExchangeRatesServiceInstance) GetRateBetweenCurrencies(
