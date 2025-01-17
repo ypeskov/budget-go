@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -111,14 +112,40 @@ func (s *ExchangeRatesServiceInstance) isCacheExpired() bool {
 }
 
 func (s *ExchangeRatesServiceInstance) GetExchangeRateByDate(date time.Time) (map[string]decimal.Decimal, error) {
-	dateKey := date.Format("2006-01-02")
-	ratesOnDate, ok := s.cache.data[dateKey]
-	if !ok {
-		log.Warnf("No exchange rates found for date: %s", dateKey)
-		return nil, fmt.Errorf("no exchange rates found for date: %s", dateKey)
+	mu.RLock()
+	defer mu.RUnlock()
+
+	// get all date keys from cache that are before or equal to the date
+	dateKeys := make([]string, 0, len(s.cache.data))
+	for key := range s.cache.data {
+		keyDate, err := time.Parse(time.DateOnly, key)
+		if err != nil {
+			log.Warnf("Invalid date format in cache key: %s", key)
+			continue
+		}
+		if !keyDate.After(date) {
+			dateKeys = append(dateKeys, key)
+		}
 	}
 
-	return ratesOnDate, nil
+	// sort the date keys in descending order
+	sort.Sort(sort.Reverse(sort.StringSlice(dateKeys)))
+
+	// get the first cache value that is before or equal to the date
+	for _, key := range dateKeys {
+		keyDate, err := time.Parse(time.DateOnly, key)
+		if err != nil {
+			log.Warnf("Invalid date format in cache key: %s", key)
+			continue
+		}
+
+		if !keyDate.After(date) {
+			return s.cache.data[key], nil
+		}
+	}
+
+	log.Errorf("No exchange rates found for any prior date starting from: %s", date.Format(time.DateOnly))
+	return nil, fmt.Errorf("no exchange rates found for date: %s", date.Format(time.DateOnly))
 }
 
 func (s *ExchangeRatesServiceInstance) GetRateBetweenCurrencies(
@@ -131,15 +158,15 @@ func (s *ExchangeRatesServiceInstance) GetRateBetweenCurrencies(
 		return decimal.Decimal{}, err
 	}
 
-	fmt.Println(ratesOnDate)
-
 	rateFrom, ok := ratesOnDate[currencyFrom]
 	if !ok {
+		log.Warnf("No exchange rate found for currency: %s", currencyFrom)
 		return decimal.Decimal{}, fmt.Errorf("no exchange rate found for currency: %s", currencyFrom)
 	}
 
 	rateTo, ok := ratesOnDate[currencyTo]
 	if !ok {
+		log.Warnf("No exchange rate found for currency: %s", currencyTo)
 		return decimal.Decimal{}, fmt.Errorf("no exchange rate found for currency: %s", currencyTo)
 	}
 
