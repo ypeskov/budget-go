@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"ypeskov/budget-go/internal/routes/routeErrors"
+
 	"github.com/labstack/echo/v4"
 )
 
@@ -22,31 +24,31 @@ type TransactionFilters struct {
 func parseTransactionFilters(c echo.Context) (*TransactionFilters, error) {
 	perPage, err := getPerPage(c)
 	if err != nil {
-		return nil, err
+		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
 	}
 	page, err := getPage(c)
 	if err != nil {
-		return nil, err
+		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
 	}
 	currencies, err := getCurrencies(c)
 	if err != nil {
-		return nil, err
+		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
 	}
 	fromDate, err := getFromDate(c)
 	if err != nil {
-		return nil, err
+		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
 	}
 	toDate, err := getToDate(c)
 	if err != nil {
-		return nil, err
+		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
 	}
 	accountIds, err := getAccountIds(c)
 	if err != nil {
-		return nil, err
+		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
 	}
 	transactionTypes, err := getTransactionTypes(c)
 	if err != nil {
-		return nil, err
+		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
 	}
 
 	return &TransactionFilters{
@@ -100,7 +102,11 @@ func getQueryParamAsInt(c echo.Context, paramName string, defaultValue int) (int
 	if paramStr == "" {
 		return defaultValue, nil // Return the default value if the parameter is not provided
 	}
-	return strconv.Atoi(paramStr) // Convert string to integer
+	val, err := strconv.Atoi(paramStr)
+	if err != nil {
+		return 0, errors.New("invalid value for " + paramName)
+	}
+	return val, nil
 }
 
 func getQueryParamAsIntSlice(c echo.Context, paramName string) ([]int, error) {
@@ -113,7 +119,7 @@ func getQueryParamAsIntSlice(c echo.Context, paramName string) ([]int, error) {
 	for _, str := range strSlice {
 		val, err := strconv.Atoi(str)
 		if err != nil {
-			return nil, err
+			return nil, errors.New("invalid value for " + paramName)
 		}
 		intSlice = append(intSlice, val)
 	}
@@ -133,5 +139,9 @@ func getQueryParamAsTime(c echo.Context, paramName string) (time.Time, error) {
 	if paramStr == "" {
 		return time.Time{}, nil
 	}
-	return time.Parse(time.DateOnly, paramStr)
+	parsedTime, err := time.Parse(time.DateOnly, paramStr)
+	if err != nil {
+		return time.Time{}, errors.New("invalid value for " + paramName)
+	}
+	return parsedTime, nil
 }

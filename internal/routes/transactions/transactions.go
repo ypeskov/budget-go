@@ -1,7 +1,6 @@
 package transactions
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -9,6 +8,7 @@ import (
 
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
+	"ypeskov/budget-go/internal/routes/routeErrors"
 	"ypeskov/budget-go/internal/services"
 )
 
@@ -27,9 +27,10 @@ func GetTransactions(c echo.Context) error {
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
-		return logAndReturnError(c, errors.New("user not found"), http.StatusBadRequest)
+		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
 	}
 
+	// parseTransactionFilters extracts and validates query parameters for transaction filtering.
 	filters, err := parseTransactionFilters(c)
 	if err != nil {
 		return logAndReturnError(c, err, http.StatusBadRequest)
@@ -53,16 +54,21 @@ func GetTransactions(c echo.Context) error {
 	if err != nil {
 		return logAndReturnError(c, err, http.StatusInternalServerError)
 	}
-
-	var transactionsDTO []dto.ResponseTransactionDTO
-	for _, transaction := range transactions {
-		transactionsDTO = append(transactionsDTO, dto.TransactionWithAccountToResponseTransactionDTO(transaction, baseCurrency))
-	}
+	transactionsDTO := convertTransactionsToDTO(transactions, baseCurrency)
 
 	return c.JSON(http.StatusOK, transactionsDTO)
 }
 
+func convertTransactionsToDTO(transactions []dto.TransactionWithAccount, baseCurrency models.Currency) []dto.ResponseTransactionDTO {
+	var transactionsDTO []dto.ResponseTransactionDTO
+	for _, transaction := range transactions {
+		transactionsDTO = append(transactionsDTO, dto.TransactionWithAccountToResponseTransactionDTO(transaction, baseCurrency))
+	}
+	return transactionsDTO
+}
+
 func logAndReturnError(c echo.Context, err error, httpStatus int) error {
-	log.Error(err)
-	return c.JSON(httpStatus, err.Error())
+	return c.JSON(httpStatus, map[string]string{
+		"error": err.Error(),
+	})
 }
