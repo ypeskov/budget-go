@@ -1,7 +1,7 @@
 package transactions
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -27,67 +27,31 @@ func GetTransactions(c echo.Context) error {
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "User not found")
+		return logAndReturnError(c, errors.New("user not found"), http.StatusBadRequest)
 	}
 
-	perPage, err := getPerPage(c)
+	filters, err := parseTransactionFilters(c)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid per_page value")
+		return logAndReturnError(c, err, http.StatusBadRequest)
 	}
 
-	page, err := getPage(c)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid page value")
-	}
-
-	accountIds, err := getAccountIds(c)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid account_ids value")
-	}
-
-	fromDate, err := getFromDate(c)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid from_date value")
-	}
-
-	toDate, err := getToDate(c)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid to_date value")
-	}
-
-	currencies, err := getCurrencies(c)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid currencies value")
-	}
-
-	transactionTypes, err := getTypes(c)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Invalid types value")
-	}
-
-	fmt.Println("accountIds", accountIds)
-	fmt.Println("fromDate", fromDate)
-	fmt.Println("toDate", toDate)
-	fmt.Println("currencies", currencies)
-	fmt.Println("transactionTypes", transactionTypes)
-	transactions, err := sm.TransactionsService.GetTransactionsWithAccounts(user.ID,
+	transactions, err := sm.TransactionsService.GetTransactionsWithAccounts(
+		user.ID,
 		sm,
-		perPage,
-		page,
-		accountIds,
-		fromDate,
-		toDate,
-		transactionTypes,
+		filters.PerPage,
+		filters.Page,
+		filters.AccountIds,
+		filters.FromDate,
+		filters.ToDate,
+		filters.TransactionTypes,
 	)
 	if err != nil {
-		log.Error("Error getting transactions: ", err)
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return logAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
 	baseCurrency, err := sm.UserSettingsService.GetBaseCurrency(user.ID)
 	if err != nil {
-		log.Error("Error getting base currency: ", err)
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return logAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
 	var transactionsDTO []dto.ResponseTransactionDTO
@@ -96,4 +60,9 @@ func GetTransactions(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, transactionsDTO)
+}
+
+func logAndReturnError(c echo.Context, err error, httpStatus int) error {
+	log.Error(err)
+	return c.JSON(httpStatus, err.Error())
 }
