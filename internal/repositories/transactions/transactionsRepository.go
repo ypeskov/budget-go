@@ -1,6 +1,7 @@
 package transactions
 
 import (
+	"fmt"
 	"strings"
 	"time"
 	"ypeskov/budget-go/internal/dto"
@@ -17,7 +18,7 @@ type Repository interface {
 		accountIds []int,
 		fromDate time.Time,
 		toDate time.Time,
-		types []string,
+		transactionTypes []string,
 	) ([]dto.TransactionWithAccount, error)
 }
 
@@ -37,7 +38,7 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(
 	accountIds []int,
 	fromDate time.Time,
 	toDate time.Time,
-	types []string,
+	transactionTypes []string,
 ) ([]dto.TransactionWithAccount, error) {
 	query := getTransactionsQuery
 	params := map[string]interface{}{
@@ -45,12 +46,13 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(
 		"per_page": perPage,
 		"offset":   (page - 1) * perPage,
 	}
-	filters := buildFilters(accountIds, fromDate, toDate, params, types)
+	filters := buildFilters(accountIds, fromDate, toDate, params, transactionTypes)
 	if len(filters) > 0 {
 		query += " AND " + filters
 	}
 	query += ` ORDER BY transactions.date_time DESC LIMIT :per_page OFFSET :offset`
-
+	fmt.Println("query", query)
+	fmt.Println("params", params)
 	rows, err := db.NamedQuery(query, params)
 	if err != nil {
 		return nil, logAndReturnError(err, "Error executing query: ")
@@ -74,7 +76,7 @@ func updateTransactionsWithAccountData(transactions []dto.TransactionWithAccount
 	}
 }
 
-func buildFilters(accountIds []int, fromDate, toDate time.Time, params map[string]interface{}, types []string) string {
+func buildFilters(accountIds []int, fromDate, toDate time.Time, params map[string]interface{}, transactionTypes []string) string {
 	var filters []string
 
 	if len(accountIds) > 0 {
@@ -92,15 +94,19 @@ func buildFilters(accountIds []int, fromDate, toDate time.Time, params map[strin
 		params["to_date"] = toDate.Add(24 * time.Hour).Format(time.DateOnly)
 	}
 
-	if len(types) > 0 {
-		for _, transactionType := range types {
+	if len(transactionTypes) > 0 {
+		var typeFilters []string
+		for _, transactionType := range transactionTypes {
 			if transactionType == "income" {
-				filters = append(filters, "transactions.is_income = TRUE")
+				typeFilters = append(typeFilters, "transactions.is_income = TRUE")
 			} else if transactionType == "expense" {
-				filters = append(filters, "transactions.is_income = FALSE")
+				typeFilters = append(typeFilters, "transactions.is_income = FALSE")
 			} else if transactionType == "transfer" {
-				filters = append(filters, "transactions.is_transfer = TRUE")
+				typeFilters = append(typeFilters, "transactions.is_transfer = TRUE")
 			}
+		}
+		if len(typeFilters) > 0 {
+			filters = append(filters, "("+strings.Join(typeFilters, " OR ")+")")
 		}
 	}
 

@@ -67,6 +67,7 @@ func getAccountIds(c echo.Context) ([]int, error) {
 
 func getTypes(c echo.Context) ([]string, error) {
 	typesStr := c.QueryParam("types")
+
 	if typesStr == "" {
 		return []string{}, nil
 	}
