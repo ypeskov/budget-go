@@ -45,6 +45,7 @@ func GetTransactions(c echo.Context) error {
 		filters.FromDate,
 		filters.ToDate,
 		filters.TransactionTypes,
+		filters.CategoryIds,
 	)
 	if err != nil {
 		return logAndReturnError(c, err, http.StatusInternalServerError)

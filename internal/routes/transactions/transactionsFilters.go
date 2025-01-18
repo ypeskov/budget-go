@@ -9,6 +9,7 @@ import (
 	"ypeskov/budget-go/internal/routes/routeErrors"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
 )
 
 type TransactionFilters struct {
@@ -19,6 +20,7 @@ type TransactionFilters struct {
 	ToDate           time.Time
 	AccountIds       []int
 	TransactionTypes []string
+	CategoryIds      []int
 }
 
 func parseTransactionFilters(c echo.Context) (*TransactionFilters, error) {
@@ -50,6 +52,10 @@ func parseTransactionFilters(c echo.Context) (*TransactionFilters, error) {
 	if err != nil {
 		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
 	}
+	categoryIds, err := getCategoryIds(c)
+	if err != nil {
+		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
+	}
 
 	return &TransactionFilters{
 		PerPage:          perPage,
@@ -59,6 +65,7 @@ func parseTransactionFilters(c echo.Context) (*TransactionFilters, error) {
 		ToDate:           toDate,
 		AccountIds:       accountIds,
 		TransactionTypes: transactionTypes,
+		CategoryIds:      categoryIds,
 	}, nil
 }
 
@@ -93,6 +100,10 @@ func getAccountIds(c echo.Context) ([]int, error) {
 	return getQueryParamAsIntSlice(c, "accounts")
 }
 
+func getCategoryIds(c echo.Context) ([]int, error) {
+	return getQueryParamAsIntSlice(c, "categories")
+}
+
 func getTransactionTypes(c echo.Context) ([]string, error) {
 	return getQueryParamAsStringSlice(c, "types")
 }
@@ -119,10 +130,12 @@ func getQueryParamAsIntSlice(c echo.Context, paramName string) ([]int, error) {
 	for _, str := range strSlice {
 		val, err := strconv.Atoi(str)
 		if err != nil {
-			return nil, errors.New("invalid value for " + paramName)
+			log.Warn("invalid value for " + paramName + ": [" + str + "] skipping")
+			continue
 		}
 		intSlice = append(intSlice, val)
 	}
+
 	return intSlice, nil
 }
 

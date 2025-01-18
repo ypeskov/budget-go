@@ -1,7 +1,6 @@
 package transactions
 
 import (
-	"fmt"
 	"strings"
 	"time"
 	"ypeskov/budget-go/internal/dto"
@@ -19,6 +18,7 @@ type Repository interface {
 		fromDate time.Time,
 		toDate time.Time,
 		transactionTypes []string,
+		categoryIds []int,
 	) ([]dto.TransactionWithAccount, error)
 }
 
@@ -39,6 +39,7 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(
 	fromDate time.Time,
 	toDate time.Time,
 	transactionTypes []string,
+	categoryIds []int,
 ) ([]dto.TransactionWithAccount, error) {
 	query := getTransactionsQuery
 	params := map[string]interface{}{
@@ -46,13 +47,12 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(
 		"per_page": perPage,
 		"offset":   (page - 1) * perPage,
 	}
-	filters := buildFilters(accountIds, fromDate, toDate, params, transactionTypes)
+	filters := buildFilters(accountIds, fromDate, toDate, params, transactionTypes, categoryIds)
 	if len(filters) > 0 {
 		query += " AND " + filters
 	}
 	query += ` ORDER BY transactions.date_time DESC LIMIT :per_page OFFSET :offset`
-	fmt.Println("query", query)
-	fmt.Println("params", params)
+
 	rows, err := db.NamedQuery(query, params)
 	if err != nil {
 		return nil, logAndReturnError(err, "Error executing query: ")
@@ -76,12 +76,22 @@ func updateTransactionsWithAccountData(transactions []dto.TransactionWithAccount
 	}
 }
 
-func buildFilters(accountIds []int, fromDate, toDate time.Time, params map[string]interface{}, transactionTypes []string) string {
+func buildFilters(accountIds []int,
+	fromDate, toDate time.Time,
+	params map[string]interface{},
+	transactionTypes []string,
+	categoryIds []int,
+) string {
 	var filters []string
 
 	if len(accountIds) > 0 {
 		params["account_ids"] = pq.Array(accountIds)
 		filters = append(filters, "transactions.account_id = ANY(:account_ids)")
+	}
+
+	if len(categoryIds) > 0 {
+		params["category_ids"] = pq.Array(categoryIds)
+		filters = append(filters, "transactions.category_id = ANY(:category_ids)")
 	}
 
 	if !fromDate.IsZero() {

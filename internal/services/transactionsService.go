@@ -19,6 +19,7 @@ type TransactionsService interface {
 		fromDate time.Time,
 		toDate time.Time,
 		tratypes []string,
+		categoryIds []int,
 	) ([]dto.TransactionWithAccount, error)
 }
 
@@ -39,6 +40,7 @@ func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int,
 	fromDate time.Time,
 	toDate time.Time,
 	transactionTypes []string,
+	categoryIds []int,
 ) ([]dto.TransactionWithAccount, error) {
 	log.Debug("GetTransactionsWithAccounts Service")
 
@@ -49,6 +51,7 @@ func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int,
 		fromDate,
 		toDate,
 		transactionTypes,
+		categoryIds,
 	)
 	if err != nil {
 		log.Error("Error getting transactions: ", err)
