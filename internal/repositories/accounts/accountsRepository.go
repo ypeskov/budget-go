@@ -46,17 +46,18 @@ JOIN account_types at ON a.account_type_id = at.id
 	var err error
 	if archivedOnly {
 		getAccountsQuery += `WHERE a.user_id = $1 AND a.archived_at IS NOT NULL`
-		err = db.Select(&accounts, getAccountsQuery, userId)
 	} else {
-		getAccountsQuery += `WHERE a.user_id = $1 AND a.archived_at IS NULL`
+		getAccountsQuery += `WHERE a.user_id = $1 AND a.archived_at IS NULL `
 		if !includeHidden {
 			getAccountsQuery += ` AND a.is_hidden = false`
 		}
 		if !includeDeleted {
 			getAccountsQuery += ` AND a.is_deleted = false`
 		}
-		err = db.Select(&accounts, getAccountsQuery, userId)
+
 	}
+	getAccountsQuery += ` ORDER BY a.name`
+	err = db.Select(&accounts, getAccountsQuery, userId)
 	if err != nil {
 		return nil, err
 	}

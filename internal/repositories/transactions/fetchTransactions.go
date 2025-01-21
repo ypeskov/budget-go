@@ -22,13 +22,14 @@ type Repository interface {
 	) ([]dto.TransactionWithAccount, error)
 }
 
-type RepositoryInstance struct{}
-
-var db *sqlx.DB
+type RepositoryInstance struct {
+	db *sqlx.DB
+}
 
 func NewTransactionsRepository(dbInstance *sqlx.DB) Repository {
-	db = dbInstance
-	return &RepositoryInstance{}
+	return &RepositoryInstance{
+		db: dbInstance,
+	}
 }
 
 func (r *RepositoryInstance) GetTransactionsWithAccounts(
@@ -53,7 +54,7 @@ func (r *RepositoryInstance) GetTransactionsWithAccounts(
 	}
 	query += ` ORDER BY transactions.date_time DESC LIMIT :per_page OFFSET :offset`
 
-	rows, err := db.NamedQuery(query, params)
+	rows, err := r.db.NamedQuery(query, params)
 	if err != nil {
 		return nil, logAndReturnError(err, "Error executing query: ")
 	}
