@@ -1,12 +1,16 @@
 package services
 
 import (
+	"errors"
+	"fmt"
 	"time"
 	"ypeskov/budget-go/internal/dto"
+	customErrors "ypeskov/budget-go/internal/errors"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/accounts"
 
 	"github.com/shopspring/decimal"
+	log "github.com/sirupsen/logrus"
 )
 
 type AccountsService interface {
@@ -16,16 +20,20 @@ type AccountsService interface {
 		includeDeleted bool,
 		archivedOnly bool) ([]dto.AccountDTO, error)
 	GetAccountTypes() ([]models.AccountType, error)
-	GetAccountById(id int) (models.Account, error)
+	GetAccountById(id int) (dto.AccountDTO, error)
+	CreateAccount(account models.Account) (dto.AccountDTO, error)
+	UpdateAccount(account models.Account) (dto.AccountDTO, error)
 }
 
 type AccountsServiceInstance struct {
 	accountsRepo accounts.Repository
+	sm           *Manager
 }
 
-func NewAccountsService(accountsRepository accounts.Repository) AccountsService {
+func NewAccountsService(accountsRepository accounts.Repository, sManager *Manager) AccountsService {
 	return &AccountsServiceInstance{
 		accountsRepo: accountsRepository,
+		sm:           sManager,
 	}
 }
 
@@ -82,10 +90,114 @@ func (a *AccountsServiceInstance) GetAccountTypes() ([]models.AccountType, error
 	return accountTypes, nil
 }
 
-func (a *AccountsServiceInstance) GetAccountById(id int) (models.Account, error) {
+func (a *AccountsServiceInstance) GetAccountById(id int) (dto.AccountDTO, error) {
 	account, err := a.accountsRepo.GetAccountById(id)
 	if err != nil {
-		return models.Account{}, err
+		return dto.AccountDTO{}, err
 	}
-	return account, nil
+
+	accountDTO := dto.AccountToDTO(account)
+
+	return accountDTO, nil
+}
+
+func (a *AccountsServiceInstance) CreateAccount(account models.Account) (dto.AccountDTO, error) {
+	account.CreatedAt = time.Now()
+	account.UpdatedAt = time.Now()
+
+	if account.InitialBalance == nil {
+		zero := decimal.NewFromFloat(0)
+		account.InitialBalance = &zero
+	}
+
+	if account.CreditLimit == nil {
+		zero := decimal.NewFromFloat(0)
+		account.CreditLimit = &zero
+	}
+
+	newAccount, err := a.accountsRepo.CreateAccount(account)
+	if err != nil {
+		return dto.AccountDTO{}, err
+	}
+
+	accountDto, err := buildAccountDTO(newAccount)
+	if err != nil {
+		return dto.AccountDTO{}, err
+	}
+
+	return accountDto, nil
+}
+
+func buildAccountDTO(account models.Account) (dto.AccountDTO, error) {
+	accountDto := dto.AccountToDTO(account)
+
+	baseCurrency, err := sm.UserSettingsService.GetBaseCurrency(accountDto.UserID)
+	if err != nil {
+		return dto.AccountDTO{}, err
+	}
+
+	accountCurrency, err := sm.CurrenciesService.GetCurrency(accountDto.CurrencyId)
+	if err != nil {
+		return dto.AccountDTO{}, err
+	}
+
+	accountDto.Currency = *buildCurrencyDTO(accountCurrency)
+
+	amount, err := sm.ExchangeRatesService.CalcAmountFromCurrency(
+		time.Now(),
+		decimal.NewFromFloat(accountDto.Balance),
+		accountCurrency.Code,
+		baseCurrency.Code,
+	)
+	if err != nil {
+		return dto.AccountDTO{}, fmt.Errorf("failed to calculate amount from currency: %w", err)
+	}
+
+	value := amount.InexactFloat64()
+	accountDto.BalanceInBaseCurrency = &value
+
+	return accountDto, nil
+}
+
+func (a *AccountsServiceInstance) UpdateAccount(account models.Account) (dto.AccountDTO, error) {
+	log.Debug("UpdateAccount Service")
+	account.UpdatedAt = time.Now()
+
+	if account.InitialBalance == nil {
+		zero := decimal.NewFromFloat(0)
+		account.InitialBalance = &zero
+	}
+
+	if account.CreditLimit == nil {
+		zero := decimal.NewFromFloat(0)
+		account.CreditLimit = &zero
+	}
+
+	updatedAccount, err := a.accountsRepo.UpdateAccount(account)
+	if err != nil {
+		if errors.Is(err, customErrors.ErrNoAccountFound) {
+			log.Errorf("No account found with the provided ID: %v", account.ID)
+			return dto.AccountDTO{}, customErrors.ErrNoAccountFound
+		}
+		return dto.AccountDTO{}, err
+	}
+
+	accountDto, err := buildAccountDTO(updatedAccount)
+	if err != nil {
+		return dto.AccountDTO{}, err
+	}
+
+	return accountDto, nil
+}
+
+func buildCurrencyDTO(currency models.Currency) *dto.CurrencyDTO {
+	fmt.Println(currency)
+	fmt.Println("--------------------------------")
+	return &dto.CurrencyDTO{
+		ID:        currency.ID,
+		Code:      currency.Code,
+		Name:      currency.Name,
+		CreatedAt: currency.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: currency.UpdatedAt.Format(time.RFC3339),
+	}
 }

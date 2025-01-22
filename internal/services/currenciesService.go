@@ -25,5 +25,10 @@ func (c *CurrenciesServiceInstance) GetCurrencies() ([]models.Currency, error) {
 }
 
 func (c *CurrenciesServiceInstance) GetCurrency(id int) (models.Currency, error) {
-	return c.currenciesRepo.GetCurrency(id)
+	currency, err := c.currenciesRepo.GetCurrency(id)
+	if err != nil {
+		return models.Currency{}, err
+	}
+
+	return currency, nil
 }

@@ -35,12 +35,13 @@ func (r *RepositoryInstance) GetCurrencies() ([]models.Currency, error) {
 }
 
 func (r *RepositoryInstance) GetCurrency(id int) (models.Currency, error) {
-	const getCurrencyQuery = `SELECT id, code, name FROM currencies WHERE id = $1 AND is_deleted = false;`
+	const getCurrencyQuery = `SELECT id, code, name, created_at, updated_at FROM currencies WHERE id = $1 AND is_deleted = false;`
 
 	var currency models.Currency
 	err := db.Get(&currency, getCurrencyQuery, id)
 	if err != nil {
 		return models.Currency{}, err
 	}
+
 	return currency, nil
 }

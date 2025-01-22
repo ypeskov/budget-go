@@ -35,7 +35,7 @@ func NewServicesManager(db *database.Database) *Manager {
 	sm = &Manager{}
 
 	sm.UserService = NewUserService(userRepo)
-	sm.AccountsService = NewAccountsService(accountsRepo)
+	sm.AccountsService = NewAccountsService(accountsRepo, sm)
 	sm.CategoriesService = NewCategoriesService(categoriesRepo)
 	sm.UserSettingsService = NewUserSettingsService(userSettingsRepo)
 	sm.CurrenciesService = NewCurrenciesService(currenciesRepo)

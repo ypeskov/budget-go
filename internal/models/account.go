@@ -2,31 +2,28 @@ package models
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
 
 type Account struct {
-	ID             int              `db:"id"`
-	UserID         int              `db:"user_id"`
-	AccountTypeId  int              `db:"account_type_id"`
-	CurrencyId     int              `db:"currency_id"`
-	Name           string           `db:"name"`
-	Balance        decimal.Decimal  `db:"balance"`
-	InitialBalance *decimal.Decimal `db:"initial_balance"`
-	CreditLimit    *decimal.Decimal `db:"credit_limit"`
-	OpeningDate    string           `db:"opening_date"`
-	Comment        string           `db:"comment"`
-	IsHidden       bool             `db:"is_hidden"`
-	ShowInReports  bool             `db:"show_in_reports"`
-	IsDeleted      bool             `db:"is_deleted"`
-	ArchivedAt     *string          `db:"archived_at"`
-	CreatedAt      string           `db:"created_at"`
-	UpdateAt       string           `db:"updated_at"`
-}
-
-func (a *Account) String() string {
-	return "[Account: " + a.Name + ", Balance: " + a.Balance.String() + "]"
+	ID             int              `db:"id" json:"id"`
+	UserID         int              `db:"user_id" json:"user_id"`
+	AccountTypeId  int              `db:"account_type_id" json:"account_type_id"`
+	CurrencyId     int              `db:"currency_id" json:"currency_id"`
+	Name           string           `db:"name" json:"name"`
+	Balance        decimal.Decimal  `db:"balance" json:"balance"`
+	InitialBalance *decimal.Decimal `db:"initial_balance" json:"initial_balance"`
+	CreditLimit    *decimal.Decimal `db:"credit_limit" json:"credit_limit"`
+	OpeningDate    time.Time        `db:"opening_date" json:"opening_date"`
+	Comment        string           `db:"comment" json:"comment"`
+	IsHidden       bool             `db:"is_hidden" json:"is_hidden"`
+	ShowInReports  bool             `db:"show_in_reports" json:"show_in_reports"`
+	IsDeleted      bool             `db:"is_deleted" json:"is_deleted"`
+	ArchivedAt     *string          `db:"archived_at" json:"archived_at"`
+	CreatedAt      time.Time        `db:"created_at" json:"created_at"`
+	UpdatedAt      time.Time        `db:"updated_at" json:"updated_at"`
 }
 
 func (a *Account) MarshalJSON() ([]byte, error) {

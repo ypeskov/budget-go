@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"time"
 	"ypeskov/budget-go/internal/models"
 )
 
@@ -39,4 +40,43 @@ func AccountTypeToDTO(accountType models.AccountType) AccountTypeDTO {
 		TypeName: accountType.TypeName,
 		IsCredit: accountType.IsCredit,
 	}
+}
+
+func AccountToDTO(account models.Account) AccountDTO {
+	var initialBalance *float64
+	if account.InitialBalance != nil {
+		value := account.InitialBalance.InexactFloat64()
+		initialBalance = &value
+	}
+
+	var creditLimit *float64
+	if account.CreditLimit != nil {
+		value := account.CreditLimit.InexactFloat64()
+		creditLimit = &value
+	}
+
+	accountDTO := AccountDTO{
+		ID:             account.ID,
+		UserID:         account.UserID,
+		AccountTypeId:  account.AccountTypeId,
+		CurrencyId:     account.CurrencyId,
+		Name:           account.Name,
+		Balance:        account.Balance.InexactFloat64(),
+		InitialBalance: initialBalance,
+		CreditLimit:    creditLimit,
+		OpeningDate:    account.OpeningDate.Format(time.RFC3339),
+		Comment:        account.Comment,
+		IsHidden:       account.IsHidden,
+		ShowInReports:  account.ShowInReports,
+		IsDeleted:      account.IsDeleted,
+		ArchivedAt:     account.ArchivedAt,
+		CreatedAt:      account.CreatedAt.Format(time.RFC3339),
+		UpdateAt:       account.UpdatedAt.Format(time.RFC3339),
+
+		AccountType: AccountTypeDTO{
+			ID: account.AccountTypeId,
+		},
+	}
+
+	return accountDTO
 }

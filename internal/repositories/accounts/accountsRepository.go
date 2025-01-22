@@ -1,7 +1,11 @@
 package accounts
 
 import (
+	"database/sql"
+	"errors"
+
 	"ypeskov/budget-go/internal/dto"
+	customErrors "ypeskov/budget-go/internal/errors"
 	"ypeskov/budget-go/internal/models"
 
 	"github.com/jmoiron/sqlx"
@@ -12,6 +16,8 @@ type Repository interface {
 	GetUserAccounts(userId int, includeHidden bool, includeDeleted bool, archivedOnly bool) ([]dto.AccountDTO, error)
 	GetAccountTypes() ([]models.AccountType, error)
 	GetAccountById(id int) (models.Account, error)
+	CreateAccount(account models.Account) (models.Account, error)
+	UpdateAccount(account models.Account) (models.Account, error)
 }
 
 type RepositoryInstance struct{}
@@ -96,4 +102,80 @@ func (a *RepositoryInstance) GetAccountById(id int) (models.Account, error) {
 	}
 
 	return account, nil
+}
+
+func (a *RepositoryInstance) CreateAccount(account models.Account) (models.Account, error) {
+	const insertAccountQuery = `
+INSERT INTO accounts (user_id, name, balance, account_type_id, currency_id, initial_balance, credit_limit, opening_date, comment, is_hidden, show_in_reports, is_deleted, archived_at, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+RETURNING id, user_id, name, balance, account_type_id, currency_id, initial_balance, credit_limit, opening_date, comment, is_hidden, show_in_reports, is_deleted, archived_at, created_at, updated_at
+`
+	var newAccount models.Account
+	err := db.Get(
+		&newAccount,
+		insertAccountQuery,
+		account.UserID,         // $1
+		account.Name,           // $2
+		account.Balance,        // $3
+		account.AccountTypeId,  // $4
+		account.CurrencyId,     // $5
+		account.InitialBalance, // $6
+		account.CreditLimit,    // $7
+		account.OpeningDate,    // $8
+		account.Comment,        // $9
+		account.IsHidden,       // $10
+		account.ShowInReports,  // $11
+		account.IsDeleted,      // $12
+		account.ArchivedAt,     // $13
+		account.CreatedAt,      // $14
+		account.UpdatedAt,      // $15
+	)
+	if err != nil {
+		return models.Account{}, err
+	}
+
+	return newAccount, nil
+}
+
+func (a *RepositoryInstance) UpdateAccount(account models.Account) (models.Account, error) {
+	log.Debug("UpdateAccount Repository")
+	const updateAccountQuery = `
+UPDATE accounts
+SET user_id = $1, name = $2, balance = $3, account_type_id = $4, currency_id = $5, 
+    initial_balance = $6, credit_limit = $7, opening_date = $8, comment = $9,
+    is_hidden = $10, show_in_reports = $11, is_deleted = $12, archived_at = $13, 
+    updated_at = $14
+WHERE id = $15
+RETURNING id, user_id, name, balance, account_type_id, currency_id, initial_balance, credit_limit, opening_date, comment, is_hidden, show_in_reports, is_deleted, archived_at, created_at, updated_at
+`
+	var updatedAccount models.Account
+	err := db.Get(
+		&updatedAccount,
+		updateAccountQuery,
+		account.UserID,         // $1
+		account.Name,           // $2
+		account.Balance,        // $3
+		account.AccountTypeId,  // $4
+		account.CurrencyId,     // $5
+		account.InitialBalance, // $6
+		account.CreditLimit,    // $7
+		account.OpeningDate,    // $8
+		account.Comment,        // $9
+		account.IsHidden,       // $10
+		account.ShowInReports,  // $11
+		account.IsDeleted,      // $12
+		account.ArchivedAt,     // $13
+		account.UpdatedAt,      // $14
+		account.ID,             // $15
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Errorf("No account found with the provided ID: %v", account.ID)
+			return models.Account{}, customErrors.ErrNoAccountFound
+		}
+		log.Error("Error updating account: ", err)
+		return models.Account{}, err
+	}
+
+	return updatedAccount, nil
 }
