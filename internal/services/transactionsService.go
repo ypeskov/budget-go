@@ -23,6 +23,7 @@ type TransactionsService interface {
 	) ([]dto.TransactionWithAccount, error)
 	GetTemplates(userId int) ([]dto.TemplateDTO, error)
 	DeleteTemplates(templateIds []int, userId int) error
+	CreateTransaction(transaction models.Transaction) error
 }
 
 type TransactionsServiceInstance struct {
@@ -104,6 +105,38 @@ func (s *TransactionsServiceInstance) DeleteTemplates(templateIds []int, userId 
 	err := s.transactionsRepository.DeleteTemplates(templateIds, userId)
 	if err != nil {
 		log.Error("Error deleting templates: ", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *TransactionsServiceInstance) CreateTransaction(transaction models.Transaction) error {
+	log.Debug("CreateTransaction Service")
+
+	if transaction.DateTime == nil {
+		now := time.Now()
+		transaction.DateTime = &now
+	}
+
+	if transaction.CreatedAt == nil {
+		now := time.Now()
+		transaction.CreatedAt = &now
+	}
+
+	if transaction.UpdatedAt == nil {
+		now := time.Now()
+		transaction.UpdatedAt = &now
+	}
+
+	if transaction.Notes == nil {
+		emptyString := ""
+		transaction.Notes = &emptyString
+	}
+
+	err := s.transactionsRepository.CreateTransaction(transaction)
+	if err != nil {
+		log.Error("Error creating transaction: ", err)
 		return err
 	}
 

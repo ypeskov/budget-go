@@ -24,6 +24,7 @@ func RegisterTransactionsRoutes(g *echo.Group, manager *services.Manager) {
 	g.GET("", GetTransactions)
 	g.GET("/templates", GetTemplates)
 	g.DELETE("/templates", DeleteTemplates)
+	g.POST("", CreateTransaction)
 }
 
 func GetTransactions(c echo.Context) error {
@@ -125,5 +126,38 @@ func logAndReturnError(c echo.Context, err error, httpStatus int) error {
 	log.Error("Error: ", err)
 	return c.JSON(httpStatus, map[string]string{
 		"error": "Internal server error",
+	})
+}
+
+func CreateTransaction(c echo.Context) error {
+	log.Debug("CreateTransaction Route")
+
+	user, ok := c.Get("authenticated_user").(*models.User)
+	if !ok || user == nil {
+		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
+	}
+
+	transaction := dto.CreateTransactionDTO{
+		UserID: &user.ID,
+	}
+	if err := c.Bind(&transaction); err != nil {
+		return logAndReturnError(c, err, http.StatusBadRequest)
+	}
+
+	transactionModel := models.Transaction{
+		UserID:     *transaction.UserID,
+		AccountID:  transaction.AccountID,
+		Amount:     transaction.Amount,
+		CategoryID: transaction.CategoryID,
+		Label:      transaction.Label,
+	}
+
+	err := sm.TransactionsService.CreateTransaction(transactionModel)
+	if err != nil {
+		return logAndReturnError(c, err, http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Transaction created successfully",
 	})
 }

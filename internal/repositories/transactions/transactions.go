@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 	"ypeskov/budget-go/internal/dto"
+	"ypeskov/budget-go/internal/models"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -22,6 +23,7 @@ type Repository interface {
 	) ([]dto.TransactionWithAccount, error)
 	GetTemplates(userId int) ([]dto.TemplateDTO, error)
 	DeleteTemplates(templateIds []int, userId int) error
+	CreateTransaction(transaction models.Transaction) error
 }
 
 type RepositoryInstance struct {

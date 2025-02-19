@@ -82,7 +82,7 @@ func TransactionWithAccountToResponseTransactionDTO(twa TransactionWithAccount, 
 	}
 	// log.Info(twa.Account.AccountType)
 	return ResponseTransactionDTO{
-		ID:                    twa.ID,
+		ID:                    *twa.ID,
 		UserID:                twa.UserID,
 		AccountID:             twa.AccountID,
 		CategoryID:            twa.CategoryID,

@@ -6,7 +6,7 @@ import (
 )
 
 type Transaction struct {
-	ID                  int        `db:"id"`
+	ID                  *int       `db:"id"`
 	UserID              int        `db:"user_id"`
 	AccountID           int        `db:"account_id"`
 	Amount              float64    `db:"amount"`
@@ -20,8 +20,8 @@ type Transaction struct {
 	Notes               *string    `db:"notes"`
 	DateTime            *time.Time `db:"date_time"`
 	IsDeleted           bool       `db:"is_deleted"`
-	CreatedAt           time.Time  `db:"created_at"`
-	UpdatedAt           time.Time  `db:"updated_at"`
+	CreatedAt           *time.Time `db:"created_at"`
+	UpdatedAt           *time.Time `db:"updated_at"`
 }
 
 func (t *Transaction) String() string {

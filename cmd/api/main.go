@@ -11,7 +11,7 @@ func init() {
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp: true,
 	})
-	log.SetReportCaller(true)
+	// log.SetReportCaller(true)
 }
 
 func main() {
