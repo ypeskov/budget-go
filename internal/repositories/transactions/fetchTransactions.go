@@ -20,6 +20,8 @@ type Repository interface {
 		transactionTypes []string,
 		categoryIds []int,
 	) ([]dto.TransactionWithAccount, error)
+	GetTemplates(userId int) ([]dto.TemplateDTO, error)
+	DeleteTemplates(templateIds []int, userId int) error
 }
 
 type RepositoryInstance struct {

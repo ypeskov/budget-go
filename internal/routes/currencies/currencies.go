@@ -10,17 +10,17 @@ import (
 )
 
 var (
-	cm *services.Manager
+	sm *services.Manager
 )
 
 func RegisterCurrenciesRoutes(g *echo.Group, manager *services.Manager) {
-	cm = manager
+	sm = manager
 
 	g.GET("", GetCurrencies)
 }
 
 func GetCurrencies(c echo.Context) error {
-	currencies, err := cm.CurrenciesService.GetCurrencies()
+	currencies, err := sm.CurrenciesService.GetCurrencies()
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}

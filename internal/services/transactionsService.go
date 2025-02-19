@@ -21,6 +21,8 @@ type TransactionsService interface {
 		tratypes []string,
 		categoryIds []int,
 	) ([]dto.TransactionWithAccount, error)
+	GetTemplates(userId int) ([]dto.TemplateDTO, error)
+	DeleteTemplates(templateIds []int, userId int) error
 }
 
 type TransactionsServiceInstance struct {
@@ -82,4 +84,28 @@ func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int,
 	}
 
 	return transactions, nil
+}
+
+func (s *TransactionsServiceInstance) GetTemplates(userId int) ([]dto.TemplateDTO, error) {
+	log.Debug("GetTemplates Service")
+
+	templates, err := s.transactionsRepository.GetTemplates(userId)
+	if err != nil {
+		log.Error("Error getting templates: ", err)
+		return nil, err
+	}
+
+	return templates, nil
+}
+
+func (s *TransactionsServiceInstance) DeleteTemplates(templateIds []int, userId int) error {
+	log.Debug("DeleteTemplates Service")
+
+	err := s.transactionsRepository.DeleteTemplates(templateIds, userId)
+	if err != nil {
+		log.Error("Error deleting templates: ", err)
+		return err
+	}
+
+	return nil
 }

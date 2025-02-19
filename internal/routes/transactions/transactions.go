@@ -2,6 +2,8 @@ package transactions
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
@@ -20,6 +22,8 @@ func RegisterTransactionsRoutes(g *echo.Group, manager *services.Manager) {
 	sm = manager
 
 	g.GET("", GetTransactions)
+	g.GET("/templates", GetTemplates)
+	g.DELETE("/templates", DeleteTemplates)
 }
 
 func GetTransactions(c echo.Context) error {
@@ -68,8 +72,58 @@ func convertTransactionsToDTO(transactions []dto.TransactionWithAccount, baseCur
 	return transactionsDTO
 }
 
+func GetTemplates(c echo.Context) error {
+	log.Debug("GetTemplates Route")
+
+	user, ok := c.Get("authenticated_user").(*models.User)
+	if !ok || user == nil {
+		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
+	}
+
+	templateDTOs, err := sm.TransactionsService.GetTemplates(user.ID)
+	if err != nil {
+		return logAndReturnError(c, err, http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusOK, templateDTOs)
+}
+
+func DeleteTemplates(c echo.Context) error {
+	log.Debug("DeleteTemplates Route")
+
+	user, ok := c.Get("authenticated_user").(*models.User)
+	if !ok || user == nil {
+		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
+	}
+
+	templateIds := c.QueryParam("ids")
+	if templateIds == "" {
+		return logAndReturnError(c, &routeErrors.BadRequestError{Message: "[ids] query parameter is required"}, http.StatusBadRequest)
+	}
+
+	templateIdsList := strings.Split(templateIds, ",")
+	templateIdsInt := make([]int, len(templateIdsList))
+
+	for i, idStr := range templateIdsList {
+		id, err := strconv.Atoi(strings.TrimSpace(idStr))
+		if err != nil {
+			return logAndReturnError(c, &routeErrors.BadRequestError{Message: "Invalid template ID format"}, http.StatusBadRequest)
+		}
+		templateIdsInt[i] = id
+	}
+	err := sm.TransactionsService.DeleteTemplates(templateIdsInt, user.ID)
+	if err != nil {
+		return logAndReturnError(c, err, http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Templates deleted successfully",
+	})
+}
+
 func logAndReturnError(c echo.Context, err error, httpStatus int) error {
+	log.Error("Error: ", err)
 	return c.JSON(httpStatus, map[string]string{
-		"error": err.Error(),
+		"error": "Internal server error",
 	})
 }

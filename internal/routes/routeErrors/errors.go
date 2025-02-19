@@ -20,3 +20,12 @@ type InvalidRequestError struct {
 func (e *InvalidRequestError) Error() string {
 	return e.Message
 }
+
+// BadRequestError is an error that indicates a request was invalid.
+type BadRequestError struct {
+	Message string
+}
+
+func (e *BadRequestError) Error() string {
+	return e.Message
+}
