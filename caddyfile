@@ -1,0 +1,21 @@
+:8080
+
+route /auth* {
+	reverse_proxy localhost:8001
+}
+
+route /accounts* {
+	reverse_proxy localhost:8001
+}
+
+route /users* {
+	reverse_proxy localhost:8001
+}
+
+route /transactions* {
+	reverse_proxy localhost:8001
+}
+
+route /* {
+	reverse_proxy localhost:8000
+}

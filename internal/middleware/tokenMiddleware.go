@@ -4,16 +4,15 @@ import (
 	"errors"
 	"net/http"
 	"time"
+	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/services"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
 
-var jwtSecret = []byte("secret") // TODO: move to config
-
 // GetUserFromToken parses and validates the JWT token, returning claims if valid.
-func GetUserFromToken(authToken string) (jwt.MapClaims, error) {
+func GetUserFromToken(authToken string, cfg *config.Config) (jwt.MapClaims, error) {
 	if authToken == "" {
 		return nil, errors.New("missing auth-token")
 	}
@@ -23,7 +22,7 @@ func GetUserFromToken(authToken string) (jwt.MapClaims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
-		return jwtSecret, nil
+		return []byte(cfg.SecretKey), nil
 	})
 	if err != nil {
 		return nil, errors.New("invalid or expired token")
@@ -44,7 +43,7 @@ func GetUserFromToken(authToken string) (jwt.MapClaims, error) {
 }
 
 // AuthMiddleware validates the JWT token, retrieves the user, and sets both claims and user in context.
-func AuthMiddleware(sm *services.Manager) echo.MiddlewareFunc {
+func AuthMiddleware(sm *services.Manager, cfg *config.Config) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// Extract the token from the request header
@@ -56,7 +55,7 @@ func AuthMiddleware(sm *services.Manager) echo.MiddlewareFunc {
 			}
 
 			// Parse and validate the token
-			claims, err := GetUserFromToken(authToken)
+			claims, err := GetUserFromToken(authToken, cfg)
 			if err != nil {
 				return c.JSON(http.StatusUnauthorized, map[string]string{
 					"message": err.Error(),

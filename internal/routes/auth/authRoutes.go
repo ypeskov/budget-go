@@ -1,11 +1,12 @@
 package auth
 
 import (
-	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"time"
 	"ypeskov/budget-go/internal/middleware"
+
+	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
@@ -91,7 +92,9 @@ type ProfileDTO struct {
 }
 
 func Profile(c echo.Context) error {
-	claims, err := middleware.GetUserFromToken(c.Request().Header.Get("auth-token"))
+	cfg := c.Get("config").(*config.Config)
+
+	claims, err := middleware.GetUserFromToken(c.Request().Header.Get("auth-token"), cfg)
 	if err != nil || claims == nil {
 		log.Error("Failed to cast user to jwt.MapClaims")
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or missing user")
@@ -110,11 +113,11 @@ func Profile(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, ProfileDTO{
-		ID:           user.ID,
-		FirstName:    user.FirstName,
-		LastName:     user.LastName,
-		Email:        user.Email,
-		Settings:     map[string]string{
+		ID:        user.ID,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+		Settings: map[string]string{
 			"language": "uk",
 		},
 		BaseCurrency: "USD",

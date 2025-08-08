@@ -24,6 +24,13 @@ func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo
 	e.Pre(middleware.RemoveTrailingSlash())
 	e.Use(middleware.Recover())
 
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Set("config", cfg)
+			return next(c)
+		}
+	})
+
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.DELETE},
@@ -36,7 +43,7 @@ func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo
 
 	// Routes that require JWT
 	protectedRoutes := e.Group("")
-	protectedRoutes.Use(customMiddleware.AuthMiddleware(servicesManager))
+	protectedRoutes.Use(customMiddleware.AuthMiddleware(servicesManager, cfg))
 
 	accountsRoutesGroup := protectedRoutes.Group("/accounts")
 	accounts.RegisterAccountsRoutes(accountsRoutesGroup, cfg, servicesManager)
