@@ -31,6 +31,54 @@ type CreateTransactionDTO struct {
 	IsIncome        bool             `json:"isIncome"`
 }
 
+func (c *CreateTransactionDTO) UnmarshalJSON(data []byte) error {
+	type Alias CreateTransactionDTO
+	aux := &struct {
+		CategoryID interface{} `json:"categoryId"`
+		Amount     interface{} `json:"amount"`
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Handle CategoryID (can be string or number)
+	if aux.CategoryID != nil {
+		switch v := aux.CategoryID.(type) {
+		case string:
+			if v != "" {
+				id, err := strconv.Atoi(v)
+				if err != nil {
+					return err
+				}
+				c.CategoryID = &id
+			}
+		case float64:
+			id := int(v)
+			c.CategoryID = &id
+		}
+	}
+
+	// Handle Amount (can be string or number)
+	if aux.Amount != nil {
+		switch v := aux.Amount.(type) {
+		case string:
+			amount, err := decimal.NewFromString(v)
+			if err != nil {
+				return err
+			}
+			c.Amount = amount
+		case float64:
+			c.Amount = decimal.NewFromFloat(v)
+		}
+	}
+
+	return nil
+}
+
 func (c *CreateTransactionDTO) MarshalJSON() ([]byte, error) {
 	type Alias CreateTransactionDTO
 	var targetAmount *float64
