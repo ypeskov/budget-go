@@ -22,6 +22,7 @@ func RegisterTransactionsRoutes(g *echo.Group, manager *services.Manager) {
 	sm = manager
 
 	g.GET("", GetTransactions)
+	g.GET("/:id", GetTransactionDetail)
 	g.GET("/templates", GetTemplates)
 	g.DELETE("/templates", DeleteTemplates)
 	g.POST("", CreateTransaction)
@@ -160,4 +161,34 @@ func CreateTransaction(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Transaction created successfully",
 	})
+}
+
+func GetTransactionDetail(c echo.Context) error {
+	log.Debug("GetTransactionDetail Route")
+
+	user, ok := c.Get("authenticated_user").(*models.User)
+	if !ok || user == nil {
+		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
+	}
+
+	transactionIdStr := c.Param("id")
+	if transactionIdStr == "" {
+		return logAndReturnError(c, &routeErrors.BadRequestError{Message: "Transaction ID is required"}, http.StatusBadRequest)
+	}
+
+	transactionId, err := strconv.Atoi(transactionIdStr)
+	if err != nil {
+		return logAndReturnError(c, &routeErrors.BadRequestError{Message: "Invalid transaction ID format"}, http.StatusBadRequest)
+	}
+
+	transactionDetail, err := sm.TransactionsService.GetTransactionDetail(transactionId, user.ID)
+	if err != nil {
+		return logAndReturnError(c, err, http.StatusInternalServerError)
+	}
+
+	if transactionDetail == nil {
+		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "transaction", ID: transactionId}, http.StatusNotFound)
+	}
+
+	return c.JSON(http.StatusOK, transactionDetail)
 }

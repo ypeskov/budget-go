@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"github.com/shopspring/decimal"
 	"time"
 	"ypeskov/budget-go/internal/models"
 )
@@ -52,6 +53,120 @@ type ResponseTransactionDTO struct {
 	BalanceInBaseCurrency float64     `json:"balanceInBaseCurrency"`
 	Category              CategoryDTO `json:"category"`
 	Account               AccountDTO  `json:"account"`
+}
+
+type TransactionDetailDTO struct {
+	ID                  int               `json:"id"`
+	AccountID           int               `json:"accountId"`
+	TargetAccountID     *int              `json:"targetAccountId"`
+	CategoryID          *int              `json:"categoryId"`
+	Amount              decimal.Decimal   `json:"amount"`
+	TargetAmount        *decimal.Decimal  `json:"targetAmount"`
+	Label               string            `json:"label"`
+	Notes               string            `json:"notes"`
+	DateTime            *time.Time        `json:"dateTime"`
+	IsTransfer          bool              `json:"isTransfer"`
+	IsIncome            bool              `json:"isIncome"`
+	IsTemplate          *bool             `json:"isTemplate"`
+	UserID              int               `json:"userId"`
+	User                UserDTO           `json:"user"`
+	Account             AccountDetailDTO  `json:"account"`
+	BaseCurrencyAmount  decimal.Decimal   `json:"baseCurrencyAmount"`
+	BaseCurrencyCode    string            `json:"baseCurrencyCode"`
+	NewBalance          decimal.Decimal   `json:"newBalance"`
+	Category            CategoryDetailDTO `json:"category"`
+	LinkedTransactionID *int              `json:"linkedTransactionId"`
+}
+
+type UserDTO struct {
+	Email     string `json:"email"`
+	ID        int    `json:"id"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+}
+
+type AccountDetailDTO struct {
+	UserID                int                  `json:"userId"`
+	AccountTypeID         int                  `json:"accountTypeId"`
+	CurrencyID            int                  `json:"currencyId"`
+	InitialBalance        decimal.Decimal      `json:"initialBalance"`
+	Balance               decimal.Decimal      `json:"balance"`
+	CreditLimit           decimal.Decimal      `json:"creditLimit"`
+	Name                  string               `json:"name"`
+	OpeningDate           *time.Time           `json:"openingDate"`
+	Comment               string               `json:"comment"`
+	IsHidden              bool                 `json:"isHidden"`
+	ShowInReports         bool                 `json:"showInReports"`
+	ID                    int                  `json:"id"`
+	Currency              CurrencyDTO          `json:"currency"`
+	AccountType           AccountTypeDetailDTO `json:"accountType"`
+	IsDeleted             bool                 `json:"isDeleted"`
+	IsArchived            bool                 `json:"isArchived"`
+	BalanceInBaseCurrency decimal.Decimal      `json:"balanceInBaseCurrency"`
+	ArchivedAt            *string              `json:"archivedAt"`
+}
+
+type AccountTypeDetailDTO struct {
+	ID       int    `json:"id"`
+	TypeName string `json:"type_name"`
+	IsCredit bool   `json:"is_credit"`
+}
+
+type CategoryDetailDTO struct {
+	Name      string              `json:"name"`
+	ParentID  *int                `json:"parentId"`
+	IsIncome  bool                `json:"isIncome"`
+	ID        int                 `json:"id"`
+	UserID    int                 `json:"userId"`
+	CreatedAt string              `json:"createdAt"`
+	UpdatedAt string              `json:"updatedAt"`
+	Children  []CategoryDetailDTO `json:"children"`
+}
+
+type TransactionDetailRaw struct {
+	models.Transaction
+	User        UserRaw        `db:"users"`
+	Account     AccountRaw     `db:"accounts"`
+	Currency    CurrencyDTO    `db:"currencies"`
+	AccountType AccountTypeDTO `db:"account_types"`
+	Category    *CategoryRaw   `db:"user_categories"`
+}
+
+type UserRaw struct {
+	ID        int    `db:"id"`
+	Email     string `db:"email"`
+	FirstName string `db:"first_name"`
+	LastName  string `db:"last_name"`
+}
+
+type AccountRaw struct {
+	ID             int              `db:"id"`
+	UserID         int              `db:"user_id"`
+	AccountTypeId  int              `db:"account_type_id"`
+	CurrencyId     int              `db:"currency_id"`
+	Name           string           `db:"name"`
+	Balance        decimal.Decimal  `db:"balance"`
+	InitialBalance *decimal.Decimal `db:"initial_balance"`
+	CreditLimit    *decimal.Decimal `db:"credit_limit"`
+	OpeningDate    time.Time        `db:"opening_date"`
+	Comment        string           `db:"comment"`
+	IsHidden       bool             `db:"is_hidden"`
+	ShowInReports  bool             `db:"show_in_reports"`
+	IsDeleted      bool             `db:"is_deleted"`
+	ArchivedAt     *string          `db:"archived_at"`
+	CreatedAt      time.Time        `db:"created_at"`
+	UpdatedAt      time.Time        `db:"updated_at"`
+}
+
+type CategoryRaw struct {
+	ID        *int    `db:"id"`
+	Name      string  `db:"name"`
+	ParentID  *int    `db:"parent_id"`
+	IsIncome  bool    `db:"is_income"`
+	UserID    *int    `db:"user_id"`
+	IsDeleted bool    `db:"is_deleted"`
+	CreatedAt *string `db:"created_at"`
+	UpdatedAt *string `db:"updated_at"`
 }
 
 func TransactionWithAccountToResponseTransactionDTO(twa TransactionWithAccount, baseCurrency models.Currency) ResponseTransactionDTO {

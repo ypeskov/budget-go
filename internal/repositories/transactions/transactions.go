@@ -21,6 +21,7 @@ type Repository interface {
 		transactionTypes []string,
 		categoryIds []int,
 	) ([]dto.TransactionWithAccount, error)
+	GetTransactionDetail(transactionId int, userId int) (*dto.TransactionDetailRaw, error)
 	GetTemplates(userId int) ([]dto.TemplateDTO, error)
 	DeleteTemplates(templateIds []int, userId int) error
 	CreateTransaction(transaction models.Transaction) error
@@ -112,11 +113,12 @@ func buildFilters(accountIds []int,
 	if len(transactionTypes) > 0 {
 		var typeFilters []string
 		for _, transactionType := range transactionTypes {
-			if transactionType == "income" {
+			switch transactionType {
+			case "income":
 				typeFilters = append(typeFilters, "transactions.is_income = TRUE")
-			} else if transactionType == "expense" {
+			case "expense":
 				typeFilters = append(typeFilters, "transactions.is_income = FALSE")
-			} else if transactionType == "transfer" {
+			case "transfer":
 				typeFilters = append(typeFilters, "transactions.is_transfer = TRUE")
 			}
 		}
@@ -142,6 +144,30 @@ func scanTransactions(rows *sqlx.Rows) ([]dto.TransactionWithAccount, error) {
 		transactions = append(transactions, transaction)
 	}
 	return transactions, nil
+}
+
+func (r *RepositoryInstance) GetTransactionDetail(transactionId int, userId int) (*dto.TransactionDetailRaw, error) {
+	params := map[string]interface{}{
+		"transaction_id": transactionId,
+		"user_id":        userId,
+	}
+
+	rows, err := r.db.NamedQuery(getTransactionDetailQuery, params)
+	if err != nil {
+		return nil, logAndReturnError(err, "Error executing transaction detail query: ")
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, nil
+	}
+
+	var transaction dto.TransactionDetailRaw
+	if err := rows.StructScan(&transaction); err != nil {
+		return nil, logAndReturnError(err, "Error scanning transaction detail: ")
+	}
+
+	return &transaction, nil
 }
 
 func logAndReturnError(err error, message string) error {
