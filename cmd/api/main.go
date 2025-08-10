@@ -24,7 +24,7 @@ func init() {
 func main() {
 	cfg := config.New()
 
-	log.SetReportCaller(true)
+	// log.SetReportCaller(true)
 
 	level, err := log.ParseLevel(cfg.LogLevel)
 	if err != nil {
