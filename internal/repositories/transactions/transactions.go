@@ -179,6 +179,7 @@ func (r *RepositoryInstance) UpdateTransaction(transaction models.Transaction) e
 		"account_id":  transaction.AccountID,
 		"category_id": transaction.CategoryID,
 		"amount":      transaction.Amount,
+        "new_balance": transaction.NewBalance,
 		"label":       transaction.Label,
 		"notes":       transaction.Notes,
 		"date_time":   transaction.DateTime,

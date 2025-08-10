@@ -115,6 +115,7 @@ func (p *PutTransactionDTO) UnmarshalJSON(data []byte) error {
 	aux := &struct {
 		CategoryID interface{} `json:"categoryId"`
 		Amount     interface{} `json:"amount"`
+        ID         interface{} `json:"id"`
 		*Alias
 	}{
 		Alias: (*Alias)(p),
@@ -154,6 +155,29 @@ func (p *PutTransactionDTO) UnmarshalJSON(data []byte) error {
 			p.Amount = decimal.NewFromFloat(v)
 		}
 	}
+
+    // Handle ID (can be string or number). Ensure top-level ID is set.
+    if aux.ID != nil {
+        switch v := aux.ID.(type) {
+        case string:
+            if v != "" {
+                id, err := strconv.Atoi(v)
+                if err != nil {
+                    return err
+                }
+                p.ID = id
+                // Keep embedded pointer in sync if present
+                p.CreateTransactionDTO.ID = &id
+            }
+        case float64:
+            id := int(v)
+            p.ID = id
+            p.CreateTransactionDTO.ID = &id
+        }
+    } else if p.CreateTransactionDTO.ID != nil && p.ID == 0 {
+        // If decoder populated embedded ID, mirror it to top-level
+        p.ID = *p.CreateTransactionDTO.ID
+    }
 
 	return nil
 }
