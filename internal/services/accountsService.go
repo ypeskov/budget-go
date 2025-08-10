@@ -20,7 +20,7 @@ type AccountsService interface {
 		includeDeleted bool,
 		archivedOnly bool) ([]dto.AccountDTO, error)
 	GetAccountTypes() ([]models.AccountType, error)
-	GetAccountById(id int) (dto.AccountDTO, error)
+	GetAccountById(id int) (*dto.AccountDTO, error)
 	CreateAccount(account models.Account) (dto.AccountDTO, error)
 	UpdateAccount(account models.Account) (dto.AccountDTO, error)
 }
@@ -89,15 +89,43 @@ func (a *AccountsServiceInstance) GetAccountTypes() ([]models.AccountType, error
 	return accountTypes, nil
 }
 
-func (a *AccountsServiceInstance) GetAccountById(id int) (dto.AccountDTO, error) {
+func (a *AccountsServiceInstance) GetAccountById(id int) (*dto.AccountDTO, error) {
 	account, err := a.accountsRepo.GetAccountById(id)
 	if err != nil {
-		return dto.AccountDTO{}, err
+		return nil, err
 	}
 
-	accountDTO := dto.AccountToDTO(account)
+	// Ensure numeric fields are not nil to avoid nulls in JSON
+	if account.InitialBalance == nil {
+		zero := decimal.NewFromFloat(0)
+		account.InitialBalance = &zero
+	}
+	if account.CreditLimit == nil {
+		zero := decimal.NewFromFloat(0)
+		account.CreditLimit = &zero
+	}
 
-	return accountDTO, nil
+	// Enrich with currency details and balance in base currency
+	accountDTO, err := buildAccountDTO(account)
+	if err != nil {
+		return nil, err
+	}
+
+	// Enrich account type details (type_name, is_credit)
+	accountTypes, err := a.accountsRepo.GetAccountTypes()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, at := range accountTypes {
+		if at.ID == accountDTO.AccountTypeId {
+			accountDTO.AccountType.TypeName = at.TypeName
+			accountDTO.AccountType.IsCredit = at.IsCredit
+			break
+		}
+	}
+
+	return &accountDTO, nil
 }
 
 func (a *AccountsServiceInstance) CreateAccount(account models.Account) (dto.AccountDTO, error) {
