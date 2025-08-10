@@ -217,8 +217,6 @@ func (a *AccountsServiceInstance) UpdateAccount(account models.Account) (dto.Acc
 }
 
 func buildCurrencyDTO(currency models.Currency) *dto.CurrencyDTO {
-	fmt.Println(currency)
-	fmt.Println("--------------------------------")
 	return &dto.CurrencyDTO{
 		ID:        currency.ID,
 		Code:      currency.Code,
