@@ -2,6 +2,7 @@ package services
 
 import (
     "sort"
+    "strings"
     "time"
     "ypeskov/budget-go/internal/dto"
     "ypeskov/budget-go/internal/repositories/reports"
@@ -215,6 +216,11 @@ func (s *ReportsServiceInstance) GetExpensesByCategories(userID int, input dto.E
         }
         result = append(result, c)
     }
+
+    // Order by name (case-insensitive)
+    sort.SliceStable(result, func(i, j int) bool {
+        return strings.ToLower(result[i].Name) < strings.ToLower(result[j].Name)
+    })
 
     return result, nil
 }
