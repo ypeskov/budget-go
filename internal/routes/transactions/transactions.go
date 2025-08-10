@@ -26,6 +26,7 @@ func RegisterTransactionsRoutes(g *echo.Group, manager *services.Manager) {
 	g.GET("", GetTransactions)
 	g.GET("/:id", GetTransactionDetail)
 	g.PUT("", UpdateTransaction)
+	g.DELETE("/:id", DeleteTransaction)
 	g.GET("/templates", GetTemplates)
 	g.DELETE("/templates", DeleteTemplates)
 	g.POST("", CreateTransaction)
@@ -227,5 +228,44 @@ func UpdateTransaction(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Transaction updated successfully",
+	})
+}
+
+func DeleteTransaction(c echo.Context) error {
+	log.Debug("DeleteTransaction Route")
+
+	user, ok := c.Get("authenticated_user").(*models.User)
+	if !ok || user == nil {
+		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
+	}
+
+	transactionIdStr := c.Param("id")
+	if transactionIdStr == "" {
+		return utils.LogAndReturnError(c, &routeErrors.BadRequestError{Message: "Transaction ID is required"}, http.StatusBadRequest)
+	}
+
+	transactionId, err := strconv.Atoi(transactionIdStr)
+	if err != nil {
+		return utils.LogAndReturnError(c, &routeErrors.BadRequestError{Message: "Invalid transaction ID format"}, http.StatusBadRequest)
+	}
+
+	// Check that transaction exists and belongs to user before deleting
+	existingTransaction, err := sm.TransactionsService.GetTransactionDetail(transactionId, user.ID)
+	if err != nil {
+		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
+	}
+
+	if existingTransaction == nil {
+		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "transaction", ID: transactionId}, http.StatusNotFound)
+	}
+
+	// Delete transaction
+	err = sm.TransactionsService.DeleteTransaction(transactionId, user.ID)
+	if err != nil {
+		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Transaction deleted successfully",
 	})
 }

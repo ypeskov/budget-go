@@ -23,6 +23,7 @@ type TransactionsService interface {
 	) ([]dto.TransactionWithAccount, error)
 	GetTransactionDetail(transactionId int, userId int) (*dto.TransactionDetailDTO, error)
 	UpdateTransaction(transactionDTO dto.PutTransactionDTO, userId int) error
+	DeleteTransaction(transactionId int, userId int) error
 	GetTemplates(userId int) ([]dto.TemplateDTO, error)
 	DeleteTemplates(templateIds []int, userId int) error
 	CreateTransaction(transaction models.Transaction) error
@@ -316,6 +317,18 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 	err := s.transactionsRepository.UpdateTransaction(transaction)
 	if err != nil {
 		log.Error("Error updating transaction: ", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *TransactionsServiceInstance) DeleteTransaction(transactionId int, userId int) error {
+	log.Debug("DeleteTransaction Service")
+
+	err := s.transactionsRepository.DeleteTransaction(transactionId, userId)
+	if err != nil {
+		log.Error("Error deleting transaction: ", err)
 		return err
 	}
 

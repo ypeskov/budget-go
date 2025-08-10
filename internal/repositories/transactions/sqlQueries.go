@@ -31,6 +31,7 @@ LEFT JOIN account_types ON accounts.account_type_id = account_types.id
 LEFT JOIN user_categories ON transactions.category_id = user_categories.id
 
 WHERE transactions.user_id = :user_id
+AND transactions.is_deleted = FALSE
 `
 
 var getTransactionDetailQuery = `
@@ -87,4 +88,11 @@ SET account_id = :account_id,
     is_transfer = :is_transfer,
     updated_at = :updated_at
 WHERE id = :id
+`
+
+var deleteTransactionQuery = `
+UPDATE transactions 
+SET is_deleted = TRUE,
+    updated_at = :updated_at
+WHERE id = :id AND user_id = :user_id AND is_deleted = FALSE
 `

@@ -1,6 +1,7 @@
 package transactions
 
 import (
+	"fmt"
 	"strings"
 	"time"
 	"ypeskov/budget-go/internal/dto"
@@ -23,6 +24,7 @@ type Repository interface {
 	) ([]dto.TransactionWithAccount, error)
 	GetTransactionDetail(transactionId int, userId int) (*dto.TransactionDetailRaw, error)
 	UpdateTransaction(transaction models.Transaction) error
+	DeleteTransaction(transactionId int, userId int) error
 	GetTemplates(userId int) ([]dto.TemplateDTO, error)
 	DeleteTemplates(templateIds []int, userId int) error
 	CreateTransaction(transaction models.Transaction) error
@@ -188,6 +190,30 @@ func (r *RepositoryInstance) UpdateTransaction(transaction models.Transaction) e
 	_, err := r.db.NamedExec(updateTransactionQuery, params)
 	if err != nil {
 		return logAndReturnError(err, "Error executing transaction update: ")
+	}
+
+	return nil
+}
+
+func (r *RepositoryInstance) DeleteTransaction(transactionId int, userId int) error {
+	params := map[string]interface{}{
+		"id":         transactionId,
+		"user_id":    userId,
+		"updated_at": time.Now(),
+	}
+
+	result, err := r.db.NamedExec(deleteTransactionQuery, params)
+	if err != nil {
+		return logAndReturnError(err, "Error executing transaction delete: ")
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return logAndReturnError(err, "Error getting rows affected: ")
+	}
+
+	if rowsAffected == 0 {
+		return logAndReturnError(fmt.Errorf("transaction not found or already deleted"), "Transaction not found: ")
 	}
 
 	return nil
