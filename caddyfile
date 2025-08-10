@@ -8,6 +8,18 @@ route /accounts* {
 	reverse_proxy localhost:8001
 }
 
+route /categories* {
+	reverse_proxy localhost:8001
+}
+
+route /currencies* {
+	reverse_proxy localhost:8001
+}
+
+route /settings* {
+	reverse_proxy localhost:8001
+}
+
 route /users* {
 	reverse_proxy localhost:8001
 }
