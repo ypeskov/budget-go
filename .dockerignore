@@ -1,0 +1,31 @@
+# Binaries
+/out
+/bin
+/build
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# VCS
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# Go mod cache (not needed inside image context)
+$GOMOD/cache
+
+# Local env files and secrets
+.env
+.env.*
+*.local
+
+# OS files
+.DS_Store
