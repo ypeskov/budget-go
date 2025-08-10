@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"encoding/json"
 	"github.com/shopspring/decimal"
 	"time"
 	"ypeskov/budget-go/internal/models"
@@ -15,18 +16,37 @@ type TransactionWithAccount struct {
 }
 
 type CreateTransactionDTO struct {
-	ID              *int       `json:"id"`
-	UserID          *int       `json:"userId"`
-	AccountID       int        `json:"accountId"`
-	TargetAccountID *int       `json:"targetAccountId"`
-	CategoryID      *int       `json:"categoryId"`
-	Amount          float64    `json:"amount"`
-	TargetAmount    *float64   `json:"targetAmount"`
-	Label           string     `json:"label"`
-	Notes           *string    `json:"notes"`
-	DateTime        *time.Time `json:"dateTime"`
-	IsTransfer      bool       `json:"isTransfer"`
-	IsIncome        bool       `json:"isIncome"`
+	ID              *int             `json:"id"`
+	UserID          *int             `json:"userId"`
+	AccountID       int              `json:"accountId"`
+	TargetAccountID *int             `json:"targetAccountId"`
+	CategoryID      *int             `json:"categoryId"`
+	Amount          decimal.Decimal  `json:"amount"`
+	TargetAmount    *decimal.Decimal `json:"targetAmount"`
+	Label           string           `json:"label"`
+	Notes           *string          `json:"notes"`
+	DateTime        *time.Time       `json:"dateTime"`
+	IsTransfer      bool             `json:"isTransfer"`
+	IsIncome        bool             `json:"isIncome"`
+}
+
+func (c *CreateTransactionDTO) MarshalJSON() ([]byte, error) {
+	type Alias CreateTransactionDTO
+	var targetAmount *float64
+	if c.TargetAmount != nil {
+		val, _ := c.TargetAmount.Float64()
+		targetAmount = &val
+	}
+
+	return json.Marshal(&struct {
+		Amount       float64  `json:"amount"`
+		TargetAmount *float64 `json:"targetAmount"`
+		*Alias
+	}{
+		Amount:       c.Amount.InexactFloat64(),
+		TargetAmount: targetAmount,
+		Alias:        (*Alias)(c),
+	})
 }
 
 type UpdateTransactionDTO struct {
@@ -36,23 +56,51 @@ type UpdateTransactionDTO struct {
 }
 
 type ResponseTransactionDTO struct {
-	ID                    int         `json:"id"`
-	UserID                int         `json:"userId"`
-	AccountID             int         `json:"accountId"`
-	CategoryID            *int        `json:"categoryId"`
-	Amount                float64     `json:"amount"`
-	NewBalance            *float64    `json:"newBalance"`
-	Label                 string      `json:"label"`
-	Notes                 *string     `json:"notes"`
-	DateTime              *time.Time  `json:"dateTime"`
-	IsTransfer            bool        `json:"isTransfer"`
-	IsIncome              bool        `json:"isIncome"`
-	BaseCurrencyAmount    *float64    `json:"baseCurrencyAmount"`
-	BaseCurrencyCode      *string     `json:"baseCurrencyCode"`
-	LinkedTransactionID   *int        `json:"linkedTransactionId"`
-	BalanceInBaseCurrency float64     `json:"balanceInBaseCurrency"`
-	Category              CategoryDTO `json:"category"`
-	Account               AccountDTO  `json:"account"`
+	ID                    int              `json:"id"`
+	UserID                int              `json:"userId"`
+	AccountID             int              `json:"accountId"`
+	CategoryID            *int             `json:"categoryId"`
+	Amount                decimal.Decimal  `json:"amount"`
+	NewBalance            *decimal.Decimal `json:"newBalance"`
+	Label                 string           `json:"label"`
+	Notes                 *string          `json:"notes"`
+	DateTime              *time.Time       `json:"dateTime"`
+	IsTransfer            bool             `json:"isTransfer"`
+	IsIncome              bool             `json:"isIncome"`
+	BaseCurrencyAmount    *decimal.Decimal `json:"baseCurrencyAmount"`
+	BaseCurrencyCode      *string          `json:"baseCurrencyCode"`
+	LinkedTransactionID   *int             `json:"linkedTransactionId"`
+	BalanceInBaseCurrency decimal.Decimal  `json:"balanceInBaseCurrency"`
+	Category              CategoryDTO      `json:"category"`
+	Account               AccountDTO       `json:"account"`
+}
+
+func (r *ResponseTransactionDTO) MarshalJSON() ([]byte, error) {
+	type Alias ResponseTransactionDTO
+	var newBalance *float64
+	if r.NewBalance != nil {
+		val, _ := r.NewBalance.Float64()
+		newBalance = &val
+	}
+	var baseCurrencyAmount *float64
+	if r.BaseCurrencyAmount != nil {
+		val, _ := r.BaseCurrencyAmount.Float64()
+		baseCurrencyAmount = &val
+	}
+
+	return json.Marshal(&struct {
+		Amount                float64  `json:"amount"`
+		NewBalance            *float64 `json:"newBalance"`
+		BaseCurrencyAmount    *float64 `json:"baseCurrencyAmount"`
+		BalanceInBaseCurrency float64  `json:"balanceInBaseCurrency"`
+		*Alias
+	}{
+		Amount:                r.Amount.InexactFloat64(),
+		NewBalance:            newBalance,
+		BaseCurrencyAmount:    baseCurrencyAmount,
+		BalanceInBaseCurrency: r.BalanceInBaseCurrency.InexactFloat64(),
+		Alias:                 (*Alias)(r),
+	})
 }
 
 type TransactionDetailDTO struct {
@@ -76,6 +124,29 @@ type TransactionDetailDTO struct {
 	NewBalance          decimal.Decimal   `json:"newBalance"`
 	Category            CategoryDetailDTO `json:"category"`
 	LinkedTransactionID *int              `json:"linkedTransactionId"`
+}
+
+func (t *TransactionDetailDTO) MarshalJSON() ([]byte, error) {
+	type Alias TransactionDetailDTO
+	var targetAmount *float64
+	if t.TargetAmount != nil {
+		val, _ := t.TargetAmount.Float64()
+		targetAmount = &val
+	}
+
+	return json.Marshal(&struct {
+		Amount             float64  `json:"amount"`
+		TargetAmount       *float64 `json:"targetAmount"`
+		BaseCurrencyAmount float64  `json:"baseCurrencyAmount"`
+		NewBalance         float64  `json:"newBalance"`
+		*Alias
+	}{
+		Amount:             t.Amount.InexactFloat64(),
+		TargetAmount:       targetAmount,
+		BaseCurrencyAmount: t.BaseCurrencyAmount.InexactFloat64(),
+		NewBalance:         t.NewBalance.InexactFloat64(),
+		Alias:              (*Alias)(t),
+	})
 }
 
 type UserDTO struct {
@@ -104,6 +175,23 @@ type AccountDetailDTO struct {
 	IsArchived            bool                 `json:"isArchived"`
 	BalanceInBaseCurrency decimal.Decimal      `json:"balanceInBaseCurrency"`
 	ArchivedAt            *string              `json:"archivedAt"`
+}
+
+func (a *AccountDetailDTO) MarshalJSON() ([]byte, error) {
+	type Alias AccountDetailDTO
+	return json.Marshal(&struct {
+		InitialBalance        float64 `json:"initialBalance"`
+		Balance               float64 `json:"balance"`
+		CreditLimit           float64 `json:"creditLimit"`
+		BalanceInBaseCurrency float64 `json:"balanceInBaseCurrency"`
+		*Alias
+	}{
+		InitialBalance:        a.InitialBalance.InexactFloat64(),
+		Balance:               a.Balance.InexactFloat64(),
+		CreditLimit:           a.CreditLimit.InexactFloat64(),
+		BalanceInBaseCurrency: a.BalanceInBaseCurrency.InexactFloat64(),
+		Alias:                 (*Alias)(a),
+	})
 }
 
 type AccountTypeDetailDTO struct {
@@ -170,30 +258,29 @@ type CategoryRaw struct {
 }
 
 func TransactionWithAccountToResponseTransactionDTO(twa TransactionWithAccount, baseCurrency models.Currency) ResponseTransactionDTO {
-	var creditLimit float64
+	var creditLimit decimal.Decimal
 	if twa.Account.AccountType.IsCredit {
 		if twa.Account.CreditLimit != nil {
 			creditLimit = *twa.Account.CreditLimit
 		} else {
-			creditLimit = 0
+			creditLimit = decimal.Zero
 		}
 	} else {
-		creditLimit = 0
+		creditLimit = decimal.Zero
 	}
 
-	var balanceInBaseCurrency float64
+	var balanceInBaseCurrency decimal.Decimal
 	if twa.BaseCurrencyAmount != nil {
 		balanceInBaseCurrency = *twa.BaseCurrencyAmount
 	} else {
-		balanceInBaseCurrency = 0
+		balanceInBaseCurrency = decimal.Zero
 	}
 
-	var baseCurrencyAmount *float64
+	var baseCurrencyAmount *decimal.Decimal
 	if twa.BaseCurrencyAmount != nil {
 		baseCurrencyAmount = twa.BaseCurrencyAmount
 	} else {
-		zero := 0.0
-		baseCurrencyAmount = &zero
+		baseCurrencyAmount = &decimal.Zero
 	}
 	// log.Info(twa.Account.AccountType)
 	return ResponseTransactionDTO{

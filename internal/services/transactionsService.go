@@ -72,7 +72,7 @@ func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int,
 	for i, transaction := range transactions {
 		amount, err := s.sm.ExchangeRatesService.CalcAmountFromCurrency(
 			*transaction.DateTime,
-			decimal.NewFromFloat(transaction.Amount),
+			transaction.Amount,
 			transaction.Currency.Code,
 			baseCurrency.Code,
 		)
@@ -81,8 +81,7 @@ func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int,
 			return nil, err
 		}
 
-		amountFloat := amount.InexactFloat64()
-		transactions[i].BaseCurrencyAmount = &amountFloat
+		transactions[i].BaseCurrencyAmount = &amount
 	}
 
 	return transactions, nil
@@ -165,11 +164,11 @@ func (s *TransactionsServiceInstance) GetTransactionDetail(transactionId int, us
 
 	var baseCurrencyAmount decimal.Decimal
 	if transactionRaw.BaseCurrencyAmount != nil {
-		baseCurrencyAmount = decimal.NewFromFloat(*transactionRaw.BaseCurrencyAmount)
+		baseCurrencyAmount = *transactionRaw.BaseCurrencyAmount
 	} else {
 		amount, err := s.sm.ExchangeRatesService.CalcAmountFromCurrency(
 			*transactionRaw.DateTime,
-			decimal.NewFromFloat(transactionRaw.Amount),
+			transactionRaw.Amount,
 			transactionRaw.Currency.Code,
 			baseCurrency.Code,
 		)
@@ -193,7 +192,7 @@ func convertRawToTransactionDetail(raw *dto.TransactionDetailRaw, baseCurrencyCo
 
 	var newBalance decimal.Decimal
 	if raw.NewBalance != nil {
-		newBalance = decimal.NewFromFloat(*raw.NewBalance)
+		newBalance = *raw.NewBalance
 	} else {
 		newBalance = decimal.Zero
 	}
@@ -244,7 +243,7 @@ func convertRawToTransactionDetail(raw *dto.TransactionDetailRaw, baseCurrencyCo
 		AccountID:       raw.AccountID,
 		TargetAccountID: nil,
 		CategoryID:      raw.CategoryID,
-		Amount:          decimal.NewFromFloat(raw.Amount),
+		Amount:          raw.Amount,
 		TargetAmount:    nil,
 		Label:           raw.Label,
 		Notes:           notes,

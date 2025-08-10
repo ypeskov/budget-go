@@ -56,26 +56,25 @@ func (a *AccountsServiceInstance) GetUserAccounts(
 
 	for i, account := range userAccounts {
 		if account.InitialBalance == nil {
-			zero := 0.0
+			zero := decimal.Zero
 			userAccounts[i].InitialBalance = &zero
 		}
 
 		if account.CreditLimit == nil {
-			zero := 0.0
+			zero := decimal.Zero
 			userAccounts[i].CreditLimit = &zero
 		}
 
 		amount, err := sm.ExchangeRatesService.CalcAmountFromCurrency(
 			time.Now(),
-			decimal.NewFromFloat(account.Balance),
+			account.Balance,
 			account.Currency.Code,
 			baseCurrency.Code,
 		)
 		if err != nil {
 			return nil, err
 		}
-		amountValue := amount.InexactFloat64()
-		userAccounts[i].BalanceInBaseCurrency = &amountValue
+		userAccounts[i].BalanceInBaseCurrency = &amount
 	}
 
 	return userAccounts, nil
@@ -145,7 +144,7 @@ func buildAccountDTO(account models.Account) (dto.AccountDTO, error) {
 
 	amount, err := sm.ExchangeRatesService.CalcAmountFromCurrency(
 		time.Now(),
-		decimal.NewFromFloat(accountDto.Balance),
+		accountDto.Balance,
 		accountCurrency.Code,
 		baseCurrency.Code,
 	)
@@ -153,8 +152,7 @@ func buildAccountDTO(account models.Account) (dto.AccountDTO, error) {
 		return dto.AccountDTO{}, fmt.Errorf("failed to calculate amount from currency: %w", err)
 	}
 
-	value := amount.InexactFloat64()
-	accountDto.BalanceInBaseCurrency = &value
+	accountDto.BalanceInBaseCurrency = &amount
 
 	return accountDto, nil
 }
