@@ -28,8 +28,9 @@ type ExchangeRatesServiceInstance struct {
 const cacheExpiration = time.Hour * 24
 
 type ExchangeRatesHistoryCache struct {
-	data       map[string]map[string]decimal.Decimal
-	lastUpdate time.Time
+	data           map[string]map[string]decimal.Decimal
+	baseCurrencies map[string]string // maps date -> base currency code
+	lastUpdate     time.Time
 }
 
 var (
@@ -43,7 +44,10 @@ func NewExchangeRatesService(exchangeRatesRepository exchangeRates.Repository) E
 		log.Debug("Creating ExchangeRatesService instance")
 		instance = &ExchangeRatesServiceInstance{
 			exchangeRatesRepository: exchangeRatesRepository,
-			cache:                   &ExchangeRatesHistoryCache{data: make(map[string]map[string]decimal.Decimal)},
+			cache: &ExchangeRatesHistoryCache{
+				data:           make(map[string]map[string]decimal.Decimal),
+				baseCurrencies: make(map[string]string),
+			},
 		}
 	})
 
@@ -99,6 +103,7 @@ func (s *ExchangeRatesServiceInstance) fillCache(exchangeRates []models.Exchange
 
 		dateKey := exchangeRate.ActualDate.Format("2006-01-02")
 		s.cache.data[dateKey] = convertedRates
+		s.cache.baseCurrencies[dateKey] = exchangeRate.BaseCurrencyCode
 	}
 
 	s.cache.lastUpdate = time.Now()
@@ -154,24 +159,85 @@ func (s *ExchangeRatesServiceInstance) GetRateBetweenCurrencies(
 	currencyFrom string,
 	currencyTo string,
 ) (decimal.Decimal, error) {
+	// If both currencies are the same, return 1
+	if currencyFrom == currencyTo {
+		return decimal.NewFromInt(1), nil
+	}
+
 	ratesOnDate, err := s.GetExchangeRateByDate(date)
 	if err != nil {
 		return decimal.Decimal{}, err
 	}
 
-	rateFrom, ok := ratesOnDate[currencyFrom]
-	if !ok {
-		log.Warnf("No exchange rate found for currency: %s", currencyFrom)
-		return decimal.Decimal{}, fmt.Errorf("no exchange rate found for currency: %s", currencyFrom)
+	// Get the base currency for this date
+	dateKey := s.getDateKeyForRates(date)
+	if dateKey == "" {
+		return decimal.Decimal{}, fmt.Errorf("no exchange rates found for date: %s", date.Format("2006-01-02"))
 	}
 
-	rateTo, ok := ratesOnDate[currencyTo]
-	if !ok {
-		log.Warnf("No exchange rate found for currency: %s", currencyTo)
-		return decimal.Decimal{}, fmt.Errorf("no exchange rate found for currency: %s", currencyTo)
+	baseCurrency := s.cache.baseCurrencies[dateKey]
+	
+	// Handle conversions based on the base currency
+	if currencyFrom == baseCurrency {
+		// Converting from base currency to another currency
+		rateTo, ok := ratesOnDate[currencyTo]
+		if !ok {
+			log.Warnf("No exchange rate found for currency: %s", currencyTo)
+			return decimal.Decimal{}, fmt.Errorf("no exchange rate found for currency: %s", currencyTo)
+		}
+		return rateTo, nil
+	} else if currencyTo == baseCurrency {
+		// Converting from another currency to base currency
+		rateFrom, ok := ratesOnDate[currencyFrom]
+		if !ok {
+			log.Warnf("No exchange rate found for currency: %s", currencyFrom)
+			return decimal.Decimal{}, fmt.Errorf("no exchange rate found for currency: %s", currencyFrom)
+		}
+		return decimal.NewFromInt(1).Div(rateFrom), nil
+	} else {
+		// Converting between two non-base currencies
+		rateFrom, ok := ratesOnDate[currencyFrom]
+		if !ok {
+			log.Warnf("No exchange rate found for currency: %s", currencyFrom)
+			return decimal.Decimal{}, fmt.Errorf("no exchange rate found for currency: %s", currencyFrom)
+		}
+
+		rateTo, ok := ratesOnDate[currencyTo]
+		if !ok {
+			log.Warnf("No exchange rate found for currency: %s", currencyTo)
+			return decimal.Decimal{}, fmt.Errorf("no exchange rate found for currency: %s", currencyTo)
+		}
+
+		// Convert through base currency: (1/rateFrom) * rateTo
+		return rateTo.Div(rateFrom), nil
+	}
+}
+
+// getDateKeyForRates finds the appropriate date key for the given date
+func (s *ExchangeRatesServiceInstance) getDateKeyForRates(date time.Time) string {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	// Get all date keys from cache that are before or equal to the date
+	dateKeys := make([]string, 0, len(s.cache.data))
+	for key := range s.cache.data {
+		keyDate, err := time.Parse(time.DateOnly, key)
+		if err != nil {
+			log.Warnf("Invalid date format in cache key: %s", key)
+			continue
+		}
+		if !keyDate.After(date) {
+			dateKeys = append(dateKeys, key)
+		}
 	}
 
-	return rateFrom.Div(rateTo), nil
+	if len(dateKeys) == 0 {
+		return ""
+	}
+
+	// Sort the date keys in descending order and return the first (most recent)
+	sort.Sort(sort.Reverse(sort.StringSlice(dateKeys)))
+	return dateKeys[0]
 }
 
 func (s *ExchangeRatesServiceInstance) CalcAmountFromCurrency(
@@ -194,5 +260,5 @@ func (s *ExchangeRatesServiceInstance) CalcAmountFromCurrency(
 		return decimal.Decimal{}, err
 	}
 
-	return amount.Div(rate), nil
+	return amount.Mul(rate), nil
 }
