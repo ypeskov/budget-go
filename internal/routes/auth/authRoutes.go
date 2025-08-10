@@ -125,6 +125,14 @@ func Profile(c echo.Context) error {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
 
+	// Get user's actual base currency
+	baseCurrency, err := sm.UserSettingsService.GetBaseCurrency(user.ID)
+	if err != nil {
+		log.Error("Error getting user base currency: ", err)
+		// Fallback to USD if we can't get the base currency
+		baseCurrency.Code = "USD"
+	}
+
 	return c.JSON(http.StatusOK, ProfileDTO{
 		ID:        user.ID,
 		FirstName: user.FirstName,
@@ -133,7 +141,7 @@ func Profile(c echo.Context) error {
 		Settings: map[string]string{
 			"language": "uk",
 		},
-		BaseCurrency: "USD",
+		BaseCurrency: baseCurrency.Code,
 	})
 }
 
