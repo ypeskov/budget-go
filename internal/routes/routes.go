@@ -20,7 +20,7 @@ import (
 
 func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo.Echo {
 	e := echo.New()
-	e.Use(middleware.Logger())
+	// e.Use(middleware.Logger())
 	e.Pre(middleware.RemoveTrailingSlash())
 	e.Use(middleware.Recover())
 
