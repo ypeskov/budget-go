@@ -1,9 +1,17 @@
 package reports
 
 import (
-	"github.com/labstack/echo/v4"
+    "sort"
+	"net/http"
+	"time"
+
 	"ypeskov/budget-go/internal/config"
+	"ypeskov/budget-go/internal/dto"
+	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/services"
+
+	"github.com/labstack/echo/v4"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -15,41 +23,233 @@ func RegisterReportsRoutes(g *echo.Group, cfgGlobal *config.Config, manager *ser
 	cfg = cfgGlobal
 	sm = manager
 
+	g.POST("/cashflow", GetCashFlow)
+	g.POST("/balance", GetBalanceReport)
 	g.POST("/balance/non-hidden", GetNonHiddenBalance)
+	g.POST("/expenses-by-categories", GetExpensesByCategories)
+	g.GET("/diagram/:diagram_type/:start_date/:end_date", GetDiagram)
+	g.POST("/expenses-data", GetExpensesData)
+}
+
+func getUserID(c echo.Context) (int, error) {
+	user, ok := c.Get("authenticated_user").(*models.User)
+	if !ok || user == nil {
+		return 0, echo.NewHTTPError(http.StatusUnauthorized, "User not authenticated")
+	}
+	return user.ID, nil
+}
+
+func GetCashFlow(c echo.Context) error {
+	userID, err := getUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var input dto.CashFlowReportInputDTO
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid input"})
+	}
+
+	result, err := sm.ReportsService.GetCashFlow(userID, input)
+	if err != nil {
+		log.Errorf("Error generating cash flow report for user %d: %v", userID, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
+	}
+
+	return c.JSON(http.StatusOK, result)
+}
+
+func GetBalanceReport(c echo.Context) error {
+	userID, err := getUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var input dto.BalanceReportInputDTO
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid input"})
+	}
+
+	result, err := sm.ReportsService.GetBalanceReport(userID, input)
+	if err != nil {
+		log.Errorf("Error generating balance report for user %d: %v", userID, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
+	}
+
+	return c.JSON(http.StatusOK, result)
 }
 
 func GetNonHiddenBalance(c echo.Context) error {
-	// {"accountId": 22, "accountName": "BGN Cash", "currencyCode": "BGN", "balance": 2510.0, "baseCurrencyBalance": 1316.0079574964034, "baseCurrencyCode": "USD", "reportDate": "2025-01-12"}, {"accountId": 41, "accountName": "DSK credit card", "currencyCode": "BGN", "balance": -992.19, "baseCurrencyBalance": -520.2111296208592, "baseCurrencyCode": "USD", "reportDate": "2025-01-12"}, {"accountId": 17, "accountName": "DSK Main", "currencyCode": "BGN", "balance": 15356.62, "baseCurrencyBalance": 8051.567378585027, "baseCurrencyCode": "USD", "reportDate": "2025-01-12"}, {"accountId": 18, "accountName": "DSK Virtual", "currencyCode": "BGN", "balance": 74.42, "baseCurrencyBalance": 39.018849480829616, "baseCurrencyCode": "USD", "reportDate": "2025-01-12"}, {"accountId": 42, "accountName": "DSK zalog", "currencyCode": "BGN", "balance": 1200.0, "baseCurrencyBalance": 629.1671509942964, "baseCurrencyCode": "USD", "reportDate": "2025-01-12"}, {"accountId": 23, "accountName": "EUR Cash", "currencyCode": "EUR", "balance": 3000.0, "baseCurrencyBalance": 3076.359961064358, "baseCurrencyCode": "USD", "reportDate": "2025-01-12"}, {"accountId": 19, "accountName": "Monobank", "currencyCode": "UAH", "balance": 707.5, "baseCurrencyBalance": 16.72284799831154, "baseCurrencyCode": "USD", "reportDate": "2025-01-12"}, {"accountId": 38, "accountName": "\u0412\u0430\u0443\u0447\u0435\u0440\u044b \u0437\u0430 \u0445\u0440\u0430\u043d\u0430", "currencyCode": "BGN", "balance": 0.0, "baseCurrencyBalance": 0.0, "baseCurrencyCode": "USD", "reportDate": "2025-01-12"}
-	type Accounts []struct {
-		AccountID           int     `json:"accountId"`
-		AccountName         string  `json:"accountName"`
-		CurrencyCode        string  `json:"currencyCode"`
-		Balance             float64 `json:"balance"`
-		BaseCurrencyBalance float64 `json:"baseCurrencyBalance"`
-		BaseCurrencyCode    string  `json:"baseCurrencyCode"`
-		ReportDate          string  `json:"reportDate"`
+	userID, err := getUserID(c)
+	if err != nil {
+		return err
 	}
 
-	accounts := Accounts{
-		{
-			AccountID:           22,
-			AccountName:         "BGN Cash",
-			CurrencyCode:        "BGN",
-			Balance:             2510.0,
-			BaseCurrencyBalance: 1316.0079574964034,
-			BaseCurrencyCode:    "USD",
-			ReportDate:          "2025-01-12",
-		},
-		{
-			AccountID:           18,
-			AccountName:         "USD cash",
-			CurrencyCode:        "USD",
-			Balance:             3000.0,
-			BaseCurrencyBalance: 1316.0079574964034,
-			BaseCurrencyCode:    "USD",
-			ReportDate:          "2025-01-12",
-		},
+	var input dto.BalanceReportInputDTO
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid input"})
 	}
 
-	return c.JSON(200, accounts)
+	result, err := sm.ReportsService.GetNonHiddenBalanceReport(userID, input)
+	if err != nil {
+		log.Errorf("Error generating non-hidden balance report for user %d: %v", userID, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
+	}
+
+	return c.JSON(http.StatusOK, result)
+}
+
+func GetExpensesByCategories(c echo.Context) error {
+	userID, err := getUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var input dto.ExpensesReportInputDTO
+	if err := c.Bind(&input); err != nil {
+		log.Errorf("Error binding expenses report input for user %d: %v", userID, err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid input"})
+	}
+
+	result, err := sm.ReportsService.GetExpensesByCategories(userID, input)
+	if err != nil {
+		log.Errorf("Error generating expenses by categories report for user %d: %v", userID, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
+	}
+
+	return c.JSON(http.StatusOK, result)
+}
+
+func GetDiagram(c echo.Context) error {
+	userID, err := getUserID(c)
+	if err != nil {
+		return err
+	}
+	diagramType := c.Param("diagram_type")
+	startDateStr := c.Param("start_date")
+	endDateStr := c.Param("end_date")
+
+	startDate, err := time.Parse("2006-01-02", startDateStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid start date format"})
+	}
+
+	endDate, err := time.Parse("2006-01-02", endDateStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid end date format"})
+	}
+
+    // Currently only pie diagram is supported
+    if diagramType != "pie" {
+        return c.JSON(http.StatusBadRequest, map[string]string{"error": "Unsupported diagram type"})
+    }
+
+    // Get expenses data for the given date range
+    data, err := sm.ReportsService.GetExpensesDiagramData(userID, startDate, endDate)
+    if err != nil {
+        log.Errorf("Error getting expenses data for diagram for user %d: %v", userID, err)
+        return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating diagram"})
+    }
+
+    // Generate pie chart image (as base64 data URL)
+    chartImage, err := sm.ChartService.GeneratePieChart(data, "")
+    if err != nil {
+        log.Errorf("Error generating pie chart for user %d: %v", userID, err)
+        return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating diagram image"})
+    }
+
+    // Return the image in the expected format: { "image": "data:image/png;base64,..." }
+    return c.JSON(http.StatusOK, chartImage)
+}
+
+func GetExpensesData(c echo.Context) error {
+	userID, err := getUserID(c)
+	if err != nil {
+		return err
+	}
+
+	var input dto.ExpensesReportInputDTO
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid input"})
+	}
+
+    // Build parent-level aggregated data, combine small categories, and output in Python-compatible format
+    items, err := sm.ReportsService.GetExpensesByCategories(userID, input)
+    if err != nil {
+        return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error getting expenses data"})
+    }
+
+    // Aggregate to parent level
+    aggregated := aggregateForExpensesData(items)
+    // Combine small categories
+    aggregated = combineSmallAggregated(aggregated, 0.02)
+    // Sort desc
+    sort.Slice(aggregated, func(i, j int) bool { return aggregated[i].Amount > aggregated[j].Amount })
+
+    return c.JSON(http.StatusOK, aggregated)
+}
+
+// aggregateForExpensesData groups items by parent category (or itself if top-level) like Python prepare_data
+func aggregateForExpensesData(items []dto.ExpensesReportOutputItemDTO) []dto.AggregatedDiagramItemDTO {
+    // Map parentID -> total
+    totals := make(map[int]dto.AggregatedDiagramItemDTO)
+
+    // Build parent name lookup
+    parentNames := make(map[int]string)
+    for _, it := range items {
+        if it.ParentID == nil { // parent
+            parentNames[it.ID] = it.Name
+        }
+    }
+
+    for _, it := range items {
+        var parentID int
+        var label string
+        if it.ParentID == nil { // parent
+            parentID = it.ID
+            label = it.Name
+        } else { // child -> roll into parent
+            parentID = *it.ParentID
+            label = parentNames[parentID]
+        }
+
+        agg := totals[parentID]
+        agg.CategoryID = parentID
+        agg.Label = label
+        agg.Amount += it.TotalExpenses
+        totals[parentID] = agg
+    }
+
+    out := make([]dto.AggregatedDiagramItemDTO, 0, len(totals))
+    for _, v := range totals {
+        out = append(out, v)
+    }
+    return out
+}
+
+// combineSmallAggregated merges small categories into "Other" for the aggregated items
+func combineSmallAggregated(items []dto.AggregatedDiagramItemDTO, threshold float64) []dto.AggregatedDiagramItemDTO {
+    if len(items) == 0 {
+        return items
+    }
+    var total float64
+    for _, it := range items {
+        total += it.Amount
+    }
+    if total <= 0 {
+        return items
+    }
+    large := make([]dto.AggregatedDiagramItemDTO, 0, len(items))
+    var other float64
+    for _, it := range items {
+        if it.Amount/total < threshold {
+            other += it.Amount
+        } else {
+            large = append(large, it)
+        }
+    }
+    if other > 0 {
+        large = append(large, dto.AggregatedDiagramItemDTO{CategoryID: 0, Label: "Other", Amount: other})
+    }
+    return large
 }
