@@ -111,11 +111,52 @@ func (s *ReportsServiceInstance) GetCashFlow(userID int, input dto.CashFlowRepor
 }
 
 func (s *ReportsServiceInstance) GetBalanceReport(userID int, input dto.BalanceReportInputDTO) ([]dto.BalanceReportOutputDTO, error) {
-	return s.reportsRepo.GetBalanceReport(userID, input)
+    results, err := s.reportsRepo.GetBalanceReport(userID, input)
+    if err != nil {
+        return nil, err
+    }
+
+    // Convert each account balance into user's base currency using the balance date
+    // Repository already filled BaseCurrencyCode; use that as conversion target
+    for i := range results {
+        amountDec := decimal.NewFromFloat(results[i].Balance)
+        converted, convErr := s.exchangeRatesService.CalcAmountFromCurrency(
+            input.BalanceDate.Time,
+            amountDec,
+            results[i].CurrencyCode,
+            results[i].BaseCurrencyCode,
+        )
+        if convErr != nil {
+            // Fallback to original balance if conversion fails
+            converted = amountDec
+        }
+        results[i].BaseCurrencyBalance, _ = converted.Round(2).Float64()
+    }
+
+    return results, nil
 }
 
 func (s *ReportsServiceInstance) GetNonHiddenBalanceReport(userID int, input dto.BalanceReportInputDTO) ([]dto.BalanceReportOutputDTO, error) {
-	return s.reportsRepo.GetNonHiddenBalanceReport(userID, input)
+    results, err := s.reportsRepo.GetNonHiddenBalanceReport(userID, input)
+    if err != nil {
+        return nil, err
+    }
+
+    for i := range results {
+        amountDec := decimal.NewFromFloat(results[i].Balance)
+        converted, convErr := s.exchangeRatesService.CalcAmountFromCurrency(
+            input.BalanceDate.Time,
+            amountDec,
+            results[i].CurrencyCode,
+            results[i].BaseCurrencyCode,
+        )
+        if convErr != nil {
+            converted = amountDec
+        }
+        results[i].BaseCurrencyBalance, _ = converted.Round(2).Float64()
+    }
+
+    return results, nil
 }
 
 func (s *ReportsServiceInstance) GetExpensesByCategories(userID int, input dto.ExpensesReportInputDTO) ([]dto.ExpensesReportOutputItemDTO, error) {

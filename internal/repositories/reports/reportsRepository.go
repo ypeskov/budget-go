@@ -251,14 +251,16 @@ func (r *ReportsRepository) getBalanceReportWithFilter(userID int, input dto.Bal
 			  AND t.date_time <= $2`
 
 	// Add account filter to CTE if specified
-	if len(input.AccountIds) > 0 {
-		query += fmt.Sprintf(" AND t.account_id IN (%s)", strings.Join(accountPlaceholders, ","))
-	} else if nonHiddenOnly {
-		query += " AND a.show_in_reports = true"
-	}
+    if len(input.AccountIds) > 0 {
+        // Include specified accounts OR accounts marked to show in reports
+        query += fmt.Sprintf(" AND (t.account_id IN (%s) OR a.show_in_reports = true)", strings.Join(accountPlaceholders, ","))
+    } else {
+        // No account filter specified: include only accounts marked to show in reports
+        query += " AND a.show_in_reports = true"
+    }
 
 	// The main query - we need to filter accounts here too!
-	if len(input.AccountIds) > 0 {
+    if len(input.AccountIds) > 0 {
 		// If specific accounts requested, only get those accounts
 		query += fmt.Sprintf(`
 		)
@@ -273,8 +275,8 @@ func (r *ReportsRepository) getBalanceReportWithFilter(userID int, input dto.Bal
 		FROM accounts a
 		JOIN currencies c ON a.currency_id = c.id
 		LEFT JOIN latest_transactions lt ON a.id = lt.account_id AND lt.rn = 1
-		WHERE a.user_id = $1 AND a.id IN (%s)`, baseCurrencyIndex, reportDateIndex, strings.Join(accountPlaceholders, ","))
-	} else {
+        WHERE a.user_id = $1 AND (a.id IN (%s) OR a.show_in_reports = true)`, baseCurrencyIndex, reportDateIndex, strings.Join(accountPlaceholders, ","))
+    } else {
 		// No specific accounts requested
 		query += fmt.Sprintf(`
 		)
@@ -289,14 +291,10 @@ func (r *ReportsRepository) getBalanceReportWithFilter(userID int, input dto.Bal
 		FROM accounts a
 		JOIN currencies c ON a.currency_id = c.id
 		LEFT JOIN latest_transactions lt ON a.id = lt.account_id AND lt.rn = 1
-		WHERE a.user_id = $1`, baseCurrencyIndex, reportDateIndex)
-		
-		if nonHiddenOnly {
-			query += " AND a.show_in_reports = true"
-		}
+        WHERE a.user_id = $1 AND a.show_in_reports = true`, baseCurrencyIndex, reportDateIndex)
 	}
 
-	query += " ORDER BY a.name"
+    query += " ORDER BY LOWER(a.name)"
 
 	var results []dto.BalanceReportOutputDTO
 	err = r.db.Select(&results, query, args...)
