@@ -28,7 +28,7 @@ func (r *RepositoryInstance) GetTemplates(userId int) ([]dto.TemplateDTO, error)
 	}
 	defer rows.Close()
 
-	var templates []dto.TemplateDTO
+	templates := make([]dto.TemplateDTO, 0)
 	for rows.Next() {
 		var template dto.TemplateDTO
 		err := rows.Scan(&template.ID, &template.Label, &template.CategoryID, &template.Category.ID, &template.Category.Name)
