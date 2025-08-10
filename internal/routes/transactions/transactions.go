@@ -71,7 +71,7 @@ func GetTransactions(c echo.Context) error {
 }
 
 func convertTransactionsToDTO(transactions []dto.TransactionWithAccount, baseCurrency models.Currency) []dto.ResponseTransactionDTO {
-	var transactionsDTO []dto.ResponseTransactionDTO
+	transactionsDTO := make([]dto.ResponseTransactionDTO, 0)
 	for _, transaction := range transactions {
 		transactionsDTO = append(transactionsDTO, dto.TransactionWithAccountToResponseTransactionDTO(transaction, baseCurrency))
 	}
@@ -126,7 +126,6 @@ func DeleteTemplates(c echo.Context) error {
 		"message": "Templates deleted successfully",
 	})
 }
-
 
 func CreateTransaction(c echo.Context) error {
 	log.Debug("CreateTransaction Route")

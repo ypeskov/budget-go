@@ -1,5 +1,9 @@
 :8080
 
+route /auth/oauth* {
+	reverse_proxy localhost:8000
+}
+
 route /auth* {
 	reverse_proxy localhost:8001
 }
