@@ -36,3 +36,11 @@ func New(cfg *config.Config) (*Database, error) {
 
 	return DbInstance, nil
 }
+
+// Close gracefully closes the database connection if initialized
+func Close() error {
+    if DbInstance != nil && DbInstance.Db != nil {
+        return DbInstance.Db.Close()
+    }
+    return nil
+}

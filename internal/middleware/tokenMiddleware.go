@@ -1,14 +1,15 @@
 package middleware
 
 import (
-	"errors"
-	"net/http"
-	"time"
-	"ypeskov/budget-go/internal/config"
-	"ypeskov/budget-go/internal/services"
+    "errors"
+    "net/http"
+    "strings"
+    "time"
+    "ypeskov/budget-go/internal/config"
+    "ypeskov/budget-go/internal/services"
 
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/labstack/echo/v4"
+    "github.com/golang-jwt/jwt/v5"
+    "github.com/labstack/echo/v4"
 )
 
 // GetUserFromToken parses and validates the JWT token, returning claims if valid.
@@ -46,13 +47,22 @@ func GetUserFromToken(authToken string, cfg *config.Config) (jwt.MapClaims, erro
 func AuthMiddleware(sm *services.Manager, cfg *config.Config) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			// Extract the token from the request header
-			authToken := c.Request().Header.Get("auth-token")
-			if authToken == "" {
-				return c.JSON(http.StatusUnauthorized, map[string]string{
-					"message": "Missing auth-token",
-				})
-			}
+            // Extract the token from headers: prefer Authorization: Bearer, fallback to auth-token
+            var authToken string
+            if authz := c.Request().Header.Get("Authorization"); authz != "" {
+                parts := strings.SplitN(authz, " ", 2)
+                if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+                    authToken = parts[1]
+                }
+            }
+            if authToken == "" {
+                authToken = c.Request().Header.Get("auth-token")
+            }
+            if authToken == "" {
+                return c.JSON(http.StatusUnauthorized, map[string]string{
+                    "message": "Missing token",
+                })
+            }
 
 			// Parse and validate the token
 			claims, err := GetUserFromToken(authToken, cfg)

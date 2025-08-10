@@ -38,8 +38,8 @@ func GetAccounts(c echo.Context) error {
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
-		log.Errorf("User %v not found\n", user.Email)
-		return echo.NewHTTPError(http.StatusInternalServerError, "User not found")
+        log.Warn("Authenticated user not found in context")
+        return echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
 	}
 
 	var includeHidden, includeDeleted, archivedOnly bool
@@ -109,8 +109,8 @@ func CreateAccount(c echo.Context) error {
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
-		log.Errorf("User %v not found\n", user.Email)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Access denied")
+        log.Warn("Authenticated user not found in context")
+        return echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
 	}
 
 	account, err := prepareAccount(c)
@@ -147,8 +147,8 @@ func UpdateAccount(c echo.Context) error {
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
-		log.Errorf("User %v not found\n", user.Email)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Access denied")
+        log.Warn("Authenticated user not found in context")
+        return echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
 	}
 
 	account.UserID = user.ID

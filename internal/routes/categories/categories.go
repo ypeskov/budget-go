@@ -26,7 +26,7 @@ func GetCategories(c echo.Context) error {
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "User not found")
+        return echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
 	}
 
 	userCategories, err := sm.CategoriesService.GetUserCategories(user.ID)

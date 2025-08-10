@@ -1,18 +1,20 @@
 package auth
 
 import (
-	"net/http"
-	"time"
-	"ypeskov/budget-go/internal/middleware"
+    "net/http"
+    "strings"
+    "time"
 
-	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
+    "ypeskov/budget-go/internal/middleware"
 
-	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
+    "github.com/golang-jwt/jwt/v5"
+    "golang.org/x/crypto/bcrypt"
 
-	"ypeskov/budget-go/internal/config"
-	"ypeskov/budget-go/internal/services"
+    "github.com/labstack/echo/v4"
+    log "github.com/sirupsen/logrus"
+
+    "ypeskov/budget-go/internal/config"
+    "ypeskov/budget-go/internal/services"
 )
 
 type UserLogin struct {
@@ -94,7 +96,18 @@ type ProfileDTO struct {
 func Profile(c echo.Context) error {
 	cfg := c.Get("config").(*config.Config)
 
-	claims, err := middleware.GetUserFromToken(c.Request().Header.Get("auth-token"), cfg)
+    // Accept both Authorization: Bearer and legacy auth-token header
+    var token string
+    if authz := c.Request().Header.Get("Authorization"); authz != "" {
+        if parts := strings.SplitN(authz, " ", 2); len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+            token = parts[1]
+        }
+    }
+    if token == "" {
+        token = c.Request().Header.Get("auth-token")
+    }
+
+    claims, err := middleware.GetUserFromToken(token, cfg)
 	if err != nil || claims == nil {
 		log.Error("Failed to cast user to jwt.MapClaims")
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or missing user")
