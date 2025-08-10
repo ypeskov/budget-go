@@ -81,6 +81,7 @@ UPDATE transactions
 SET account_id = :account_id,
     category_id = :category_id,
     amount = :amount,
+    new_balance = :new_balance,
     label = :label,
     notes = :notes,
     date_time = :date_time,

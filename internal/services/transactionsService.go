@@ -147,11 +147,22 @@ func (s *TransactionsServiceInstance) CreateTransaction(transaction models.Trans
 func (s *TransactionsServiceInstance) createRegularTransaction(transaction models.Transaction) (*models.Transaction, error) {
 	log.Debug("Creating regular transaction")
 
-	// Calculate transaction effect on account balance
+	// Get current account balance
+	currentBalance, err := s.sm.AccountsService.GetAccountBalance(transaction.AccountID)
+	if err != nil {
+		log.Error("Error getting current account balance: ", err)
+		return nil, err
+	}
+
+	// Calculate transaction effect and new balance
 	effect := s.calculateTransactionEffect(transaction.AccountID, transaction.Amount, transaction.IsIncome, transaction.IsTransfer, false)
+	newBalance := currentBalance.Add(effect)
 	
+	// Set the new balance in the transaction record
+	transaction.NewBalance = &newBalance
+
 	// Update account balance
-	err := s.updateAccountBalanceByEffect(transaction.AccountID, effect)
+	err = s.updateAccountBalanceByEffect(transaction.AccountID, effect)
 	if err != nil {
 		log.Error("Error updating account balance for new transaction: ", err)
 		return nil, err
@@ -186,12 +197,31 @@ func (s *TransactionsServiceInstance) createTransferTransaction(transaction mode
 	sourceTransaction := transaction
 	sourceTransaction.IsIncome = false // Transfer out is always expense for source
 
-	// Calculate effects
+	// Get current balances for both accounts
+	sourceCurrentBalance, err := s.sm.AccountsService.GetAccountBalance(sourceTransaction.AccountID)
+	if err != nil {
+		log.Error("Error getting source account balance: ", err)
+		return nil, err
+	}
+
+	targetCurrentBalance, err := s.sm.AccountsService.GetAccountBalance(*targetAccountID)
+	if err != nil {
+		log.Error("Error getting target account balance: ", err)
+		return nil, err
+	}
+
+	// Calculate effects and new balances
 	sourceEffect := s.calculateTransactionEffect(sourceTransaction.AccountID, sourceTransaction.Amount, sourceTransaction.IsIncome, sourceTransaction.IsTransfer, false)
 	targetEffect := s.calculateTransactionEffect(*targetAccountID, *targetAmount, true, true, true) // Transfer in is always income for target
+	
+	sourceNewBalance := sourceCurrentBalance.Add(sourceEffect)
+	targetNewBalance := targetCurrentBalance.Add(targetEffect)
+
+	// Set new balance in source transaction
+	sourceTransaction.NewBalance = &sourceNewBalance
 
 	// Update source account balance
-	err := s.updateAccountBalanceByEffect(sourceTransaction.AccountID, sourceEffect)
+	err = s.updateAccountBalanceByEffect(sourceTransaction.AccountID, sourceEffect)
 	if err != nil {
 		log.Error("Error updating source account balance: ", err)
 		return nil, err
@@ -232,6 +262,7 @@ func (s *TransactionsServiceInstance) createTransferTransaction(transaction mode
 		IsIncome:            true, // Transfer in is always income for target
 		IsTransfer:          true,
 		LinkedTransactionID: createdSourceTx.ID, // Link to the created source transaction
+		NewBalance:          &targetNewBalance, // Set the new balance for target account
 		Notes:               transaction.Notes,
 		DateTime:            transaction.DateTime,
 		CreatedAt:           transaction.CreatedAt,
@@ -447,6 +478,14 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 		log.Error("Error handling account balance updates: ", err)
 		return err
 	}
+
+	// Calculate and set the new balance for the updated transaction
+	currentBalance, err := s.sm.AccountsService.GetAccountBalance(transaction.AccountID)
+	if err != nil {
+		log.Error("Error getting current balance for updated transaction: ", err)
+		return err
+	}
+	transaction.NewBalance = &currentBalance
 
 	// Call repository for update
 	err = s.transactionsRepository.UpdateTransaction(transaction)

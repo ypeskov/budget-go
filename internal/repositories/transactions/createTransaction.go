@@ -13,6 +13,7 @@ func (r *RepositoryInstance) CreateTransaction(transaction models.Transaction) (
 			user_id,
 			account_id,
 			amount,
+			new_balance,
 			category_id,
 			label,
 			is_income,
@@ -29,6 +30,7 @@ func (r *RepositoryInstance) CreateTransaction(transaction models.Transaction) (
 			:user_id,
 			:account_id,
 			:amount,
+			:new_balance,
 			:category_id,
 			:label,
 			:is_income,
@@ -41,7 +43,7 @@ func (r *RepositoryInstance) CreateTransaction(transaction models.Transaction) (
 			:updated_at,
 			:is_deleted
 		)
-		RETURNING id, user_id, account_id, amount, category_id, label, is_income, is_transfer, 
+		RETURNING id, user_id, account_id, amount, new_balance, category_id, label, is_income, is_transfer, 
 				  linked_transaction_id, base_currency_amount, notes, date_time, created_at, updated_at, is_deleted
 	`
 	
