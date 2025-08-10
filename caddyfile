@@ -24,6 +24,10 @@ route /currencies* {
 	reverse_proxy localhost:8001
 }
 
+route /reports* {
+	reverse_proxy localhost:8001
+}
+
 route /users* {
 	reverse_proxy localhost:8001
 }

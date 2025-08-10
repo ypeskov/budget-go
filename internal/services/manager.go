@@ -6,6 +6,7 @@ import (
 	"ypeskov/budget-go/internal/repositories/categories"
 	"ypeskov/budget-go/internal/repositories/currencies"
 	"ypeskov/budget-go/internal/repositories/exchangeRates"
+	"ypeskov/budget-go/internal/repositories/reports"
 	"ypeskov/budget-go/internal/repositories/transactions"
 	"ypeskov/budget-go/internal/repositories/user"
 	"ypeskov/budget-go/internal/repositories/userSettings"
@@ -19,6 +20,8 @@ type Manager struct {
 	CurrenciesService    CurrenciesService
 	TransactionsService  TransactionsService
 	ExchangeRatesService ExchangeRatesService
+	ReportsService       ReportsService
+	ChartService         ChartService
 }
 
 var sm *Manager
@@ -31,6 +34,7 @@ func NewServicesManager(db *database.Database) *Manager {
 	userSettingsRepo := userSettings.NewUserSettingsRepository(db.Db)
 	currenciesRepo := currencies.NewCurrenciesRepository(db.Db)
 	transactionsRepo := transactions.NewTransactionsRepository(db.Db)
+	reportsRepo := reports.NewReportsRepository(db.Db)
 
 	sm = &Manager{}
 
@@ -41,6 +45,8 @@ func NewServicesManager(db *database.Database) *Manager {
 	sm.CurrenciesService = NewCurrenciesService(currenciesRepo)
 	sm.ExchangeRatesService = NewExchangeRatesService(exchangeRatesRepo)
 	sm.TransactionsService = NewTransactionsService(transactionsRepo, sm)
+	sm.ReportsService = NewReportsService(reportsRepo, sm.ExchangeRatesService)
+	sm.ChartService = NewChartService()
 
 	return sm
 }
