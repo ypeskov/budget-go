@@ -22,11 +22,11 @@ func (r *RepositoryInstance) GetTemplates(userId int) ([]dto.TemplateDTO, error)
 	`
 
 	rows, err := r.db.Queryx(query, userId)
-	defer rows.Close()
 	if err != nil {
 		log.Error("Error fetching templates: ", err)
 		return nil, err
 	}
+	defer rows.Close()
 
 	var templates []dto.TemplateDTO
 	for rows.Next() {

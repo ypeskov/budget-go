@@ -8,6 +8,10 @@ route /accounts* {
 	reverse_proxy localhost:8001
 }
 
+route /categories/grouped* {
+	reverse_proxy localhost:8000
+}
+
 route /categories* {
 	reverse_proxy localhost:8001
 }
