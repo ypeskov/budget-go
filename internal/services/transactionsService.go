@@ -228,7 +228,7 @@ func (s *TransactionsServiceInstance) createTransferTransaction(transaction mode
 		AccountID:           *targetAccountID,
 		Amount:              *targetAmount,
 		CategoryID:          transaction.CategoryID, // Can use same category or make it configurable
-		Label:               fmt.Sprintf("Transfer from %s", sourceTransaction.Label),
+		Label:               transaction.Label, // Use the same label as the source transaction
 		IsIncome:            true, // Transfer in is always income for target
 		IsTransfer:          true,
 		LinkedTransactionID: createdSourceTx.ID, // Link to the created source transaction
