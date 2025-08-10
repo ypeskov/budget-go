@@ -1,6 +1,7 @@
 package transactions
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/routes/routeErrors"
 	"ypeskov/budget-go/internal/services"
+	"ypeskov/budget-go/internal/utils"
 )
 
 var (
@@ -34,13 +36,13 @@ func GetTransactions(c echo.Context) error {
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
-		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
+		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
 	}
 
 	// parseTransactionFilters extracts and validates query parameters for transaction filtering.
 	filters, err := parseTransactionFilters(c)
 	if err != nil {
-		return logAndReturnError(c, err, http.StatusBadRequest)
+		return utils.LogAndReturnError(c, err, http.StatusBadRequest)
 	}
 
 	transactions, err := sm.TransactionsService.GetTransactionsWithAccounts(
@@ -55,12 +57,12 @@ func GetTransactions(c echo.Context) error {
 		filters.CategoryIds,
 	)
 	if err != nil {
-		return logAndReturnError(c, err, http.StatusInternalServerError)
+		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
 	baseCurrency, err := sm.UserSettingsService.GetBaseCurrency(user.ID)
 	if err != nil {
-		return logAndReturnError(c, err, http.StatusInternalServerError)
+		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 	transactionsDTO := convertTransactionsToDTO(transactions, baseCurrency)
 
@@ -80,12 +82,12 @@ func GetTemplates(c echo.Context) error {
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
-		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
+		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
 	}
 
 	templateDTOs, err := sm.TransactionsService.GetTemplates(user.ID)
 	if err != nil {
-		return logAndReturnError(c, err, http.StatusInternalServerError)
+		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
 	return c.JSON(http.StatusOK, templateDTOs)
@@ -96,12 +98,12 @@ func DeleteTemplates(c echo.Context) error {
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
-		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
+		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
 	}
 
 	templateIds := c.QueryParam("ids")
 	if templateIds == "" {
-		return logAndReturnError(c, &routeErrors.BadRequestError{Message: "[ids] query parameter is required"}, http.StatusBadRequest)
+		return utils.LogAndReturnError(c, &routeErrors.BadRequestError{Message: "[ids] query parameter is required"}, http.StatusBadRequest)
 	}
 
 	templateIdsList := strings.Split(templateIds, ",")
@@ -110,13 +112,13 @@ func DeleteTemplates(c echo.Context) error {
 	for i, idStr := range templateIdsList {
 		id, err := strconv.Atoi(strings.TrimSpace(idStr))
 		if err != nil {
-			return logAndReturnError(c, &routeErrors.BadRequestError{Message: "Invalid template ID format"}, http.StatusBadRequest)
+			return utils.LogAndReturnError(c, &routeErrors.BadRequestError{Message: "Invalid template ID format"}, http.StatusBadRequest)
 		}
 		templateIdsInt[i] = id
 	}
 	err := sm.TransactionsService.DeleteTemplates(templateIdsInt, user.ID)
 	if err != nil {
-		return logAndReturnError(c, err, http.StatusInternalServerError)
+		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
@@ -124,26 +126,20 @@ func DeleteTemplates(c echo.Context) error {
 	})
 }
 
-func logAndReturnError(c echo.Context, err error, httpStatus int) error {
-	log.Error("Error: ", err)
-	return c.JSON(httpStatus, map[string]string{
-		"error": "Internal server error",
-	})
-}
 
 func CreateTransaction(c echo.Context) error {
 	log.Debug("CreateTransaction Route")
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
-		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
+		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
 	}
 
 	transaction := dto.CreateTransactionDTO{
 		UserID: &user.ID,
 	}
 	if err := c.Bind(&transaction); err != nil {
-		return logAndReturnError(c, err, http.StatusBadRequest)
+		return utils.LogAndReturnError(c, err, http.StatusBadRequest)
 	}
 
 	transactionModel := models.Transaction{
@@ -156,7 +152,7 @@ func CreateTransaction(c echo.Context) error {
 
 	err := sm.TransactionsService.CreateTransaction(transactionModel)
 	if err != nil {
-		return logAndReturnError(c, err, http.StatusInternalServerError)
+		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
@@ -169,26 +165,26 @@ func GetTransactionDetail(c echo.Context) error {
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
-		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
+		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
 	}
 
 	transactionIdStr := c.Param("id")
 	if transactionIdStr == "" {
-		return logAndReturnError(c, &routeErrors.BadRequestError{Message: "Transaction ID is required"}, http.StatusBadRequest)
+		return utils.LogAndReturnError(c, &routeErrors.BadRequestError{Message: "Transaction ID is required"}, http.StatusBadRequest)
 	}
 
 	transactionId, err := strconv.Atoi(transactionIdStr)
 	if err != nil {
-		return logAndReturnError(c, &routeErrors.BadRequestError{Message: "Invalid transaction ID format"}, http.StatusBadRequest)
+		return utils.LogAndReturnError(c, &routeErrors.BadRequestError{Message: "Invalid transaction ID format"}, http.StatusBadRequest)
 	}
 
 	transactionDetail, err := sm.TransactionsService.GetTransactionDetail(transactionId, user.ID)
 	if err != nil {
-		return logAndReturnError(c, err, http.StatusInternalServerError)
+		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
 	if transactionDetail == nil {
-		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "transaction", ID: transactionId}, http.StatusNotFound)
+		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "transaction", ID: transactionId}, http.StatusNotFound)
 	}
 
 	return c.JSON(http.StatusOK, transactionDetail)
@@ -199,32 +195,34 @@ func UpdateTransaction(c echo.Context) error {
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
-		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
+		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
 	}
 
 	var transactionDTO dto.PutTransactionDTO
 	if err := c.Bind(&transactionDTO); err != nil {
-		return logAndReturnError(c, &routeErrors.BadRequestError{Message: "Invalid request body"}, http.StatusBadRequest)
+		// Create more informative error with details
+		detailedError := fmt.Errorf("failed to bind request body: %w", err)
+		return utils.LogAndReturnError(c, detailedError, http.StatusBadRequest)
 	}
 
 	if transactionDTO.ID == 0 {
-		return logAndReturnError(c, &routeErrors.BadRequestError{Message: "Transaction ID is required"}, http.StatusBadRequest)
+		return utils.LogAndReturnError(c, &routeErrors.BadRequestError{Message: "Transaction ID is required"}, http.StatusBadRequest)
 	}
 
-	// Проверяем, что транзакция существует и принадлежит пользователю
+	// Check that transaction exists and belongs to user
 	existingTransaction, err := sm.TransactionsService.GetTransactionDetail(transactionDTO.ID, user.ID)
 	if err != nil {
-		return logAndReturnError(c, err, http.StatusInternalServerError)
+		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
 	if existingTransaction == nil {
-		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "transaction", ID: transactionDTO.ID}, http.StatusNotFound)
+		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "transaction", ID: transactionDTO.ID}, http.StatusNotFound)
 	}
 
-	// Обновляем транзакцию
+	// Update transaction
 	err = sm.TransactionsService.UpdateTransaction(transactionDTO, user.ID)
 	if err != nil {
-		return logAndReturnError(c, err, http.StatusInternalServerError)
+		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{

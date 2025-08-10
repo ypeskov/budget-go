@@ -76,7 +76,7 @@ func (p *PutTransactionDTO) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// Обрабатываем CategoryID (может быть строкой или числом)
+	// Handle CategoryID (can be string or number)
 	if aux.CategoryID != nil {
 		switch v := aux.CategoryID.(type) {
 		case string:
@@ -93,7 +93,7 @@ func (p *PutTransactionDTO) UnmarshalJSON(data []byte) error {
 		}
 	}
 
-	// Обрабатываем Amount (может быть строкой или числом)
+	// Handle Amount (can be string or number)
 	if aux.Amount != nil {
 		switch v := aux.Amount.(type) {
 		case string:
