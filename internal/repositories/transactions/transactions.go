@@ -22,6 +22,7 @@ type Repository interface {
 		categoryIds []int,
 	) ([]dto.TransactionWithAccount, error)
 	GetTransactionDetail(transactionId int, userId int) (*dto.TransactionDetailRaw, error)
+	UpdateTransaction(transaction models.Transaction) error
 	GetTemplates(userId int) ([]dto.TemplateDTO, error)
 	DeleteTemplates(templateIds []int, userId int) error
 	CreateTransaction(transaction models.Transaction) error
@@ -168,6 +169,28 @@ func (r *RepositoryInstance) GetTransactionDetail(transactionId int, userId int)
 	}
 
 	return &transaction, nil
+}
+
+func (r *RepositoryInstance) UpdateTransaction(transaction models.Transaction) error {
+	params := map[string]interface{}{
+		"id":          *transaction.ID,
+		"account_id":  transaction.AccountID,
+		"category_id": transaction.CategoryID,
+		"amount":      transaction.Amount,
+		"label":       transaction.Label,
+		"notes":       transaction.Notes,
+		"date_time":   transaction.DateTime,
+		"is_income":   transaction.IsIncome,
+		"is_transfer": transaction.IsTransfer,
+		"updated_at":  transaction.UpdatedAt,
+	}
+
+	_, err := r.db.NamedExec(updateTransactionQuery, params)
+	if err != nil {
+		return logAndReturnError(err, "Error executing transaction update: ")
+	}
+
+	return nil
 }
 
 func logAndReturnError(err error, message string) error {

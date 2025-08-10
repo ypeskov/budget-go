@@ -74,3 +74,17 @@ LEFT JOIN user_categories ON transactions.category_id = user_categories.id
 
 WHERE transactions.id = :transaction_id AND transactions.user_id = :user_id
 `
+
+var updateTransactionQuery = `
+UPDATE transactions 
+SET account_id = :account_id,
+    category_id = :category_id,
+    amount = :amount,
+    label = :label,
+    notes = :notes,
+    date_time = :date_time,
+    is_income = :is_income,
+    is_transfer = :is_transfer,
+    updated_at = :updated_at
+WHERE id = :id
+`

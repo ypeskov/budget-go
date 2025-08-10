@@ -23,6 +23,7 @@ func RegisterTransactionsRoutes(g *echo.Group, manager *services.Manager) {
 
 	g.GET("", GetTransactions)
 	g.GET("/:id", GetTransactionDetail)
+	g.PUT("", UpdateTransaction)
 	g.GET("/templates", GetTemplates)
 	g.DELETE("/templates", DeleteTemplates)
 	g.POST("", CreateTransaction)
@@ -191,4 +192,42 @@ func GetTransactionDetail(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, transactionDetail)
+}
+
+func UpdateTransaction(c echo.Context) error {
+	log.Debug("UpdateTransaction Route")
+
+	user, ok := c.Get("authenticated_user").(*models.User)
+	if !ok || user == nil {
+		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
+	}
+
+	var transactionDTO dto.PutTransactionDTO
+	if err := c.Bind(&transactionDTO); err != nil {
+		return logAndReturnError(c, &routeErrors.BadRequestError{Message: "Invalid request body"}, http.StatusBadRequest)
+	}
+
+	if transactionDTO.ID == 0 {
+		return logAndReturnError(c, &routeErrors.BadRequestError{Message: "Transaction ID is required"}, http.StatusBadRequest)
+	}
+
+	// Проверяем, что транзакция существует и принадлежит пользователю
+	existingTransaction, err := sm.TransactionsService.GetTransactionDetail(transactionDTO.ID, user.ID)
+	if err != nil {
+		return logAndReturnError(c, err, http.StatusInternalServerError)
+	}
+
+	if existingTransaction == nil {
+		return logAndReturnError(c, &routeErrors.NotFoundError{Resource: "transaction", ID: transactionDTO.ID}, http.StatusNotFound)
+	}
+
+	// Обновляем транзакцию
+	err = sm.TransactionsService.UpdateTransaction(transactionDTO, user.ID)
+	if err != nil {
+		return logAndReturnError(c, err, http.StatusInternalServerError)
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Transaction updated successfully",
+	})
 }

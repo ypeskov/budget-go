@@ -2,6 +2,7 @@ package dto
 
 import (
 	"encoding/json"
+	"strconv"
 	"github.com/shopspring/decimal"
 	"time"
 	"ypeskov/budget-go/internal/models"
@@ -53,6 +54,60 @@ type UpdateTransactionDTO struct {
 	CreateTransactionDTO
 	ID     int `json:"id"`
 	UserID int `json:"userId"`
+}
+
+type PutTransactionDTO struct {
+	CreateTransactionDTO
+	ID         int   `json:"id"`
+	IsTemplate *bool `json:"isTemplate"`
+}
+
+func (p *PutTransactionDTO) UnmarshalJSON(data []byte) error {
+	type Alias PutTransactionDTO
+	aux := &struct {
+		CategoryID interface{} `json:"categoryId"`
+		Amount     interface{} `json:"amount"`
+		*Alias
+	}{
+		Alias: (*Alias)(p),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Обрабатываем CategoryID (может быть строкой или числом)
+	if aux.CategoryID != nil {
+		switch v := aux.CategoryID.(type) {
+		case string:
+			if v != "" {
+				id, err := strconv.Atoi(v)
+				if err != nil {
+					return err
+				}
+				p.CategoryID = &id
+			}
+		case float64:
+			id := int(v)
+			p.CategoryID = &id
+		}
+	}
+
+	// Обрабатываем Amount (может быть строкой или числом)
+	if aux.Amount != nil {
+		switch v := aux.Amount.(type) {
+		case string:
+			amount, err := decimal.NewFromString(v)
+			if err != nil {
+				return err
+			}
+			p.Amount = amount
+		case float64:
+			p.Amount = decimal.NewFromFloat(v)
+		}
+	}
+
+	return nil
 }
 
 type ResponseTransactionDTO struct {

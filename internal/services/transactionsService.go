@@ -22,6 +22,7 @@ type TransactionsService interface {
 		categoryIds []int,
 	) ([]dto.TransactionWithAccount, error)
 	GetTransactionDetail(transactionId int, userId int) (*dto.TransactionDetailDTO, error)
+	UpdateTransaction(transactionDTO dto.PutTransactionDTO, userId int) error
 	GetTemplates(userId int) ([]dto.TemplateDTO, error)
 	DeleteTemplates(templateIds []int, userId int) error
 	CreateTransaction(transaction models.Transaction) error
@@ -288,4 +289,35 @@ func convertRawToTransactionDetail(raw *dto.TransactionDetailRaw, baseCurrencyCo
 		Category:            categoryDetail,
 		LinkedTransactionID: raw.LinkedTransactionID,
 	}
+}
+
+func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTransactionDTO, userId int) error {
+	log.Debug("UpdateTransaction Service")
+
+	// Подготавливаем модель для обновления
+	now := time.Now()
+	transaction := models.Transaction{
+		ID:         &transactionDTO.ID,
+		UserID:     userId,
+		AccountID:  transactionDTO.AccountID,
+		Amount:     transactionDTO.Amount,
+		CategoryID: transactionDTO.CategoryID,
+		Label:      transactionDTO.Label,
+		IsIncome:   transactionDTO.IsIncome,
+		IsTransfer: transactionDTO.IsTransfer,
+		DateTime:   transactionDTO.DateTime,
+		UpdatedAt:  &now,
+	}
+
+	// Обрабатываем Notes
+	transaction.Notes = transactionDTO.Notes
+
+	// Вызываем репозиторий для обновления
+	err := s.transactionsRepository.UpdateTransaction(transaction)
+	if err != nil {
+		log.Error("Error updating transaction: ", err)
+		return err
+	}
+
+	return nil
 }
