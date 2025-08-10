@@ -64,7 +64,6 @@ func (s *ChartServiceInstance) GeneratePieChart(data []dto.ExpensesDiagramDataDT
 
 	// Prepare chart values
 	var values []chart.Value
-	var labels []pieSliceLabel
 	for _, item := range data {
 		// Use consistent colors and suppress in-slice labels; rely on legend outside
 		col := drawing.ColorFromHex(item.Color)
