@@ -149,9 +149,13 @@ func CreateTransaction(c echo.Context) error {
 		Amount:     transaction.Amount,
 		CategoryID: transaction.CategoryID,
 		Label:      transaction.Label,
+		IsIncome:   transaction.IsIncome,
+		IsTransfer: transaction.IsTransfer,
+		Notes:      transaction.Notes,
+		DateTime:   transaction.DateTime,
 	}
 
-	err := sm.TransactionsService.CreateTransaction(transactionModel)
+	_, err := sm.TransactionsService.CreateTransaction(transactionModel, transaction.TargetAccountID, transaction.TargetAmount)
 	if err != nil {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}

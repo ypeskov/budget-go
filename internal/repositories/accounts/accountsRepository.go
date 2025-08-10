@@ -9,6 +9,7 @@ import (
 	"ypeskov/budget-go/internal/models"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -18,6 +19,8 @@ type Repository interface {
 	GetAccountById(id int) (models.Account, error)
 	CreateAccount(account models.Account) (models.Account, error)
 	UpdateAccount(account models.Account) (models.Account, error)
+	UpdateAccountBalance(accountId int, newBalance decimal.Decimal) error
+	GetAccountBalance(accountId int) (decimal.Decimal, error)
 }
 
 type RepositoryInstance struct{}
@@ -178,4 +181,47 @@ RETURNING id, user_id, name, balance, account_type_id, currency_id, initial_bala
 	}
 
 	return updatedAccount, nil
+}
+
+func (a *RepositoryInstance) UpdateAccountBalance(accountId int, newBalance decimal.Decimal) error {
+	log.Debugf("UpdateAccountBalance Repository: account %d, new balance %v", accountId, newBalance)
+	const updateBalanceQuery = `
+		UPDATE accounts 
+		SET balance = $1, updated_at = NOW() 
+		WHERE id = $2
+	`
+	
+	result, err := db.Exec(updateBalanceQuery, newBalance, accountId)
+	if err != nil {
+		log.Error("Error updating account balance: ", err)
+		return err
+	}
+	
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	
+	if rowsAffected == 0 {
+		return customErrors.ErrNoAccountFound
+	}
+	
+	return nil
+}
+
+func (a *RepositoryInstance) GetAccountBalance(accountId int) (decimal.Decimal, error) {
+	log.Debugf("GetAccountBalance Repository: account %d", accountId)
+	const getBalanceQuery = `SELECT balance FROM accounts WHERE id = $1`
+	
+	var balance decimal.Decimal
+	err := db.Get(&balance, getBalanceQuery, accountId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return decimal.Zero, customErrors.ErrNoAccountFound
+		}
+		log.Error("Error getting account balance: ", err)
+		return decimal.Zero, err
+	}
+	
+	return balance, nil
 }

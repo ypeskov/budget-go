@@ -23,6 +23,8 @@ type AccountsService interface {
 	GetAccountById(id int) (*dto.AccountDTO, error)
 	CreateAccount(account models.Account) (dto.AccountDTO, error)
 	UpdateAccount(account models.Account) (dto.AccountDTO, error)
+	UpdateAccountBalance(accountId int, newBalance decimal.Decimal) error
+	GetAccountBalance(accountId int) (decimal.Decimal, error)
 }
 
 type AccountsServiceInstance struct {
@@ -214,6 +216,16 @@ func (a *AccountsServiceInstance) UpdateAccount(account models.Account) (dto.Acc
 	}
 
 	return accountDto, nil
+}
+
+func (a *AccountsServiceInstance) UpdateAccountBalance(accountId int, newBalance decimal.Decimal) error {
+	log.Debugf("UpdateAccountBalance Service: account %d, new balance %v", accountId, newBalance)
+	return a.accountsRepo.UpdateAccountBalance(accountId, newBalance)
+}
+
+func (a *AccountsServiceInstance) GetAccountBalance(accountId int) (decimal.Decimal, error) {
+	log.Debugf("GetAccountBalance Service: account %d", accountId)
+	return a.accountsRepo.GetAccountBalance(accountId)
 }
 
 func buildCurrencyDTO(currency models.Currency) *dto.CurrencyDTO {

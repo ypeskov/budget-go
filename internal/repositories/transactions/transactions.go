@@ -27,7 +27,7 @@ type Repository interface {
 	DeleteTransaction(transactionId int, userId int) error
 	GetTemplates(userId int) ([]dto.TemplateDTO, error)
 	DeleteTemplates(templateIds []int, userId int) error
-	CreateTransaction(transaction models.Transaction) error
+	CreateTransaction(transaction models.Transaction) (*models.Transaction, error)
 }
 
 type RepositoryInstance struct {
