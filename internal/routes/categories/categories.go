@@ -26,7 +26,7 @@ func GetCategories(c echo.Context) error {
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
-        return echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
+		return echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
 	}
 
 	userCategories, err := sm.CategoriesService.GetUserCategories(user.ID)
@@ -37,14 +37,15 @@ func GetCategories(c echo.Context) error {
 	var categories []dto.CategoryDTO
 	for i := range userCategories {
 		category := dto.CategoryDTO{
-			ID:        &userCategories[i].ID,
-			Name:      &userCategories[i].Name,
-			ParentID:  userCategories[i].ParentID,
-			IsIncome:  &userCategories[i].IsIncome,
-			UserID:    &userCategories[i].UserID,
-			IsDeleted: &userCategories[i].IsDeleted,
-			CreatedAt: &userCategories[i].CreatedAt,
-			UpdatedAt: &userCategories[i].UpdatedAt,
+			ID:         &userCategories[i].ID,
+			Name:       &userCategories[i].Name,
+			ParentID:   userCategories[i].ParentID,
+			ParentName: userCategories[i].ParentName,
+			IsIncome:   &userCategories[i].IsIncome,
+			UserID:     &userCategories[i].UserID,
+			IsDeleted:  &userCategories[i].IsDeleted,
+			CreatedAt:  &userCategories[i].CreatedAt,
+			UpdatedAt:  &userCategories[i].UpdatedAt,
 		}
 		categories = append(categories, category)
 	}

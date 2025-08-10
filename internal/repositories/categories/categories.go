@@ -20,10 +20,19 @@ func NewCategoriesRepository(dbInstance *sqlx.DB) Repository {
 }
 
 func (r *RepositoryInstance) GetUserCategories(userId int) ([]models.UserCategory, error) {
-	const getUserCategoriesQuery = `
+    const getUserCategoriesQuery = `
 SELECT 
-	c.id, c.name, c.parent_id, c.is_income, c.user_id, c.is_deleted, c.created_at, c.updated_at
+    c.id,
+    c.name,
+    c.parent_id,
+    p.name AS parent_name,
+    c.is_income,
+    c.user_id,
+    c.is_deleted,
+    c.created_at,
+    c.updated_at
 FROM user_categories c
+LEFT JOIN user_categories p ON p.id = c.parent_id AND p.user_id = c.user_id AND p.is_deleted = false
 WHERE c.user_id = $1 AND c.is_deleted = false
 ORDER BY LOWER(c.name) ASC;
 `
