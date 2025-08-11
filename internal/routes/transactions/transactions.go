@@ -40,8 +40,8 @@ func GetTransactions(c echo.Context) error {
 		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "user", ID: 0}, http.StatusBadRequest)
 	}
 
-	// parseTransactionFilters extracts and validates query parameters for transaction filtering.
-	filters, err := parseTransactionFilters(c)
+	// ParseTransactionFilters extracts and validates query parameters for transaction filtering.
+	filters, err := dto.ParseTransactionFilters(c)
 	if err != nil {
 		return utils.LogAndReturnError(c, err, http.StatusBadRequest)
 	}
