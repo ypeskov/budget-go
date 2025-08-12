@@ -65,17 +65,9 @@ func GetTransactions(c echo.Context) error {
 	if err != nil {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
-	transactionsDTO := convertTransactionsToDTO(transactions, baseCurrency)
+	transactionsDTO := dto.ConvertTransactionsToResponseList(transactions, baseCurrency)
 
 	return c.JSON(http.StatusOK, transactionsDTO)
-}
-
-func convertTransactionsToDTO(transactions []dto.TransactionWithAccount, baseCurrency models.Currency) []dto.ResponseTransactionDTO {
-	transactionsDTO := make([]dto.ResponseTransactionDTO, 0)
-	for _, transaction := range transactions {
-		transactionsDTO = append(transactionsDTO, dto.TransactionWithAccountToResponseTransactionDTO(transaction, baseCurrency))
-	}
-	return transactionsDTO
 }
 
 func GetTemplates(c echo.Context) error {

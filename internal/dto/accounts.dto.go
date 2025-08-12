@@ -26,8 +26,8 @@ type AccountDTO struct {
 	UpdateAt              string           `json:"updatedAt" db:"updated_at"`
 	BalanceInBaseCurrency *decimal.Decimal `json:"balanceInBaseCurrency" db:"balance_in_base_currency"`
 
-	Currency    CurrencyDTO    `json:"currency" db:"currency"`
-	AccountType AccountTypeDTO `json:"accountType" db:"account_type"`
+	Currency    models.Currency    `json:"currency" db:"currency"`
+	AccountType models.AccountType `json:"accountType" db:"account_type"`
 }
 
 func (a *AccountDTO) MarshalJSON() ([]byte, error) {
@@ -63,19 +63,9 @@ func (a *AccountDTO) MarshalJSON() ([]byte, error) {
 	})
 }
 
-type AccountTypeDTO struct {
-	ID       int    `json:"id" db:"id"`
-	TypeName string `json:"type_name" db:"type_name"`
-	IsCredit bool   `json:"is_credit" db:"is_credit"`
-}
+// AccountTypeDTO has been consolidated with models.AccountType
+// Use models.AccountType directly for all account type operations
 
-func AccountTypeToDTO(accountType models.AccountType) AccountTypeDTO {
-	return AccountTypeDTO{
-		ID:       accountType.ID,
-		TypeName: accountType.TypeName,
-		IsCredit: accountType.IsCredit,
-	}
-}
 
 func AccountToDTO(account models.Account) AccountDTO {
 	accountDTO := AccountDTO{
@@ -96,7 +86,7 @@ func AccountToDTO(account models.Account) AccountDTO {
 		CreatedAt:      account.CreatedAt.Format(time.RFC3339),
 		UpdateAt:       account.UpdatedAt.Format(time.RFC3339),
 
-		AccountType: AccountTypeDTO{
+		AccountType: models.AccountType{
 			ID: account.AccountTypeId,
 		},
 	}

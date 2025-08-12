@@ -15,14 +15,16 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// Helper functions for JSON unmarshaling
+// =============================================================================
+// UTILITY FUNCTIONS (used by multiple DTOs)
+// =============================================================================
 
-// parseCategoryIDFromInterface parses CategoryID from interface{} (can be string or int)
-func parseCategoryIDFromInterface(value interface{}) (*int, error) {
+// parseCategoryIDFromInterface parses CategoryID from any (can be string or int)
+func parseCategoryIdFromInterface(value any) (*int, error) {
 	if value == nil {
 		return nil, nil
 	}
-	
+
 	switch v := value.(type) {
 	case string:
 		if v == "" {
@@ -45,12 +47,12 @@ func parseCategoryIDFromInterface(value interface{}) (*int, error) {
 	}
 }
 
-// parseAmountFromInterface parses Amount from interface{} (can be string or float64)
-func parseAmountFromInterface(value interface{}) (decimal.Decimal, error) {
+// parseAmountFromInterface parses Amount from any (can be string or float64)
+func parseAmountFromInterface(value any) (decimal.Decimal, error) {
 	if value == nil {
 		return decimal.Zero, nil
 	}
-	
+
 	switch v := value.(type) {
 	case string:
 		amount, err := decimal.NewFromString(v)
@@ -73,7 +75,7 @@ func parseIDFromInterface(value interface{}) (int, error) {
 	if value == nil {
 		return 0, nil
 	}
-	
+
 	switch v := value.(type) {
 	case string:
 		if v == "" {
@@ -93,6 +95,10 @@ func parseIDFromInterface(value interface{}) (int, error) {
 		return 0, fmt.Errorf("invalid id type: %T", v)
 	}
 }
+
+// =============================================================================
+// TRANSACTION FILTERS DTO AND RELATED FUNCTIONS
+// =============================================================================
 
 // TransactionFilters represents filtering parameters for transaction queries
 type TransactionFilters struct {
@@ -154,7 +160,6 @@ func ParseTransactionFilters(c echo.Context) (*TransactionFilters, error) {
 }
 
 // Helper functions for parsing query parameters
-
 func getPerPage(c echo.Context) (int, error) {
 	perPage, err := getQueryParamAsInt(c, "per_page", 10)
 	if err != nil {
@@ -245,12 +250,16 @@ func getQueryParamAsTime(c echo.Context, paramName string) (time.Time, error) {
 	return parsedTime, nil
 }
 
+// =============================================================================
+// TRANSACTION DTOs AND THEIR METHODS
+// =============================================================================
+
 type TransactionWithAccount struct {
 	models.Transaction
-	Account     AccountDTO     `db:"accounts"`
-	Currency    CurrencyDTO    `db:"currencies"`
-	AccountType AccountTypeDTO `db:"account_types"`
-	Category    *CategoryDTO   `db:"user_categories"`
+	Account     AccountDTO          `db:"accounts"`
+	Currency    models.Currency     `db:"currencies"`
+	AccountType models.AccountType  `db:"account_types"`
+	Category    *CategoryDTO        `db:"user_categories"`
 }
 
 type CreateTransactionDTO struct {
@@ -283,7 +292,7 @@ func (c *CreateTransactionDTO) UnmarshalJSON(data []byte) error {
 	}
 
 	// Handle CategoryID using helper function
-	categoryID, err := parseCategoryIDFromInterface(aux.CategoryID)
+	categoryID, err := parseCategoryIdFromInterface(aux.CategoryID)
 	if err != nil {
 		return err
 	}
@@ -318,7 +327,6 @@ func (c *CreateTransactionDTO) MarshalJSON() ([]byte, error) {
 	})
 }
 
-
 type PutTransactionDTO struct {
 	CreateTransactionDTO
 	ID         int   `json:"id"`
@@ -341,7 +349,7 @@ func (p *PutTransactionDTO) UnmarshalJSON(data []byte) error {
 	}
 
 	// Handle CategoryID using helper function
-	categoryID, err := parseCategoryIDFromInterface(aux.CategoryID)
+	categoryID, err := parseCategoryIdFromInterface(aux.CategoryID)
 	if err != nil {
 		return err
 	}
@@ -465,6 +473,10 @@ func (t *TransactionDetailDTO) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// =============================================================================
+// SUPPORTING DTOs AND THEIR METHODS
+// =============================================================================
+
 type UserDTO struct {
 	Email     string `json:"email"`
 	ID        int    `json:"id"`
@@ -485,7 +497,7 @@ type AccountDetailDTO struct {
 	IsHidden              bool                 `json:"isHidden"`
 	ShowInReports         bool                 `json:"showInReports"`
 	ID                    int                  `json:"id"`
-	Currency              CurrencyDTO          `json:"currency"`
+	Currency              models.Currency      `json:"currency"`
 	AccountType           AccountTypeDetailDTO `json:"accountType"`
 	IsDeleted             bool                 `json:"isDeleted"`
 	IsArchived            bool                 `json:"isArchived"`
@@ -527,39 +539,17 @@ type CategoryDetailDTO struct {
 	Children  []CategoryDetailDTO `json:"children"`
 }
 
+// =============================================================================
+// RAW DATA DTOs (for database operations)
+// =============================================================================
+
 type TransactionDetailRaw struct {
 	models.Transaction
-	User        UserRaw        `db:"users"`
-	Account     AccountRaw     `db:"accounts"`
-	Currency    CurrencyDTO    `db:"currencies"`
-	AccountType AccountTypeDTO `db:"account_types"`
-	Category    *CategoryRaw   `db:"user_categories"`
-}
-
-type UserRaw struct {
-	ID        int    `db:"id"`
-	Email     string `db:"email"`
-	FirstName string `db:"first_name"`
-	LastName  string `db:"last_name"`
-}
-
-type AccountRaw struct {
-	ID             int              `db:"id"`
-	UserID         int              `db:"user_id"`
-	AccountTypeId  int              `db:"account_type_id"`
-	CurrencyId     int              `db:"currency_id"`
-	Name           string           `db:"name"`
-	Balance        decimal.Decimal  `db:"balance"`
-	InitialBalance *decimal.Decimal `db:"initial_balance"`
-	CreditLimit    *decimal.Decimal `db:"credit_limit"`
-	OpeningDate    time.Time        `db:"opening_date"`
-	Comment        string           `db:"comment"`
-	IsHidden       bool             `db:"is_hidden"`
-	ShowInReports  bool             `db:"show_in_reports"`
-	IsDeleted      bool             `db:"is_deleted"`
-	ArchivedAt     *string          `db:"archived_at"`
-	CreatedAt      time.Time        `db:"created_at"`
-	UpdatedAt      time.Time        `db:"updated_at"`
+	User        models.User         `db:"users"`
+	Account     models.Account      `db:"accounts"`
+	Currency    models.Currency     `db:"currencies"`
+	AccountType models.AccountType  `db:"account_types"`
+	Category    *CategoryRaw        `db:"user_categories"`
 }
 
 type CategoryRaw struct {
@@ -573,7 +563,21 @@ type CategoryRaw struct {
 	UpdatedAt *string `db:"updated_at"`
 }
 
-func TransactionWithAccountToResponseTransactionDTO(twa TransactionWithAccount, baseCurrency models.Currency) ResponseTransactionDTO {
+// =============================================================================
+// CONVERSION FUNCTIONS
+// =============================================================================
+
+// ConvertTransactionsToResponseList converts a slice of TransactionWithAccount to ResponseTransactionDTO
+func ConvertTransactionsToResponseList(transactions []TransactionWithAccount, baseCurrency models.Currency) []ResponseTransactionDTO {
+	responseList := make([]ResponseTransactionDTO, 0, len(transactions))
+	for _, transaction := range transactions {
+		responseList = append(responseList, ConvertToResponseTransaction(transaction, baseCurrency))
+	}
+	return responseList
+}
+
+// ConvertToResponseTransaction converts a single TransactionWithAccount to ResponseTransactionDTO
+func ConvertToResponseTransaction(twa TransactionWithAccount, baseCurrency models.Currency) ResponseTransactionDTO {
 	var creditLimit decimal.Decimal
 	if twa.Account.AccountType.IsCredit {
 		if twa.Account.CreditLimit != nil {
@@ -622,16 +626,8 @@ func TransactionWithAccountToResponseTransactionDTO(twa TransactionWithAccount, 
 			CreditLimit: &creditLimit,
 			OpeningDate: twa.Account.OpeningDate,
 			Comment:     twa.Account.Comment,
-			Currency: CurrencyDTO{
-				ID:   twa.Account.Currency.ID,
-				Code: twa.Account.Currency.Code,
-				Name: twa.Account.Currency.Name,
-			},
-			AccountType: AccountTypeDTO{
-				ID:       twa.Account.AccountType.ID,
-				TypeName: twa.Account.AccountType.TypeName,
-				IsCredit: twa.Account.AccountType.IsCredit,
-			},
+			Currency: twa.Account.Currency,
+			AccountType: twa.Account.AccountType,
 		},
 		Category: CategoryDTO{
 			ID:        twa.Category.ID,

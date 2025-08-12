@@ -6,7 +6,6 @@ import (
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 
-	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/services"
 )
@@ -35,9 +34,5 @@ func GetBaseCurrency(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get base currency")
 	}
 
-	return c.JSON(http.StatusOK, dto.BaseCurrencyDTO{
-		ID:   baseCurrency.ID,
-		Code: baseCurrency.Code,
-		Name: baseCurrency.Name,
-	})
+	return c.JSON(http.StatusOK, baseCurrency)
 }
