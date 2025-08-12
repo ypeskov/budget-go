@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"ypeskov/budget-go/internal/config"
-	"ypeskov/budget-go/internal/dto"
 	customErrors "ypeskov/budget-go/internal/errors"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/services"
@@ -79,9 +78,9 @@ func GetAccountsTypes(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
-	var accountTypesDTO []dto.AccountTypeDTO
+	var accountTypesDTO []models.AccountType
 	for _, accountType := range accountTypes {
-		accountTypesDTO = append(accountTypesDTO, dto.AccountTypeToDTO(accountType))
+		accountTypesDTO = append(accountTypesDTO, accountType)
 	}
 
 	return c.JSON(http.StatusOK, accountTypesDTO)

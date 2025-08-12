@@ -170,7 +170,7 @@ func buildAccountDTO(account models.Account) (dto.AccountDTO, error) {
 		return dto.AccountDTO{}, err
 	}
 
-	accountDto.Currency = *buildCurrencyDTO(accountCurrency)
+	accountDto.Currency = accountCurrency
 
 	amount, err := sm.ExchangeRatesService.CalcAmountFromCurrency(
 		time.Now(),
@@ -228,12 +228,3 @@ func (a *AccountsServiceInstance) GetAccountBalance(accountId int) (decimal.Deci
 	return a.accountsRepo.GetAccountBalance(accountId)
 }
 
-func buildCurrencyDTO(currency models.Currency) *dto.CurrencyDTO {
-	return &dto.CurrencyDTO{
-		ID:        currency.ID,
-		Code:      currency.Code,
-		Name:      currency.Name,
-		CreatedAt: currency.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: currency.UpdatedAt.Format(time.RFC3339),
-	}
-}

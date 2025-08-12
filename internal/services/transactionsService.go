@@ -494,6 +494,15 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 		return err
 	}
 
+	// Handle transfer transactions - update the linked transaction
+	if existingTransaction.IsTransfer && transaction.IsTransfer && existingTransaction.LinkedTransactionID != nil {
+		err = s.updateLinkedTransferTransaction(existingTransaction, &transaction, transactionDTO.TargetAmount)
+		if err != nil {
+			log.Error("Error updating linked transfer transaction: ", err)
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -658,4 +667,54 @@ func (s *TransactionsServiceInstance) updateAccountBalanceByEffect(accountID int
 
 	newBalance := currentBalance.Add(effect)
 	return s.sm.AccountsService.UpdateAccountBalance(accountID, newBalance)
+}
+
+// updateLinkedTransferTransaction updates the linked transaction for a transfer
+func (s *TransactionsServiceInstance) updateLinkedTransferTransaction(existingTx *dto.TransactionDetailRaw, updatedSourceTx *models.Transaction, targetAmount *decimal.Decimal) error {
+	// Get the linked transaction details
+	linkedTx, err := s.transactionsRepository.GetTransactionDetail(*existingTx.LinkedTransactionID, existingTx.UserID)
+	if err != nil {
+		return fmt.Errorf("error getting linked transaction: %w", err)
+	}
+	if linkedTx == nil {
+		return fmt.Errorf("linked transaction not found")
+	}
+
+	// Determine the amount for the linked transaction
+	linkedAmount := updatedSourceTx.Amount // Default to same amount as source
+	if targetAmount != nil {
+		linkedAmount = *targetAmount // Use target amount if specified
+	}
+
+	// Get current balance for the linked account (already updated by handleAccountBalanceUpdates)
+	linkedCurrentBalance, err := s.sm.AccountsService.GetAccountBalance(linkedTx.AccountID)
+	if err != nil {
+		return fmt.Errorf("error getting linked account balance: %w", err)
+	}
+
+	// Create updated linked transaction
+	now := time.Now()
+	updatedLinkedTx := models.Transaction{
+		ID:                  linkedTx.ID,
+		UserID:              linkedTx.UserID,
+		AccountID:           linkedTx.AccountID,
+		Amount:              linkedAmount, // Use the determined amount
+		CategoryID:          linkedTx.CategoryID, // Keep existing category
+		Label:               updatedSourceTx.Label, // Sync label with source
+		IsIncome:            linkedTx.IsIncome, // Keep original direction
+		IsTransfer:          linkedTx.IsTransfer,
+		LinkedTransactionID: updatedSourceTx.ID, // Link back to source
+		Notes:               updatedSourceTx.Notes, // Sync notes with source
+		DateTime:            updatedSourceTx.DateTime, // Sync datetime with source
+		NewBalance:          &linkedCurrentBalance, // Current balance after updates
+		UpdatedAt:           &now,
+	}
+
+	// Update the linked transaction
+	err = s.transactionsRepository.UpdateTransaction(updatedLinkedTx)
+	if err != nil {
+		return fmt.Errorf("error updating linked transaction: %w", err)
+	}
+
+	return nil
 }
