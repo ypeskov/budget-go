@@ -328,9 +328,20 @@ func (c *CreateTransactionDTO) MarshalJSON() ([]byte, error) {
 }
 
 type PutTransactionDTO struct {
-	CreateTransactionDTO
-	ID         int   `json:"id"`
-	IsTemplate *bool `json:"isTemplate"`
+	// Explicitly define all fields instead of embedding to fix JSON unmarshaling
+	ID              int              `json:"id"`
+	UserID          *int             `json:"userId"`
+	AccountID       int              `json:"accountId"`
+	TargetAccountID *int             `json:"targetAccountId"`
+	CategoryID      *int             `json:"categoryId"`
+	Amount          decimal.Decimal  `json:"amount"`
+	TargetAmount    *decimal.Decimal `json:"targetAmount"`
+	Label           string           `json:"label"`
+	Notes           *string          `json:"notes"`
+	DateTime        *time.Time       `json:"dateTime"`
+	IsTransfer      bool             `json:"isTransfer"`
+	IsIncome        bool             `json:"isIncome"`
+	IsTemplate      *bool            `json:"isTemplate"`
 }
 
 func (p *PutTransactionDTO) UnmarshalJSON(data []byte) error {
@@ -351,6 +362,7 @@ func (p *PutTransactionDTO) UnmarshalJSON(data []byte) error {
 	// Handle CategoryID using helper function
 	categoryID, err := parseCategoryIdFromInterface(aux.CategoryID)
 	if err != nil {
+		log.Errorf("Error parsing categoryID: %v", err)
 		return err
 	}
 	p.CategoryID = categoryID
@@ -358,6 +370,7 @@ func (p *PutTransactionDTO) UnmarshalJSON(data []byte) error {
 	// Handle Amount using helper function
 	amount, err := parseAmountFromInterface(aux.Amount)
 	if err != nil {
+		log.Errorf("Error parsing amount: %v", err)
 		return err
 	}
 	p.Amount = amount
@@ -365,15 +378,11 @@ func (p *PutTransactionDTO) UnmarshalJSON(data []byte) error {
 	// Handle ID using helper function
 	id, err := parseIDFromInterface(aux.ID)
 	if err != nil {
+		log.Errorf("Error parsing ID: %v", err)
 		return err
 	}
 	if id != 0 {
 		p.ID = id
-		// Keep embedded pointer in sync if present
-		p.CreateTransactionDTO.ID = &id
-	} else if p.CreateTransactionDTO.ID != nil && p.ID == 0 {
-		// If decoder populated embedded ID, mirror it to top-level
-		p.ID = *p.CreateTransactionDTO.ID
 	}
 
 	return nil
