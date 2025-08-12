@@ -195,13 +195,18 @@ func (s *ReportsServiceInstance) GetExpensesByCategories(userID int, input dto.E
 
     // Sum converted amounts into categories
     for _, row := range rawRows {
+        // Skip transactions without a category (NULL category_id)
+        if row.CategoryID == nil {
+            continue
+        }
+        
         // Convert each transaction amount to base currency using its date
         converted, convErr := s.exchangeRatesService.CalcAmountFromCurrency(row.DateTime, decimal.NewFromFloat(row.Amount), row.CurrencyCode, baseCurrency)
         if convErr != nil {
             // Fallback to original amount if conversion fails (parity with FastAPI)
             converted = decimal.NewFromFloat(row.Amount)
         }
-        if cat, ok := byID[row.CategoryID]; ok {
+        if cat, ok := byID[*row.CategoryID]; ok {
             val, _ := converted.Float64()
             cat.TotalExpenses += val
             cat.CurrencyCode = &baseCurrency

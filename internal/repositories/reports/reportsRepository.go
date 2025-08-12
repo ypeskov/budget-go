@@ -406,7 +406,7 @@ func (r *ReportsRepository) GetExpensesByCategories(userID int, input dto.Expens
 	}
 
 	type ExpenseRow struct {
-		CategoryID   int     `db:"category_id"`
+		CategoryID   *int    `db:"category_id"`
 		Amount       float64 `db:"amount"`
 		CurrencyCode string  `db:"currency_code"`
 	}
@@ -420,7 +420,11 @@ func (r *ReportsRepository) GetExpensesByCategories(userID int, input dto.Expens
 	// Aggregate expenses by category (without currency conversion for now)
 	categoryExpenses := make(map[int]float64)
 	for _, expense := range expenses {
-		categoryExpenses[expense.CategoryID] += expense.Amount
+		// Skip transactions without a category (NULL category_id)
+		if expense.CategoryID == nil {
+			continue
+		}
+		categoryExpenses[*expense.CategoryID] += expense.Amount
 	}
 
 	// Update results with actual expenses
@@ -447,7 +451,7 @@ func (r *ReportsRepository) GetExpensesByCategories(userID int, input dto.Expens
 
 // ExpenseRawRow represents a single expense transaction row for conversion/aggregation in services
 type ExpenseRawRow struct {
-    CategoryID   int       `db:"category_id"`
+    CategoryID   *int      `db:"category_id"`
     Amount       float64   `db:"amount"`
     CurrencyCode string    `db:"currency_code"`
     DateTime     time.Time `db:"date_time"`
