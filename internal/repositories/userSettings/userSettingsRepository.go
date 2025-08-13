@@ -11,6 +11,7 @@ import (
 type Repository interface {
 	GetBaseCurrency(userId int) (models.Currency, error)
 	UpsertUserSettings(userID int, settingsData map[string]interface{}) (*models.UserSettings, error)
+	GetUserSettings(userID int) (*models.UserSettings, error)
 }
 
 type RepositoryInstance struct{}
@@ -83,6 +84,36 @@ func (r *RepositoryInstance) UpsertUserSettings(userID int, settingsData map[str
 			log.Error("Failed to insert user settings: ", err)
 			return nil, err
 		}
+	}
+
+	// Parse the settings JSON string back into map
+	err = json.Unmarshal([]byte(settingsStr), &userSettings.Settings)
+	if err != nil {
+		log.Error("Failed to unmarshal settings: ", err)
+		return nil, err
+	}
+
+	return &userSettings, nil
+}
+
+func (r *RepositoryInstance) GetUserSettings(userID int) (*models.UserSettings, error) {
+	const getUserSettingsQuery = `
+		SELECT id, user_id, settings, created_at, updated_at 
+		FROM user_settings 
+		WHERE user_id = $1;`
+
+	var userSettings models.UserSettings
+	var settingsStr string
+	
+	err := db.QueryRow(getUserSettingsQuery, userID).Scan(
+		&userSettings.ID,
+		&userSettings.UserID,
+		&settingsStr,
+		&userSettings.CreatedAt,
+		&userSettings.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	// Parse the settings JSON string back into map
