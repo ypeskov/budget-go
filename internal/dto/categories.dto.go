@@ -11,3 +11,10 @@ type CategoryDTO struct {
 	CreatedAt  *string `json:"createdAt" db:"created_at"`
 	UpdatedAt  *string `json:"updatedAt" db:"updated_at"`
 }
+
+type CreateCategoryDTO struct {
+	Name      string `json:"name"`
+	IsIncome  bool   `json:"isIncome"`
+	ParentID  *int   `json:"parentId"`
+	IsDeleted bool   `json:"isDeleted"`
+}

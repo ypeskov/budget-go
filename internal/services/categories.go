@@ -10,6 +10,8 @@ import (
 
 type CategoriesService interface {
 	GetUserCategories(userId int) ([]models.UserCategory, error)
+	GetUserCategoriesGrouped(userId int) (map[string][]models.GroupedCategory, error)
+	CreateCategory(name string, isIncome bool, parentID *int, userID int) (*models.UserCategory, error)
 	ValidateCategoryOwnership(categoryId int, userId int) (bool, error)
 }
 
@@ -96,6 +98,97 @@ func (c *CategoryServiceInstance) GetUserCategories(userId int) ([]models.UserCa
     }
 
     return ordered, nil
+}
+
+func (c *CategoryServiceInstance) GetUserCategoriesGrouped(userId int) (map[string][]models.GroupedCategory, error) {
+	userCategories, err := c.categoriesRepo.GetUserCategories(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	// Separate categories by type and organize by parent-child relationships
+	incomeParents := make([]models.GroupedCategory, 0)
+	expenseParents := make([]models.GroupedCategory, 0)
+	childrenByParentID := make(map[int][]models.GroupedCategory)
+
+	// First, collect all categories and separate them
+	for _, category := range userCategories {
+		groupedCategory := models.GroupedCategory{
+			ID:       category.ID,
+			Name:     category.Name,
+			ParentID: category.ParentID,
+			IsIncome: category.IsIncome,
+			Children: make([]models.GroupedCategory, 0),
+		}
+
+		if category.ParentID == nil {
+			// This is a parent category
+			if category.IsIncome {
+				incomeParents = append(incomeParents, groupedCategory)
+			} else {
+				expenseParents = append(expenseParents, groupedCategory)
+			}
+		} else {
+			// This is a child category
+			parentID := *category.ParentID
+			childrenByParentID[parentID] = append(childrenByParentID[parentID], groupedCategory)
+		}
+	}
+
+	// Sort parents alphabetically
+	sort.Slice(incomeParents, func(i, j int) bool {
+		return strings.ToLower(incomeParents[i].Name) < strings.ToLower(incomeParents[j].Name)
+	})
+	sort.Slice(expenseParents, func(i, j int) bool {
+		return strings.ToLower(expenseParents[i].Name) < strings.ToLower(expenseParents[j].Name)
+	})
+
+	// Attach children to their parents
+	for i := range incomeParents {
+		if children, exists := childrenByParentID[incomeParents[i].ID]; exists {
+			sort.Slice(children, func(x, y int) bool {
+				return strings.ToLower(children[x].Name) < strings.ToLower(children[y].Name)
+			})
+			incomeParents[i].Children = children
+		}
+	}
+
+	for i := range expenseParents {
+		if children, exists := childrenByParentID[expenseParents[i].ID]; exists {
+			sort.Slice(children, func(x, y int) bool {
+				return strings.ToLower(children[x].Name) < strings.ToLower(children[y].Name)
+			})
+			expenseParents[i].Children = children
+		}
+	}
+
+	return map[string][]models.GroupedCategory{
+		"income":   incomeParents,
+		"expenses": expenseParents,
+	}, nil
+}
+
+func (c *CategoryServiceInstance) CreateCategory(name string, isIncome bool, parentID *int, userID int) (*models.UserCategory, error) {
+	// Validate parent category if provided
+	if parentID != nil {
+		isValidParent, err := c.categoriesRepo.ValidateCategoryOwnership(*parentID, userID)
+		if err != nil {
+			return nil, err
+		}
+		if !isValidParent {
+			return nil, fmt.Errorf("parent category not found or does not belong to user")
+		}
+	}
+
+	category := models.UserCategory{
+		Name:      name,
+		ParentID:  parentID,
+		IsIncome:  isIncome,
+		UserID:    userID,
+		IsDeleted: false,
+	}
+
+	return c.categoriesRepo.CreateCategory(category)
 }
 
 func (c *CategoryServiceInstance) ValidateCategoryOwnership(categoryId int, userId int) (bool, error) {

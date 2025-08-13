@@ -8,6 +8,7 @@ import (
 
 type Repository interface {
 	GetUserCategories(userId int) ([]models.UserCategory, error)
+	CreateCategory(category models.UserCategory) (*models.UserCategory, error)
 	ValidateCategoryOwnership(categoryId int, userId int) (bool, error)
 }
 
@@ -44,6 +45,49 @@ ORDER BY LOWER(c.name) ASC;
 	}
 
 	return categories, nil
+}
+
+func (r *RepositoryInstance) CreateCategory(category models.UserCategory) (*models.UserCategory, error) {
+	const createCategoryQuery = `
+		INSERT INTO user_categories (name, parent_id, is_income, user_id, is_deleted, created_at, updated_at) 
+		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+		RETURNING id, name, parent_id, is_income, user_id, is_deleted, created_at, updated_at
+	`
+
+	var createdCategory models.UserCategory
+	err := db.QueryRow(
+		createCategoryQuery,
+		category.Name,
+		category.ParentID,
+		category.IsIncome,
+		category.UserID,
+		category.IsDeleted,
+	).Scan(
+		&createdCategory.ID,
+		&createdCategory.Name,
+		&createdCategory.ParentID,
+		&createdCategory.IsIncome,
+		&createdCategory.UserID,
+		&createdCategory.IsDeleted,
+		&createdCategory.CreatedAt,
+		&createdCategory.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// If it has a parent, get the parent name for the response
+	if createdCategory.ParentID != nil {
+		const getParentNameQuery = `SELECT name FROM user_categories WHERE id = $1 AND user_id = $2`
+		var parentName string
+		err := db.Get(&parentName, getParentNameQuery, *createdCategory.ParentID, category.UserID)
+		if err == nil {
+			createdCategory.ParentName = &parentName
+		}
+	}
+
+	return &createdCategory, nil
 }
 
 func (r *RepositoryInstance) ValidateCategoryOwnership(categoryId int, userId int) (bool, error) {

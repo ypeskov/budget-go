@@ -2,6 +2,7 @@ package routes
 
 import (
 	"net/http"
+	"ypeskov/budget-go/internal/routes/budgets"
 	"ypeskov/budget-go/internal/routes/categories"
 	"ypeskov/budget-go/internal/routes/currencies"
 	"ypeskov/budget-go/internal/routes/reports"
@@ -47,6 +48,9 @@ func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo
 
 	accountsRoutesGroup := protectedRoutes.Group("/accounts")
 	accounts.RegisterAccountsRoutes(accountsRoutesGroup, cfg, servicesManager)
+
+	budgetsRoutesGroup := protectedRoutes.Group("/budgets")
+	budgets.RegisterBudgetsRoutes(budgetsRoutesGroup, servicesManager)
 
 	categoriesRoutesGroup := protectedRoutes.Group("/categories")
 	categories.RegisterCategoriesRoutes(categoriesRoutesGroup, servicesManager)
