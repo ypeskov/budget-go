@@ -8,6 +8,7 @@ import (
 
 type Repository interface {
 	GetUserCategories(userId int) ([]models.UserCategory, error)
+	ValidateCategoryOwnership(categoryId int, userId int) (bool, error)
 }
 
 type RepositoryInstance struct{}
@@ -43,4 +44,18 @@ ORDER BY LOWER(c.name) ASC;
 	}
 
 	return categories, nil
+}
+
+func (r *RepositoryInstance) ValidateCategoryOwnership(categoryId int, userId int) (bool, error) {
+	const validateOwnershipQuery = `
+SELECT COUNT(*) FROM user_categories 
+WHERE id = $1 AND user_id = $2 AND is_deleted = false
+`
+	var count int
+	err := db.Get(&count, validateOwnershipQuery, categoryId, userId)
+	if err != nil {
+		return false, err
+	}
+	
+	return count > 0, nil
 }

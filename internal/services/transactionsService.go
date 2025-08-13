@@ -117,6 +117,19 @@ func (s *TransactionsServiceInstance) DeleteTemplates(templateIds []int, userId 
 func (s *TransactionsServiceInstance) CreateTransaction(transaction models.Transaction, targetAccountID *int, targetAmount *decimal.Decimal) (*models.Transaction, error) {
 	log.Debug("CreateTransaction Service")
 
+	// Validate category ownership
+	if transaction.CategoryID != nil && *transaction.CategoryID > 0 {
+		isOwner, err := s.sm.CategoriesService.ValidateCategoryOwnership(*transaction.CategoryID, transaction.UserID)
+		if err != nil {
+			log.Error("Error validating category ownership: ", err)
+			return nil, err
+		}
+		if !isOwner {
+			log.Error("User does not own category ID: ", *transaction.CategoryID)
+			return nil, fmt.Errorf("category not found or does not belong to user")
+		}
+	}
+
 	if transaction.DateTime == nil {
 		now := time.Now()
 		transaction.DateTime = &now
@@ -445,6 +458,19 @@ func convertRawToTransactionDetail(raw *dto.TransactionDetailRaw, baseCurrencyCo
 
 func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTransactionDTO, userId int) error {
 	log.Debug("UpdateTransaction Service")
+
+	// Validate category ownership
+	if transactionDTO.CategoryID != nil && *transactionDTO.CategoryID > 0 {
+		isOwner, err := s.sm.CategoriesService.ValidateCategoryOwnership(*transactionDTO.CategoryID, userId)
+		if err != nil {
+			log.Error("Error validating category ownership: ", err)
+			return err
+		}
+		if !isOwner {
+			log.Error("User does not own category ID: ", *transactionDTO.CategoryID)
+			return fmt.Errorf("category not found or does not belong to user")
+		}
+	}
 
 	// Get the existing transaction to compare values
 	existingTransaction, err := s.transactionsRepository.GetTransactionDetail(transactionDTO.ID, userId)
