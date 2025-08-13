@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
@@ -20,11 +21,19 @@ type BudgetsService interface {
 	ArchiveBudget(budgetID int, userID int) error
 	ProcessOutdatedBudgets() ([]int, error)
 	UpdateBudgetCollectedAmounts(userID int) error
+    // UpdateBudgetCollectedAmountsForCategories recalculates only budgets affected by given category/date pairs
+    UpdateBudgetCollectedAmountsForCategories(userID int, pairs []AffectedCategoryDate) error
 }
 
 type BudgetsServiceInstance struct {
 	budgetsRepository budgetRepo.Repository
 	sm                *Manager
+}
+
+// AffectedCategoryDate describes a category and the date to match budgets' period window
+type AffectedCategoryDate struct {
+    CategoryID int
+    Date       time.Time
 }
 
 func NewBudgetsService(budgetsRepository budgetRepo.Repository, sManager *Manager) BudgetsService {
@@ -79,7 +88,7 @@ func (s *BudgetsServiceInstance) CreateBudget(budgetDTO dto.CreateBudgetDTO, use
 	}
 
 	// Fill budget with existing transactions
-	err = s.fillBudgetWithExistingTransactions(*createdBudget.ID)
+	err = s.fillBudgetWithExistingTransactions(*createdBudget.ID, userID)
 	if err != nil {
 		log.Error("Error filling budget with existing transactions: ", err)
 		// Don't fail the creation, just log the error
@@ -144,7 +153,7 @@ func (s *BudgetsServiceInstance) UpdateBudget(budgetDTO dto.UpdateBudgetDTO, use
 	}
 
 	// Fill budget with existing transactions
-	err = s.fillBudgetWithExistingTransactions(*budget.ID)
+	err = s.fillBudgetWithExistingTransactions(*budget.ID, userID)
 	if err != nil {
 		log.Error("Error filling budget with existing transactions: ", err)
 	}
@@ -251,58 +260,263 @@ func (s *BudgetsServiceInstance) ProcessOutdatedBudgets() ([]int, error) {
 }
 
 func (s *BudgetsServiceInstance) UpdateBudgetCollectedAmounts(userID int) error {
-	log.Debug("UpdateBudgetCollectedAmounts Service")
-
 	userBudgets, err := s.budgetsRepository.GetUserBudgets(userID, "all")
 	if err != nil {
-		log.Error("Error getting user budgets: ", err)
-		return err
+		return fmt.Errorf("failed to get budgets for user %d: %w", userID, err)
 	}
+
+	// Create a shared cache for transaction queries to avoid duplicate database calls
+	// Key: "categories:startDate:endDate", Value: transactions
+	transactionCache := make(map[string][]models.Transaction)
+	cacheMutex := sync.RWMutex{}
+
+	// Process budgets concurrently
+	var wg sync.WaitGroup
+	errorChan := make(chan error, len(userBudgets))
+	
+	// Limit concurrent goroutines to avoid overwhelming the database
+	const maxConcurrency = 10
+	semaphore := make(chan struct{}, maxConcurrency)
 
 	for _, budget := range userBudgets {
 		if budget.ID != nil {
-			err = s.fillBudgetWithExistingTransactions(*budget.ID)
-			if err != nil {
-				log.Error("Error updating budget collected amount: ", err)
-				continue
-			}
+			wg.Add(1)
+			go func(budgetID int, budgetName string) {
+				defer wg.Done()
+				
+				// Acquire semaphore
+				semaphore <- struct{}{}
+				defer func() { <-semaphore }()
+				
+				if err := s.fillBudgetWithExistingTransactionsOptimized(budgetID, userID, transactionCache, &cacheMutex); err != nil {
+					log.Errorf("Failed to update budget %d (%s) for user %d: %v", budgetID, budgetName, userID, err)
+					errorChan <- fmt.Errorf("budget %d (%s): %w", budgetID, budgetName, err)
+				}
+			}(*budget.ID, budget.Name)
 		}
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+	close(errorChan)
+
+	// Collect any errors (non-blocking since channel is closed)
+	var errors []error
+	for err := range errorChan {
+		errors = append(errors, err)
+	}
+
+	// Return first error if any occurred
+	if len(errors) > 0 {
+		return errors[0]
 	}
 
 	return nil
 }
 
-func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactions(budgetID int) error {
+// UpdateBudgetCollectedAmountsForCategories finds budgets active at given dates that include the categories,
+// de-duplicates budgets, and recomputes their collected amounts (full scan of matching transactions).
+func (s *BudgetsServiceInstance) UpdateBudgetCollectedAmountsForCategories(userID int, pairs []AffectedCategoryDate) error {
+    if len(pairs) == 0 {
+        return nil
+    }
+
+    // Collect affected budget IDs
+    budgetIDSet := make(map[int]struct{})
+    for _, p := range pairs {
+        if p.CategoryID == 0 || p.Date.IsZero() {
+            continue
+        }
+        budgets, err := s.budgetsRepository.GetActiveBudgetsByCategoryAndDate(userID, p.CategoryID, p.Date)
+        if err != nil {
+            log.Errorf("failed to get active budgets for user=%d category=%d date=%s: %v", userID, p.CategoryID, p.Date.Format(time.DateOnly), err)
+            continue
+        }
+        for _, b := range budgets {
+            if b.ID != nil {
+                budgetIDSet[*b.ID] = struct{}{}
+            }
+        }
+    }
+
+    if len(budgetIDSet) == 0 {
+        return nil
+    }
+
+    // Prepare shared cache for transaction queries
+    transactionCache := make(map[string][]models.Transaction)
+    cacheMutex := sync.RWMutex{}
+
+    // Process affected budgets concurrently but limited
+    const maxConcurrency = 10
+    semaphore := make(chan struct{}, maxConcurrency)
+    var wg sync.WaitGroup
+    var firstErr error
+    var firstErrOnce sync.Once
+
+    for budgetID := range budgetIDSet {
+        wg.Add(1)
+        id := budgetID
+        go func() {
+            defer wg.Done()
+            semaphore <- struct{}{}
+            defer func() { <-semaphore }()
+            if err := s.fillBudgetWithExistingTransactionsOptimized(id, userID, transactionCache, &cacheMutex); err != nil {
+                log.Errorf("failed to update budget %d for user %d: %v", id, userID, err)
+                firstErrOnce.Do(func() { firstErr = err })
+            }
+        }()
+    }
+    wg.Wait()
+
+    return firstErr
+}
+
+func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactions(budgetID int, userID int) error {
 	// Get budget details
-	budget, err := s.budgetsRepository.GetBudgetByID(budgetID, 0) // Use 0 as userID since we're using budgetID
+	budget, err := s.budgetsRepository.GetBudgetByID(budgetID, userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get budget %d for user %d: %w", budgetID, userID, err)
 	}
 
 	// Parse included categories
 	categoryIDs, err := ParseCategoryIDsFromString(*budget.IncludedCategories)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse category IDs '%s' for budget %d: %w", *budget.IncludedCategories, budgetID, err)
 	}
 
 	if len(categoryIDs) == 0 {
-		// No categories specified, set collected amount to 0
 		return s.budgetsRepository.UpdateBudgetCollectedAmount(budgetID, decimal.Zero)
 	}
 
-	// Get base currency for the user
-	_, err = s.sm.UserSettingsService.GetBaseCurrency(budget.UserID)
+	// Get expense transactions for this budget
+	var transactionIds []int
+	transactions, err := s.sm.TransactionsService.GetExpenseTransactionsForBudget(
+		budget.UserID, categoryIDs, *budget.StartDate, *budget.EndDate, transactionIds)
 	if err != nil {
-		log.Error("Error getting base currency: ", err)
-		// Continue with budget currency if base currency fails
+		return fmt.Errorf("failed to get expense transactions for budget %d (user=%d, categories=%v, start=%v, end=%v): %w", 
+			budgetID, budget.UserID, categoryIDs, budget.StartDate, budget.EndDate, err)
 	}
 
-	// Get transactions within budget period and categories
-	// This is a simplified version - you might want to create a specific repository method
-	// For now, we'll set collected amount to 0 and log that this needs implementation
-	log.Info("fillBudgetWithExistingTransactions needs full implementation with transaction filtering")
+	// Calculate total collected amount in budget's currency
+	totalAmount := decimal.Zero
+	for _, transaction := range transactions {
+		// Convert transaction amount to budget currency
+		convertedAmount, err := s.convertTransactionAmountToBudgetCurrency(transaction, budget.CurrencyID)
+		if err != nil {
+			return fmt.Errorf("failed to convert transaction %d (amount=%s) to budget %d currency: %w", 
+				*transaction.ID, transaction.Amount.String(), budgetID, err)
+		}
+		
+		totalAmount = totalAmount.Add(convertedAmount)
+	}
 
-	return s.budgetsRepository.UpdateBudgetCollectedAmount(budgetID, decimal.Zero)
+	// Update budget collected amount
+	err = s.budgetsRepository.UpdateBudgetCollectedAmount(budgetID, totalAmount)
+	if err != nil {
+		return fmt.Errorf("failed to update collected amount for budget %d to %s: %w", budgetID, totalAmount.String(), err)
+	}
+	
+	return nil
+}
+
+func (s *BudgetsServiceInstance) convertTransactionAmountToBudgetCurrency(transaction models.Transaction, budgetCurrencyID int) (decimal.Decimal, error) {
+	// Get transaction account to know its currency
+	accountDTO, err := s.sm.AccountsService.GetAccountById(transaction.AccountID)
+	if err != nil {
+		return decimal.Zero, fmt.Errorf("failed to get account %d for transaction %d: %w", transaction.AccountID, *transaction.ID, err)
+	}
+	
+	// If transaction account currency matches budget currency, no conversion needed
+	if accountDTO.CurrencyId == budgetCurrencyID {
+		return transaction.Amount, nil
+	}
+	
+	// If transaction has base_currency_amount and user's base currency matches budget currency
+	userBaseCurrency, err := s.sm.UserSettingsService.GetBaseCurrency(transaction.UserID)
+	if err == nil && transaction.BaseCurrencyAmount != nil && userBaseCurrency.ID == budgetCurrencyID {
+		return *transaction.BaseCurrencyAmount, nil
+	}
+	
+	// Get budget currency details to get the currency code
+	budgetCurrency, err := s.sm.CurrenciesService.GetCurrency(budgetCurrencyID)
+	if err != nil {
+		return decimal.Zero, fmt.Errorf("failed to get budget currency %d: %w", budgetCurrencyID, err)
+	}
+	
+	// Need currency conversion - use exchange rate service with currency codes
+	convertedAmount, err := s.sm.ExchangeRatesService.CalcAmountFromCurrency(
+		*transaction.DateTime, transaction.Amount, accountDTO.Currency.Code, budgetCurrency.Code)
+	if err != nil {
+		return decimal.Zero, fmt.Errorf("failed to convert %s %s to %s on %v: %w", 
+			transaction.Amount.String(), accountDTO.Currency.Code, budgetCurrency.Code, transaction.DateTime.Format("2006-01-02"), err)
+	}
+	
+	return convertedAmount, nil
+}
+
+// fillBudgetWithExistingTransactionsOptimized is a cache-aware version for concurrent processing
+func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactionsOptimized(budgetID int, userID int, transactionCache map[string][]models.Transaction, cacheMutex *sync.RWMutex) error {
+	// Get budget details
+	budget, err := s.budgetsRepository.GetBudgetByID(budgetID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get budget %d for user %d: %w", budgetID, userID, err)
+	}
+
+	// Parse included categories
+	categoryIDs, err := ParseCategoryIDsFromString(*budget.IncludedCategories)
+	if err != nil {
+		return fmt.Errorf("failed to parse category IDs '%s' for budget %d: %w", *budget.IncludedCategories, budgetID, err)
+	}
+
+	if len(categoryIDs) == 0 {
+		return s.budgetsRepository.UpdateBudgetCollectedAmount(budgetID, decimal.Zero)
+	}
+
+	// Create cache key for this query
+	cacheKey := fmt.Sprintf("%v:%s:%s", categoryIDs, budget.StartDate.Format("2006-01-02"), budget.EndDate.Format("2006-01-02"))
+	
+	// Try to get transactions from cache first
+	cacheMutex.RLock()
+	transactions, found := transactionCache[cacheKey]
+	cacheMutex.RUnlock()
+
+	if !found {
+		// Not in cache, fetch from database
+		var transactionIds []int
+		transactions, err = s.sm.TransactionsService.GetExpenseTransactionsForBudget(
+			budget.UserID, categoryIDs, *budget.StartDate, *budget.EndDate, transactionIds)
+		if err != nil {
+			return fmt.Errorf("failed to get expense transactions for budget %d (user=%d, categories=%v, start=%v, end=%v): %w", 
+				budgetID, budget.UserID, categoryIDs, budget.StartDate, budget.EndDate, err)
+		}
+
+		// Store in cache for other budgets
+		cacheMutex.Lock()
+		transactionCache[cacheKey] = transactions
+		cacheMutex.Unlock()
+	}
+
+	// Calculate total collected amount in budget's currency
+	totalAmount := decimal.Zero
+	for _, transaction := range transactions {
+		// Convert transaction amount to budget currency
+		convertedAmount, err := s.convertTransactionAmountToBudgetCurrency(transaction, budget.CurrencyID)
+		if err != nil {
+			return fmt.Errorf("failed to convert transaction %d (amount=%s) to budget %d currency: %w", 
+				*transaction.ID, transaction.Amount.String(), budgetID, err)
+		}
+		
+		totalAmount = totalAmount.Add(convertedAmount)
+	}
+
+	// Update budget collected amount
+	err = s.budgetsRepository.UpdateBudgetCollectedAmount(budgetID, totalAmount)
+	if err != nil {
+		return fmt.Errorf("failed to update collected amount for budget %d to %s: %w", budgetID, totalAmount.String(), err)
+	}
+	
+	return nil
 }
 
 func (s *BudgetsServiceInstance) createCopyOfOutdatedBudget(budget models.Budget) error {

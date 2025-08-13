@@ -1,12 +1,13 @@
 package budgets
 
 import (
-	"fmt"
-	"strings"
-	"ypeskov/budget-go/internal/models"
+    "fmt"
+    "strings"
+    "time"
+    "ypeskov/budget-go/internal/models"
 
-	"github.com/jmoiron/sqlx"
-	"github.com/shopspring/decimal"
+    "github.com/jmoiron/sqlx"
+    "github.com/shopspring/decimal"
 )
 
 type Repository interface {
@@ -20,6 +21,9 @@ type Repository interface {
 	UpdateBudgetCollectedAmount(budgetID int, amount decimal.Decimal) error
 	GetOutdatedBudgets() ([]models.Budget, error)
 	GetUserCategoriesForBudget(userID int, categoryIDs []int) ([]int, error)
+    // GetActiveBudgetsByCategoryAndDate returns budgets for a user that are active on a date
+    // and include the given category ID in their included_categories list
+    GetActiveBudgetsByCategoryAndDate(userID int, categoryID int, date time.Time) ([]models.Budget, error)
 }
 
 type RepositoryInstance struct{}
@@ -269,6 +273,30 @@ WHERE user_id = $1 AND id IN (%s) AND is_deleted = false
 	}
 
 	return validCategories, nil
+}
+
+// GetActiveBudgetsByCategoryAndDate returns budgets active at the given date that include categoryID
+func (r *RepositoryInstance) GetActiveBudgetsByCategoryAndDate(userID int, categoryID int, date time.Time) ([]models.Budget, error) {
+    // included_categories is stored as comma-separated string of ints
+    // Use string_to_array to convert to int[] and check membership with ANY()
+    const q = `
+SELECT id, user_id, name, currency_id, target_amount, collected_amount, period, repeat,
+       start_date, end_date, included_categories, comment, is_deleted, is_archived,
+       created_at, updated_at
+FROM budgets
+WHERE user_id = $1
+  AND is_deleted = false
+  AND is_archived = false
+  AND start_date <= $2
+  AND end_date > $2
+  AND $3 = ANY(string_to_array(NULLIF(included_categories,''), ',')::int[])
+`
+
+    var budgets []models.Budget
+    if err := db.Select(&budgets, q, userID, date, categoryID); err != nil {
+        return nil, err
+    }
+    return budgets, nil
 }
 
 

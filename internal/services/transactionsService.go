@@ -28,6 +28,7 @@ type TransactionsService interface {
 	GetTemplates(userId int) ([]dto.TemplateDTO, error)
 	DeleteTemplates(templateIds []int, userId int) error
 	CreateTransaction(transaction models.Transaction, targetAccountID *int, targetAmount *decimal.Decimal) (*models.Transaction, error)
+	GetExpenseTransactionsForBudget(userId int, categoryIds []int, startDate time.Time, endDate time.Time, transactionIds []int) ([]models.Transaction, error)
 }
 
 type TransactionsServiceInstance struct {
@@ -191,6 +192,19 @@ func (s *TransactionsServiceInstance) createRegularTransaction(transaction model
 		}
 		return nil, err
 	}
+
+    // Update only affected budgets (recompute), if this is an expense transaction
+    if !transaction.IsIncome && !transaction.IsTransfer {
+        pairs := []AffectedCategoryDate{}
+        if transaction.CategoryID != nil && transaction.DateTime != nil {
+            pairs = append(pairs, AffectedCategoryDate{CategoryID: *transaction.CategoryID, Date: *transaction.DateTime})
+        }
+        if len(pairs) > 0 {
+            if err := s.sm.BudgetsService.UpdateBudgetCollectedAmountsForCategories(transaction.UserID, pairs); err != nil {
+                log.Error("Error updating affected budgets after transaction creation: ", err)
+            }
+        }
+    }
 
 	return createdTransaction, nil
 }
@@ -529,6 +543,21 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 		}
 	}
 
+    // Update only affected budgets (recompute) for expense impact
+    // Consider both old and new values if either side is expense and not transfer
+    var pairs []AffectedCategoryDate
+    if !existingTransaction.IsIncome && !existingTransaction.IsTransfer && existingTransaction.CategoryID != nil && existingTransaction.DateTime != nil {
+        pairs = append(pairs, AffectedCategoryDate{CategoryID: *existingTransaction.CategoryID, Date: *existingTransaction.DateTime})
+    }
+    if !transaction.IsIncome && !transaction.IsTransfer && transaction.CategoryID != nil && transaction.DateTime != nil {
+        pairs = append(pairs, AffectedCategoryDate{CategoryID: *transaction.CategoryID, Date: *transaction.DateTime})
+    }
+    if len(pairs) > 0 {
+        if err := s.sm.BudgetsService.UpdateBudgetCollectedAmountsForCategories(userId, pairs); err != nil {
+            log.Error("Error updating affected budgets after transaction update: ", err)
+        }
+    }
+
 	return nil
 }
 
@@ -557,6 +586,14 @@ func (s *TransactionsServiceInstance) DeleteTransaction(transactionId int, userI
 		log.Error("Error deleting transaction: ", err)
 		return err
 	}
+
+    // Update only affected budgets (recompute) if this was an expense transaction
+    if !existingTransaction.IsIncome && !existingTransaction.IsTransfer && existingTransaction.CategoryID != nil && existingTransaction.DateTime != nil {
+        pairs := []AffectedCategoryDate{{CategoryID: *existingTransaction.CategoryID, Date: *existingTransaction.DateTime}}
+        if err := s.sm.BudgetsService.UpdateBudgetCollectedAmountsForCategories(userId, pairs); err != nil {
+            log.Error("Error updating affected budgets after transaction deletion: ", err)
+        }
+    }
 
 	return nil
 }
@@ -743,4 +780,13 @@ func (s *TransactionsServiceInstance) updateLinkedTransferTransaction(existingTx
 	}
 
 	return nil
+}
+
+func (s *TransactionsServiceInstance) GetExpenseTransactionsForBudget(userId int, categoryIds []int, startDate time.Time, endDate time.Time, transactionIds []int) ([]models.Transaction, error) {
+	transactions, err := s.transactionsRepository.GetExpenseTransactionsForBudget(userId, categoryIds, startDate, endDate, transactionIds)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get expense transactions for user %d: %w", userId, err)
+	}
+
+	return transactions, nil
 }

@@ -3,8 +3,6 @@ package transactions
 import (
 	"fmt"
 	"ypeskov/budget-go/internal/models"
-
-	log "github.com/sirupsen/logrus"
 )
 
 func (r *RepositoryInstance) CreateTransaction(transaction models.Transaction) (*models.Transaction, error) {
@@ -46,7 +44,7 @@ func (r *RepositoryInstance) CreateTransaction(transaction models.Transaction) (
 		RETURNING id, user_id, account_id, amount, new_balance, category_id, label, is_income, is_transfer, 
 				  linked_transaction_id, base_currency_amount, notes, date_time, created_at, updated_at, is_deleted
 	`
-	
+
 	rows, err := r.db.NamedQuery(query, transaction)
 	if err != nil {
 		return nil, logAndReturnError(err, "Error creating transaction: ")
@@ -62,8 +60,6 @@ func (r *RepositoryInstance) CreateTransaction(transaction models.Transaction) (
 	if err != nil {
 		return nil, logAndReturnError(err, "Error scanning created transaction: ")
 	}
-
-	log.Debugf("Transaction created: %+v", createdTransaction)
 
 	return &createdTransaction, nil
 }
