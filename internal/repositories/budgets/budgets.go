@@ -21,8 +21,8 @@ type Repository interface {
 	UpdateBudgetCollectedAmount(budgetID int, amount decimal.Decimal) error
 	GetOutdatedBudgets() ([]models.Budget, error)
 	GetUserCategoriesForBudget(userID int, categoryIDs []int) ([]int, error)
-    // GetActiveBudgetsByCategoryAndDate returns budgets for a user that are active on a date
-    // and include the given category ID in their included_categories list
+    // GetActiveBudgetsByCategoryAndDate returns budgets for a user whose period covers the given date
+    // and include the given category ID in their included_categories list. Includes archived budgets.
     GetActiveBudgetsByCategoryAndDate(userID int, categoryID int, date time.Time) ([]models.Budget, error)
 }
 
@@ -275,7 +275,8 @@ WHERE user_id = $1 AND id IN (%s) AND is_deleted = false
 	return validCategories, nil
 }
 
-// GetActiveBudgetsByCategoryAndDate returns budgets active at the given date that include categoryID
+// GetActiveBudgetsByCategoryAndDate returns budgets whose period covers the given date that include categoryID.
+// Archived budgets are included; deleted budgets are excluded.
 func (r *RepositoryInstance) GetActiveBudgetsByCategoryAndDate(userID int, categoryID int, date time.Time) ([]models.Budget, error) {
     // included_categories is stored as comma-separated string of ints
     // Use string_to_array to convert to int[] and check membership with ANY()
@@ -286,7 +287,6 @@ SELECT id, user_id, name, currency_id, target_amount, collected_amount, period, 
 FROM budgets
 WHERE user_id = $1
   AND is_deleted = false
-  AND is_archived = false
   AND start_date <= $2
   AND end_date > $2
   AND $3 = ANY(string_to_array(NULLIF(included_categories,''), ',')::int[])
