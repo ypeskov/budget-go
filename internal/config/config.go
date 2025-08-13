@@ -16,6 +16,18 @@ type Config struct {
 	DbName         string `env:"DB_NAME" envDefault:"budget"`
 	SecretKey      string `env:"SECRET_KEY" envDefault:"SECRET_KEY"`
 	GoogleClientID string `env:"GOOGLE_CLIENT_ID" envDefault:""`
+
+    // Background jobs (Asynq)
+    RedisAddr string `env:"REDIS_ADDR" envDefault:"localhost:6379"`
+    Timezone  string `env:"SCHEDULER_TIMEZONE" envDefault:"Europe/Sofia"`
+
+    // Daily schedules (24h clock)
+    ExchangeRatesHour   int `env:"DAILY_UPDATE_EXCHANGE_RATES_HOUR" envDefault:"3"`
+    ExchangeRatesMinute int `env:"DAILY_UPDATE_EXCHANGE_RATES_MINUTE" envDefault:"0"`
+    DBBackupHour        int `env:"DAILY_DB_BACKUP_HOUR" envDefault:"4"`
+    DBBackupMinute      int `env:"DAILY_DB_BACKUP_MINUTE" envDefault:"0"`
+    BudgetsProcHour     int `env:"DAILY_BUDGETS_PROCESSING_HOUR" envDefault:"2"`
+    BudgetsProcMinute   int `env:"DAILY_BUDGETS_PROCESSING_MINUTE" envDefault:"0"`
 }
 
 func New() *Config {
