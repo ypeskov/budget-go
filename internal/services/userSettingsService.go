@@ -9,6 +9,7 @@ import (
 
 type UserSettingsService interface {
 	GetBaseCurrency(userId int) (models.Currency, error)
+	UpdateUserSettings(userID int, settingsData map[string]interface{}) (*models.UserSettings, error)
 }
 
 type UserSettingsServiceInstance struct {
@@ -29,4 +30,14 @@ func (u *UserSettingsServiceInstance) GetBaseCurrency(userId int) (models.Curren
 	}
 
 	return baseCurrency, nil
+}
+
+func (u *UserSettingsServiceInstance) UpdateUserSettings(userID int, settingsData map[string]interface{}) (*models.UserSettings, error) {
+	userSettings, err := u.userSettingsRepo.UpsertUserSettings(userID, settingsData)
+	if err != nil {
+		log.Error("Failed to update user settings: ", err)
+		return nil, err
+	}
+
+	return userSettings, nil
 }
