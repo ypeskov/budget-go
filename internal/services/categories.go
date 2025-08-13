@@ -11,6 +11,7 @@ import (
 type CategoriesService interface {
 	GetUserCategories(userId int) ([]models.UserCategory, error)
 	GetUserCategoriesGrouped(userId int) (map[string][]models.GroupedCategory, error)
+	CreateCategory(name string, isIncome bool, parentID *int, userID int) (*models.UserCategory, error)
 	ValidateCategoryOwnership(categoryId int, userId int) (bool, error)
 }
 
@@ -165,6 +166,29 @@ func (c *CategoryServiceInstance) GetUserCategoriesGrouped(userId int) (map[stri
 		"income":   incomeParents,
 		"expenses": expenseParents,
 	}, nil
+}
+
+func (c *CategoryServiceInstance) CreateCategory(name string, isIncome bool, parentID *int, userID int) (*models.UserCategory, error) {
+	// Validate parent category if provided
+	if parentID != nil {
+		isValidParent, err := c.categoriesRepo.ValidateCategoryOwnership(*parentID, userID)
+		if err != nil {
+			return nil, err
+		}
+		if !isValidParent {
+			return nil, fmt.Errorf("parent category not found or does not belong to user")
+		}
+	}
+
+	category := models.UserCategory{
+		Name:      name,
+		ParentID:  parentID,
+		IsIncome:  isIncome,
+		UserID:    userID,
+		IsDeleted: false,
+	}
+
+	return c.categoriesRepo.CreateCategory(category)
 }
 
 func (c *CategoryServiceInstance) ValidateCategoryOwnership(categoryId int, userId int) (bool, error) {

@@ -20,6 +20,7 @@ func RegisterCategoriesRoutes(g *echo.Group, manager *services.Manager) {
 
 	g.GET("", GetCategories)
 	g.GET("/grouped", GetGroupedCategories)
+	g.POST("", CreateCategory)
 }
 
 func GetCategories(c echo.Context) error {
@@ -68,4 +69,50 @@ func GetGroupedCategories(c echo.Context) error {
 	}
 
 	return c.JSON(200, groupedCategories)
+}
+
+func CreateCategory(c echo.Context) error {
+	log.Debug("CreateCategory Route")
+
+	user, ok := c.Get("authenticated_user").(*models.User)
+	if !ok || user == nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	var createDTO dto.CreateCategoryDTO
+	if err := c.Bind(&createDTO); err != nil {
+		log.Error("Failed to bind create category DTO: ", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
+	}
+
+	// Basic validation
+	if createDTO.Name == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Category name is required")
+	}
+
+	createdCategory, err := sm.CategoriesService.CreateCategory(
+		createDTO.Name,
+		createDTO.IsIncome,
+		createDTO.ParentID,
+		user.ID,
+	)
+	if err != nil {
+		log.Error("Failed to create category: ", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to create category")
+	}
+
+	// Convert to DTO format for response
+	categoryDTO := dto.CategoryDTO{
+		ID:         &createdCategory.ID,
+		Name:       &createdCategory.Name,
+		ParentID:   createdCategory.ParentID,
+		ParentName: createdCategory.ParentName,
+		IsIncome:   &createdCategory.IsIncome,
+		UserID:     &createdCategory.UserID,
+		IsDeleted:  &createdCategory.IsDeleted,
+		CreatedAt:  &createdCategory.CreatedAt,
+		UpdatedAt:  &createdCategory.UpdatedAt,
+	}
+
+	return c.JSON(http.StatusCreated, categoryDTO)
 }
