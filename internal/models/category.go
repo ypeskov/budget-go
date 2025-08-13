@@ -11,3 +11,11 @@ type UserCategory struct {
 	CreatedAt  string  `db:"created_at"`
 	UpdatedAt  string  `db:"updated_at"`
 }
+
+type GroupedCategory struct {
+	ID       int               `json:"id"`
+	Name     string            `json:"name"`
+	ParentID *int              `json:"parentId"`
+	IsIncome bool              `json:"isIncome"`
+	Children []GroupedCategory `json:"children"`
+}

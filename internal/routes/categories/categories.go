@@ -19,6 +19,7 @@ func RegisterCategoriesRoutes(g *echo.Group, manager *services.Manager) {
 	sm = manager
 
 	g.GET("", GetCategories)
+	g.GET("/grouped", GetGroupedCategories)
 }
 
 func GetCategories(c echo.Context) error {
@@ -51,4 +52,20 @@ func GetCategories(c echo.Context) error {
 	}
 
 	return c.JSON(200, categories)
+}
+
+func GetGroupedCategories(c echo.Context) error {
+	log.Debug("GetGroupedCategories Route")
+
+	user, ok := c.Get("authenticated_user").(*models.User)
+	if !ok || user == nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	groupedCategories, err := sm.CategoriesService.GetUserCategoriesGrouped(user.ID)
+	if err != nil {
+		return c.JSON(500, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(200, groupedCategories)
 }
