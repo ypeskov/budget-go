@@ -79,7 +79,7 @@ func (s *BudgetsServiceInstance) CreateBudget(budgetDTO dto.CreateBudgetDTO, use
 	}
 
 	// Fill budget with existing transactions
-	err = s.fillBudgetWithExistingTransactions(*createdBudget.ID)
+	err = s.fillBudgetWithExistingTransactions(*createdBudget.ID, userID)
 	if err != nil {
 		log.Error("Error filling budget with existing transactions: ", err)
 		// Don't fail the creation, just log the error
@@ -144,7 +144,7 @@ func (s *BudgetsServiceInstance) UpdateBudget(budgetDTO dto.UpdateBudgetDTO, use
 	}
 
 	// Fill budget with existing transactions
-	err = s.fillBudgetWithExistingTransactions(*budget.ID)
+	err = s.fillBudgetWithExistingTransactions(*budget.ID, userID)
 	if err != nil {
 		log.Error("Error filling budget with existing transactions: ", err)
 	}
@@ -251,19 +251,16 @@ func (s *BudgetsServiceInstance) ProcessOutdatedBudgets() ([]int, error) {
 }
 
 func (s *BudgetsServiceInstance) UpdateBudgetCollectedAmounts(userID int) error {
-	log.Debug("UpdateBudgetCollectedAmounts Service")
-
 	userBudgets, err := s.budgetsRepository.GetUserBudgets(userID, "all")
 	if err != nil {
-		log.Error("Error getting user budgets: ", err)
-		return err
+		return fmt.Errorf("failed to get budgets for user %d: %w", userID, err)
 	}
 
 	for _, budget := range userBudgets {
 		if budget.ID != nil {
-			err = s.fillBudgetWithExistingTransactions(*budget.ID)
+			err = s.fillBudgetWithExistingTransactions(*budget.ID, userID)
 			if err != nil {
-				log.Error("Error updating budget collected amount: ", err)
+				log.Errorf("Failed to update budget %d (%s) for user %d: %v", *budget.ID, budget.Name, userID, err)
 				continue
 			}
 		}
@@ -272,37 +269,87 @@ func (s *BudgetsServiceInstance) UpdateBudgetCollectedAmounts(userID int) error 
 	return nil
 }
 
-func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactions(budgetID int) error {
+func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactions(budgetID int, userID int) error {
 	// Get budget details
-	budget, err := s.budgetsRepository.GetBudgetByID(budgetID, 0) // Use 0 as userID since we're using budgetID
+	budget, err := s.budgetsRepository.GetBudgetByID(budgetID, userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get budget %d for user %d: %w", budgetID, userID, err)
 	}
 
 	// Parse included categories
 	categoryIDs, err := ParseCategoryIDsFromString(*budget.IncludedCategories)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse category IDs '%s' for budget %d: %w", *budget.IncludedCategories, budgetID, err)
 	}
 
 	if len(categoryIDs) == 0 {
-		// No categories specified, set collected amount to 0
 		return s.budgetsRepository.UpdateBudgetCollectedAmount(budgetID, decimal.Zero)
 	}
 
-	// Get base currency for the user
-	_, err = s.sm.UserSettingsService.GetBaseCurrency(budget.UserID)
+	// Get expense transactions for this budget
+	var transactionIds []int
+	transactions, err := s.sm.TransactionsService.GetExpenseTransactionsForBudget(
+		budget.UserID, categoryIDs, *budget.StartDate, *budget.EndDate, transactionIds)
 	if err != nil {
-		log.Error("Error getting base currency: ", err)
-		// Continue with budget currency if base currency fails
+		return fmt.Errorf("failed to get expense transactions for budget %d (user=%d, categories=%v, start=%v, end=%v): %w", 
+			budgetID, budget.UserID, categoryIDs, budget.StartDate, budget.EndDate, err)
 	}
 
-	// Get transactions within budget period and categories
-	// This is a simplified version - you might want to create a specific repository method
-	// For now, we'll set collected amount to 0 and log that this needs implementation
-	log.Info("fillBudgetWithExistingTransactions needs full implementation with transaction filtering")
+	// Calculate total collected amount in budget's currency
+	totalAmount := decimal.Zero
+	for _, transaction := range transactions {
+		// Convert transaction amount to budget currency
+		convertedAmount, err := s.convertTransactionAmountToBudgetCurrency(transaction, budget.CurrencyID)
+		if err != nil {
+			return fmt.Errorf("failed to convert transaction %d (amount=%s) to budget %d currency: %w", 
+				*transaction.ID, transaction.Amount.String(), budgetID, err)
+		}
+		
+		totalAmount = totalAmount.Add(convertedAmount)
+	}
 
-	return s.budgetsRepository.UpdateBudgetCollectedAmount(budgetID, decimal.Zero)
+	// Update budget collected amount
+	err = s.budgetsRepository.UpdateBudgetCollectedAmount(budgetID, totalAmount)
+	if err != nil {
+		return fmt.Errorf("failed to update collected amount for budget %d to %s: %w", budgetID, totalAmount.String(), err)
+	}
+	
+	return nil
+}
+
+func (s *BudgetsServiceInstance) convertTransactionAmountToBudgetCurrency(transaction models.Transaction, budgetCurrencyID int) (decimal.Decimal, error) {
+	// Get transaction account to know its currency
+	accountDTO, err := s.sm.AccountsService.GetAccountById(transaction.AccountID)
+	if err != nil {
+		return decimal.Zero, fmt.Errorf("failed to get account %d for transaction %d: %w", transaction.AccountID, *transaction.ID, err)
+	}
+	
+	// If transaction account currency matches budget currency, no conversion needed
+	if accountDTO.CurrencyId == budgetCurrencyID {
+		return transaction.Amount, nil
+	}
+	
+	// If transaction has base_currency_amount and user's base currency matches budget currency
+	userBaseCurrency, err := s.sm.UserSettingsService.GetBaseCurrency(transaction.UserID)
+	if err == nil && transaction.BaseCurrencyAmount != nil && userBaseCurrency.ID == budgetCurrencyID {
+		return *transaction.BaseCurrencyAmount, nil
+	}
+	
+	// Get budget currency details to get the currency code
+	budgetCurrency, err := s.sm.CurrenciesService.GetCurrency(budgetCurrencyID)
+	if err != nil {
+		return decimal.Zero, fmt.Errorf("failed to get budget currency %d: %w", budgetCurrencyID, err)
+	}
+	
+	// Need currency conversion - use exchange rate service with currency codes
+	convertedAmount, err := s.sm.ExchangeRatesService.CalcAmountFromCurrency(
+		*transaction.DateTime, transaction.Amount, accountDTO.Currency.Code, budgetCurrency.Code)
+	if err != nil {
+		return decimal.Zero, fmt.Errorf("failed to convert %s %s to %s on %v: %w", 
+			transaction.Amount.String(), accountDTO.Currency.Code, budgetCurrency.Code, transaction.DateTime.Format("2006-01-02"), err)
+	}
+	
+	return convertedAmount, nil
 }
 
 func (s *BudgetsServiceInstance) createCopyOfOutdatedBudget(budget models.Budget) error {

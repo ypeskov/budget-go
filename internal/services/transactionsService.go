@@ -28,6 +28,7 @@ type TransactionsService interface {
 	GetTemplates(userId int) ([]dto.TemplateDTO, error)
 	DeleteTemplates(templateIds []int, userId int) error
 	CreateTransaction(transaction models.Transaction, targetAccountID *int, targetAmount *decimal.Decimal) (*models.Transaction, error)
+	GetExpenseTransactionsForBudget(userId int, categoryIds []int, startDate time.Time, endDate time.Time, transactionIds []int) ([]models.Transaction, error)
 }
 
 type TransactionsServiceInstance struct {
@@ -190,6 +191,15 @@ func (s *TransactionsServiceInstance) createRegularTransaction(transaction model
 			log.Error("Error rolling back account balance: ", rollbackErr)
 		}
 		return nil, err
+	}
+
+	// Update budget collected amounts for this user if this is an expense transaction
+	if !transaction.IsIncome && !transaction.IsTransfer {
+		err = s.sm.BudgetsService.UpdateBudgetCollectedAmounts(transaction.UserID)
+		if err != nil {
+			log.Error("Error updating budget collected amounts after transaction creation: ", err)
+			// Don't fail the transaction creation, just log the error
+		}
 	}
 
 	return createdTransaction, nil
@@ -529,6 +539,15 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 		}
 	}
 
+	// Update budget collected amounts for this user if this transaction affects budgets (expense transactions)
+	if (!existingTransaction.IsIncome && !existingTransaction.IsTransfer) || (!transaction.IsIncome && !transaction.IsTransfer) {
+		err = s.sm.BudgetsService.UpdateBudgetCollectedAmounts(userId)
+		if err != nil {
+			log.Error("Error updating budget collected amounts after transaction update: ", err)
+			// Don't fail the transaction update, just log the error
+		}
+	}
+
 	return nil
 }
 
@@ -556,6 +575,15 @@ func (s *TransactionsServiceInstance) DeleteTransaction(transactionId int, userI
 	if err != nil {
 		log.Error("Error deleting transaction: ", err)
 		return err
+	}
+
+	// Update budget collected amounts for this user if this was an expense transaction
+	if !existingTransaction.IsIncome && !existingTransaction.IsTransfer {
+		err = s.sm.BudgetsService.UpdateBudgetCollectedAmounts(userId)
+		if err != nil {
+			log.Error("Error updating budget collected amounts after transaction deletion: ", err)
+			// Don't fail the transaction deletion, just log the error
+		}
 	}
 
 	return nil
@@ -743,4 +771,13 @@ func (s *TransactionsServiceInstance) updateLinkedTransferTransaction(existingTx
 	}
 
 	return nil
+}
+
+func (s *TransactionsServiceInstance) GetExpenseTransactionsForBudget(userId int, categoryIds []int, startDate time.Time, endDate time.Time, transactionIds []int) ([]models.Transaction, error) {
+	transactions, err := s.transactionsRepository.GetExpenseTransactionsForBudget(userId, categoryIds, startDate, endDate, transactionIds)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get expense transactions for user %d: %w", userId, err)
+	}
+
+	return transactions, nil
 }
