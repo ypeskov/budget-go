@@ -1,15 +1,18 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"ypeskov/budget-go/internal/middleware"
 	"ypeskov/budget-go/internal/utils"
+	"ypeskov/budget-go/internal/dto"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/api/idtoken"
 
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
@@ -39,6 +42,7 @@ func RegisterAuthRoutes(g *echo.Group, cfgGlobal *config.Config, manager *servic
 	sm = manager
 
 	g.POST("/login", Login)
+	g.POST("/oauth", OAuth)
 	g.GET("/profile", Profile)
 }
 
@@ -145,6 +149,60 @@ func Profile(c echo.Context) error {
 		Email:     user.Email,
 		Settings:  settings,
 		BaseCurrency: baseCurrency.Code,
+	})
+}
+
+func OAuth(c echo.Context) error {
+	oauthToken := new(dto.OAuthToken)
+	if err := c.Bind(oauthToken); err != nil {
+		log.Error("Bad request: ", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"detail": "Bad request"})
+	}
+
+	ctx := context.Background()
+	payload, err := idtoken.Validate(ctx, oauthToken.Credential, cfg.GoogleClientID)
+	if err != nil {
+		log.Error("Error verifying Google JWT: ", err)
+		return c.JSON(http.StatusUnauthorized, map[string]string{"detail": "Invalid token"})
+	}
+
+	email, emailOk := payload.Claims["email"].(string)
+	if !emailOk || email == "" {
+		log.Error("No email provided in token")
+		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"detail": "No email provided"})
+	}
+
+	emailVerified, emailVerifiedOk := payload.Claims["email_verified"].(bool)
+	if !emailVerifiedOk || !emailVerified {
+		log.Errorf("Error while logging in user: [%s]: Email not verified", email)
+		return c.JSON(http.StatusUnauthorized, map[string]string{"detail": "Email not verified"})
+	}
+
+	givenName, _ := payload.Claims["given_name"].(string)
+	familyName, _ := payload.Claims["family_name"].(string)
+	if familyName == "" {
+		familyName = ""
+	}
+
+	user, err := sm.UserService.LoginOrRegisterOAuth(email, givenName, familyName)
+	if err != nil {
+		if _, ok := err.(*services.UserNotActivatedError); ok {
+			log.Errorf("Error while logging in user: [%s]: %v", email, err)
+			return c.JSON(http.StatusUnauthorized, map[string]string{"detail": "User not activated"})
+		}
+		log.Errorf("Error while logging in user: [%s]: %v", email, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"detail": "Internal server error. See logs for details"})
+	}
+
+	signedToken, err := utils.GenerateAccessToken(user, cfg)
+	if err != nil {
+		log.Error("Error generating access token: ", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"detail": "Internal server error. See logs for details"})
+	}
+
+	return c.JSON(http.StatusOK, dto.Token{
+		AccessToken: signedToken,
+		TokenType:   "Bearer",
 	})
 }
 
