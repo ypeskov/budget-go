@@ -29,5 +29,6 @@ func main() {
     mux.HandleFunc(jobs.TaskDBBackupDaily, h.HandleDBBackupDaily)
     mux.HandleFunc(jobs.TaskBudgetsDailyProcessing, h.HandleBudgetsDailyProcessing)
 
-    if err := srv.Start(mux); err != nil { log.Fatal(err) }
+    // Run blocks and processes jobs until the process receives a shutdown signal
+    if err := srv.Run(mux); err != nil { log.Fatal(err) }
 }

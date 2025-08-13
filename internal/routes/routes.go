@@ -8,6 +8,7 @@ import (
 	"ypeskov/budget-go/internal/routes/reports"
 	"ypeskov/budget-go/internal/routes/transactions"
 	settings "ypeskov/budget-go/internal/routes/userSettings"
+	"ypeskov/budget-go/internal/routes/management"
 	"ypeskov/budget-go/internal/services"
 
 	"github.com/labstack/echo/v4"
@@ -66,6 +67,9 @@ func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo
 
 	transactionsRoutesGroup := protectedRoutes.Group("/transactions")
 	transactions.RegisterTransactionsRoutes(transactionsRoutesGroup, servicesManager)
+
+	managementRoutesGroup := protectedRoutes.Group("/management")
+	management.RegisterManagementRoutes(managementRoutesGroup, cfg, servicesManager)
 
 	return e
 }

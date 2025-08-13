@@ -31,9 +31,15 @@ func (h *Handlers) HandleBudgetsUpdateUser(ctx context.Context, t *asynq.Task) e
 }
 
 func (h *Handlers) HandleExchangeRatesDaily(ctx context.Context, t *asynq.Task) error {
+    log.Info("Exchange rates update task started")
     // touch exchange rates cache/populate; replace with actual fetch if needed
     _, err := h.SM.ExchangeRatesService.GetExchangeRates()
-    return err
+    if err != nil {
+        log.Errorf("Exchange rates update failed: %v", err)
+        return err
+    }
+    log.Info("Exchange rates update task completed")
+    return nil
 }
 
 func (h *Handlers) HandleDBBackupDaily(ctx context.Context, t *asynq.Task) error {
