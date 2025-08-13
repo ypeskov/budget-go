@@ -3,9 +3,9 @@ package auth
 import (
     "net/http"
     "strings"
-    "time"
 
     "ypeskov/budget-go/internal/middleware"
+    "ypeskov/budget-go/internal/utils"
 
     "github.com/golang-jwt/jwt/v5"
     "golang.org/x/crypto/bcrypt"
@@ -59,22 +59,9 @@ func Login(c echo.Context) error {
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
 
-	claims := &JWTCustomClaims{
-		Id:    user.ID,
-		Email: user.Email,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 1)),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	if token == nil {
-		log.Error("Error creating token")
-		return c.String(http.StatusInternalServerError, "Internal server error")
-	}
-
-	signedToken, err := token.SignedString([]byte(cfg.SecretKey))
+	signedToken, err := utils.GenerateAccessToken(user, cfg)
 	if err != nil {
-		log.Error("Error signing token: ", err)
+		log.Error("Error generating token: ", err)
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
