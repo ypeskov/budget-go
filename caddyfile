@@ -1,7 +1,7 @@
 :8080
 
 route /auth/oauth* {
-	reverse_proxy localhost:8000
+	reverse_proxy localhost:8001
 }
 
 route /auth* {
@@ -13,7 +13,7 @@ route /accounts* {
 }
 
 route /categories/grouped* {
-	reverse_proxy localhost:8000
+	reverse_proxy localhost:8001
 }
 
 route /categories* {
@@ -37,5 +37,5 @@ route /transactions* {
 }
 
 route /* {
-	reverse_proxy localhost:8000
+	reverse_proxy localhost:8001
 }
