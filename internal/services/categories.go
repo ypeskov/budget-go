@@ -10,6 +10,7 @@ import (
 
 type CategoriesService interface {
 	GetUserCategories(userId int) ([]models.UserCategory, error)
+	ValidateCategoryOwnership(categoryId int, userId int) (bool, error)
 }
 
 type CategoryServiceInstance struct {
@@ -95,4 +96,8 @@ func (c *CategoryServiceInstance) GetUserCategories(userId int) ([]models.UserCa
     }
 
     return ordered, nil
+}
+
+func (c *CategoryServiceInstance) ValidateCategoryOwnership(categoryId int, userId int) (bool, error) {
+	return c.categoriesRepo.ValidateCategoryOwnership(categoryId, userId)
 }
