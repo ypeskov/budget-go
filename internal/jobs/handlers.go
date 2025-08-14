@@ -43,8 +43,23 @@ func (h *Handlers) HandleExchangeRatesDaily(ctx context.Context, t *asynq.Task) 
 }
 
 func (h *Handlers) HandleDBBackupDaily(ctx context.Context, t *asynq.Task) error {
-    // TODO: invoke backup script or function
-    log.Info("DB backup task executed (implement script call)")
+    log.Info("Starting database backup task")
+    
+    backupResult, err := h.SM.BackupService.CreatePostgresBackup()
+    if err != nil {
+        log.Errorf("Database backup failed: %v", err)
+        return err
+    }
+    
+    log.Infof("Database backup created successfully: %s", backupResult.Filename)
+    
+    err = h.SM.EmailService.SendBackupNotification(backupResult)
+    if err != nil {
+        log.Errorf("Failed to send backup notification email: %v", err)
+        return err
+    }
+    
+    log.Info("Database backup task completed successfully")
     return nil
 }
 

@@ -14,7 +14,7 @@ func main() {
     cfg := config.New()
     db, err := database.New(cfg)
     if err != nil { log.Fatal(err) }
-    sm := services.NewServicesManager(db)
+    sm := services.NewServicesManager(db, cfg)
 
     srv := asynq.NewServer(asynq.RedisClientOpt{Addr: cfg.RedisAddr}, asynq.Config{
         Concurrency: 20,

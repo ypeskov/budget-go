@@ -1,6 +1,7 @@
 package services
 
 import (
+	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/database"
 	"ypeskov/budget-go/internal/repositories/accounts"
 	"ypeskov/budget-go/internal/repositories/budgets"
@@ -26,11 +27,13 @@ type Manager struct {
 	ExchangeRatesService ExchangeRatesService
 	ReportsService       ReportsService
 	ChartService         ChartService
+	BackupService        *BackupService
+	EmailService         *EmailService
 }
 
 var sm *Manager
 
-func NewServicesManager(db *database.Database) *Manager {
+func NewServicesManager(db *database.Database, cfg *config.Config) *Manager {
 	userRepo := user.New(db)
 	exchangeRatesRepo := exchangeRates.NewExchangeRatesRepository(db.Db)
 	accountsRepo := accounts.NewAccountsService(db.Db)
@@ -55,6 +58,8 @@ func NewServicesManager(db *database.Database) *Manager {
 	sm.TransactionsService = NewTransactionsService(transactionsRepo, sm)
 	sm.ReportsService = NewReportsService(reportsRepo, sm.ExchangeRatesService)
 	sm.ChartService = NewChartService()
+	sm.BackupService = NewBackupService(cfg)
+	sm.EmailService = NewEmailService(cfg)
 
 	return sm
 }
