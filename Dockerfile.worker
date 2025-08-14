@@ -1,0 +1,40 @@
+# syntax=docker/dockerfile:1
+
+# ---------- builder stage ----------
+FROM golang:1.23 AS builder
+WORKDIR /src
+
+# Enable Go build and module caches for faster incremental builds
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+COPY . .
+
+# Build a static binary for Linux (arch is inferred from the build platform)
+ARG TARGETOS TARGETARCH
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} \
+    go build -trimpath -ldflags="-s -w" -o /out/budget-worker ./cmd/worker
+
+# ---------- production stage ----------
+# Use debian-slim instead of distroless to get postgresql-client for pg_dump
+FROM debian:12-slim AS prod
+WORKDIR /app
+
+# Install postgresql-client for pg_dump and ca-certificates for HTTPS
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create a non-root user
+RUN groupadd -r worker && useradd -r -g worker worker
+
+COPY --from=builder /out/budget-worker /usr/local/bin/budget-worker
+
+# Run as non-root user
+USER worker:worker
+
+ENTRYPOINT ["/usr/local/bin/budget-worker"]
