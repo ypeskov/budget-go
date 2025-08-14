@@ -9,6 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 
+	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/exchangeRates"
 )
@@ -18,11 +19,14 @@ type ExchangeRatesService interface {
 	GetExchangeRateByDate(date time.Time) (map[string]decimal.Decimal, error)
 	GetRateBetweenCurrencies(date time.Time, currencyFrom string, currencyTo string) (decimal.Decimal, error)
 	CalcAmountFromCurrency(date time.Time, amount decimal.Decimal, currencyFrom string, currencyTo string) (decimal.Decimal, error)
+	UpdateExchangeRates(date time.Time) (*models.ExchangeRates, error)
 }
 
 type ExchangeRatesServiceInstance struct {
 	exchangeRatesRepository exchangeRates.Repository
 	cache                   *ExchangeRatesHistoryCache
+	currencyBeaconService   *CurrencyBeaconService
+	config                  *config.Config
 }
 
 const cacheExpiration = time.Hour * 24
@@ -39,7 +43,7 @@ var (
 	mu       sync.RWMutex
 )
 
-func NewExchangeRatesService(exchangeRatesRepository exchangeRates.Repository) ExchangeRatesService {
+func NewExchangeRatesService(exchangeRatesRepository exchangeRates.Repository, cfg *config.Config) ExchangeRatesService {
 	once.Do(func() {
 		log.Debug("Creating ExchangeRatesService instance")
 		instance = &ExchangeRatesServiceInstance{
@@ -48,6 +52,8 @@ func NewExchangeRatesService(exchangeRatesRepository exchangeRates.Repository) E
 				data:           make(map[string]map[string]decimal.Decimal),
 				baseCurrencies: make(map[string]string),
 			},
+			currencyBeaconService: NewCurrencyBeaconService(cfg),
+			config:                cfg,
 		}
 	})
 
@@ -261,4 +267,58 @@ func (s *ExchangeRatesServiceInstance) CalcAmountFromCurrency(
 	}
 
 	return amount.Mul(rate), nil
+}
+
+func (s *ExchangeRatesServiceInstance) UpdateExchangeRates(date time.Time) (*models.ExchangeRates, error) {
+	log.Infof("Updating exchange rates for %s", date.Format("2006-01-02"))
+
+	// Get exchange rates from external API
+	dateStr := date.Format("2006-01-02")
+	ratesData, err := s.currencyBeaconService.GetCurrencyRates(dateStr)
+	if err != nil {
+		log.Errorf("Failed to fetch exchange rates from CurrencyBeacon: %v", err)
+		return nil, err
+	}
+
+	// Delete existing rates for this date
+	err = s.exchangeRatesRepository.DeleteExchangeRatesByDate(dateStr)
+	if err != nil {
+		log.Errorf("Failed to delete existing exchange rates for %s: %v", dateStr, err)
+		return nil, err
+	}
+
+	// Parse the actual_date from API response
+	actualDate, err := time.Parse("2006-01-02", ratesData["actual_date"].(string))
+	if err != nil {
+		log.Errorf("Failed to parse actual_date from API response: %v", err)
+		return nil, err
+	}
+
+	// Create new exchange rates model
+	exchangeRates := &models.ExchangeRates{
+		Rates:            models.JSONB(ratesData["rates"].(map[string]interface{})),
+		ActualDate:       actualDate,
+		BaseCurrencyCode: ratesData["base_currency_code"].(string),
+		ServiceName:      ratesData["service_name"].(string),
+		IsDeleted:        false,
+		CreatedAt:        time.Now(),
+		UpdatedAt:        time.Now(),
+	}
+
+	// Save to database
+	err = s.exchangeRatesRepository.SaveExchangeRates(exchangeRates)
+	if err != nil {
+		log.Errorf("Failed to save exchange rates: %v", err)
+		return nil, err
+	}
+
+	// Clear cache to force refresh
+	mu.Lock()
+	s.cache.data = make(map[string]map[string]decimal.Decimal)
+	s.cache.baseCurrencies = make(map[string]string)
+	s.cache.lastUpdate = time.Time{}
+	mu.Unlock()
+
+	log.Infof("Exchange rates updated successfully for %s", date.Format("2006-01-02"))
+	return exchangeRates, nil
 }

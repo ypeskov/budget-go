@@ -3,6 +3,7 @@ package jobs
 import (
     "context"
     "encoding/json"
+    "time"
 
     "github.com/hibiken/asynq"
     log "github.com/sirupsen/logrus"
@@ -32,13 +33,26 @@ func (h *Handlers) HandleBudgetsUpdateUser(ctx context.Context, t *asynq.Task) e
 
 func (h *Handlers) HandleExchangeRatesDaily(ctx context.Context, t *asynq.Task) error {
     log.Info("Exchange rates update task started")
-    // touch exchange rates cache/populate; replace with actual fetch if needed
-    _, err := h.SM.ExchangeRatesService.GetExchangeRates()
+    
+    // Update exchange rates for today
+    today := time.Now()
+    exchangeRates, err := h.SM.ExchangeRatesService.UpdateExchangeRates(today)
     if err != nil {
         log.Errorf("Exchange rates update failed: %v", err)
         return err
     }
-    log.Info("Exchange rates update task completed")
+    
+    log.Infof("Exchange rates updated successfully for %s (base: %s)", 
+        exchangeRates.ActualDate.Format("2006-01-02"), exchangeRates.BaseCurrencyCode)
+    
+    // Send notification email
+    err = h.SM.EmailService.SendExchangeRatesUpdateNotification(exchangeRates)
+    if err != nil {
+        log.Errorf("Failed to send exchange rates notification email: %v", err)
+        return err
+    }
+    
+    log.Info("Exchange rates update task completed successfully")
     return nil
 }
 

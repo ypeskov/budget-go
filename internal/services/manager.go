@@ -54,7 +54,7 @@ func NewServicesManager(db *database.Database, cfg *config.Config) *Manager {
 	sm.UserSettingsService = NewUserSettingsService(userSettingsRepo)
 	sm.CurrenciesService = NewCurrenciesService(currenciesRepo)
 	sm.LanguagesService = NewLanguagesService(languagesRepo)
-	sm.ExchangeRatesService = NewExchangeRatesService(exchangeRatesRepo)
+	sm.ExchangeRatesService = NewExchangeRatesService(exchangeRatesRepo, cfg)
 	sm.TransactionsService = NewTransactionsService(transactionsRepo, sm)
 	sm.ReportsService = NewReportsService(reportsRepo, sm.ExchangeRatesService)
 	sm.ChartService = NewChartService()

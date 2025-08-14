@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+
 	"github.com/caarlos0/env/v10"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
@@ -40,6 +42,14 @@ type Config struct {
 	SMTPPassword     string `env:"SMTP_PASSWORD" envDefault:""`
 	AdminEmailsRaw   string `env:"ADMINS_NOTIFICATION_EMAILS" envDefault:""`
 	EmailFromAddress string `env:"EMAIL_FROM_ADDRESS" envDefault:"noreply@budget-app.com"`
+
+	// CurrencyBeacon API settings
+	CurrencyBeaconAPIURL     string `env:"CURRENCYBEACON_API_URL" envDefault:"https://api.currencybeacon.com"`
+	CurrencyBeaconAPIKey     string `env:"CURRENCYBEACON_API_KEY" envDefault:""`
+	CurrencyBeaconAPIVersion string `env:"CURRENCYBEACON_API_VERSION" envDefault:"v1"`
+
+	// Container detection
+	RunningInContainer bool `env:"RUNNING_IN_CONTAINER" envDefault:"false"`
 }
 
 func New() *Config {
@@ -52,5 +62,35 @@ func New() *Config {
 		log.Warn("Failed to parse env")
 	}
 
+	// Auto-detect container if not explicitly set
+	if !cfg.RunningInContainer {
+		cfg.RunningInContainer = isRunningInContainer()
+	}
+
 	return cfg
+}
+
+// isRunningInContainer detects if the application is running inside a container
+func isRunningInContainer() bool {
+	// Method 1: Check for /.dockerenv file (Docker containers)
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+
+	// Method 2: Check for Kubernetes service account (Kubernetes pods)
+	if _, err := os.Stat("/var/run/secrets/kubernetes.io/serviceaccount/token"); err == nil {
+		return true
+	}
+
+	// Method 3: Check Kubernetes environment variables
+	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+		return true
+	}
+
+	// Method 4: Check RUNNING_IN_CONTAINER env var (manual override)
+	if os.Getenv("RUNNING_IN_CONTAINER") == "true" {
+		return true
+	}
+
+	return false
 }

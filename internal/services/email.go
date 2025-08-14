@@ -11,8 +11,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"ypeskov/budget-go/internal/config"
+	"ypeskov/budget-go/internal/models"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -49,6 +51,27 @@ func (s *EmailService) SendBackupNotification(backupResult *BackupResult) error 
 		Recipients:     recipients,
 		Body:           s.generateBackupEmailBody(backupResult),
 		AttachmentPath: backupResult.FilePath,
+	}
+
+	return s.sendEmail(emailData)
+}
+
+func (s *EmailService) SendExchangeRatesUpdateNotification(exchangeRates *models.ExchangeRates) error {
+	if s.cfg.AdminEmailsRaw == "" {
+		log.Warn("No admin emails configured for exchange rates notification")
+		return nil
+	}
+
+	recipients := s.parseAdminEmails()
+	if len(recipients) == 0 {
+		log.Warn("No valid admin emails found")
+		return nil
+	}
+
+	emailData := &EmailData{
+		Subject:    "Exchange rates updated",
+		Recipients: recipients,
+		Body:       s.generateExchangeRatesEmailBody(exchangeRates),
 	}
 
 	return s.sendEmail(emailData)
@@ -122,6 +145,63 @@ func (s *EmailService) generateBackupEmailBody(backupResult *BackupResult) strin
 	return buf.String()
 }
 
+func (s *EmailService) generateExchangeRatesEmailBody(exchangeRates *models.ExchangeRates) string {
+	tmpl := `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Exchange Rates Updated</title>
+</head>
+<body>
+    <h2>Exchange Rates Successfully Updated</h2>
+    <p>The exchange rates have been successfully updated for your Budget Go application.</p>
+    
+    <h3>Update Details:</h3>
+    <ul>
+        <li><strong>Environment:</strong> {{.EnvName}}</li>
+        <li><strong>Date:</strong> {{.UpdatedAt}}</li>
+        <li><strong>Actual Date:</strong> {{.ActualDate}}</li>
+        <li><strong>Base Currency:</strong> {{.BaseCurrency}}</li>
+        <li><strong>Service:</strong> {{.ServiceName}}</li>
+        <li><strong>Rate Count:</strong> {{.RateCount}}</li>
+    </ul>
+    
+    <hr>
+    <p><small>This is an automated message from your Budget Go application.</small></p>
+</body>
+</html>`
+
+	data := struct {
+		EnvName      string
+		UpdatedAt    string
+		ActualDate   string
+		BaseCurrency string
+		ServiceName  string
+		RateCount    int
+	}{
+		EnvName:      s.cfg.Environment,
+		UpdatedAt:    time.Now().Format("2006-01-02 15:04:05 MST"),
+		ActualDate:   exchangeRates.ActualDate.Format("2006-01-02"),
+		BaseCurrency: exchangeRates.BaseCurrencyCode,
+		ServiceName:  exchangeRates.ServiceName,
+		RateCount:    len(exchangeRates.Rates),
+	}
+
+	t, err := template.New("exchange-rates").Parse(tmpl)
+	if err != nil {
+		log.Errorf("Failed to parse email template: %v", err)
+		return fmt.Sprintf("Exchange rates updated at %s for environment %s", data.UpdatedAt, s.cfg.Environment)
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		log.Errorf("Failed to execute email template: %v", err)
+		return fmt.Sprintf("Exchange rates updated at %s for environment %s", data.UpdatedAt, s.cfg.Environment)
+	}
+
+	return buf.String()
+}
+
 func (s *EmailService) sendEmail(emailData *EmailData) error {
 	if s.cfg.SMTPHost == "" || s.cfg.SMTPUser == "" {
 		log.Info("SMTP not configured, would send email:", emailData.Subject)
@@ -155,7 +235,7 @@ func (s *EmailService) sendEmail(emailData *EmailData) error {
 			return fmt.Errorf("failed to send email to %s: %w", recipient, err)
 		}
 
-		log.Infof("Backup notification email sent to: %s", recipient)
+		log.Infof("Email '%s' sent to: %s", emailData.Subject, recipient)
 	}
 
 	return nil
