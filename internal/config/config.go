@@ -50,6 +50,9 @@ type Config struct {
 
 	// Container detection
 	RunningInContainer bool `env:"RUNNING_IN_CONTAINER" envDefault:"false"`
+
+	// Additional settings can be added here as needed
+	AppName string `env:"APP_NAME" envDefault:"OrgFin.run"`
 }
 
 func New() *Config {

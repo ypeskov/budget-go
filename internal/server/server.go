@@ -16,7 +16,10 @@ func New(cfg *config.Config) *http.Server {
 		panic(err)
 	}
 
-	servicesManager := services.NewServicesManager(db, cfg)
+	servicesManager, err := services.NewServicesManager(db, cfg)
+	if err != nil {
+		panic(err)
+	}
 
 	e := routes.RegisterRoutes(cfg, servicesManager)
 

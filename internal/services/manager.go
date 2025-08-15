@@ -1,6 +1,8 @@
 package services
 
 import (
+	"fmt"
+	
 	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/database"
 	"ypeskov/budget-go/internal/repositories/accounts"
@@ -33,7 +35,7 @@ type Manager struct {
 
 var sm *Manager
 
-func NewServicesManager(db *database.Database, cfg *config.Config) *Manager {
+func NewServicesManager(db *database.Database, cfg *config.Config) (*Manager, error) {
 	userRepo := user.New(db)
 	exchangeRatesRepo := exchangeRates.NewExchangeRatesRepository(db.Db)
 	accountsRepo := accounts.NewAccountsService(db.Db)
@@ -59,7 +61,11 @@ func NewServicesManager(db *database.Database, cfg *config.Config) *Manager {
 	sm.ReportsService = NewReportsService(reportsRepo, sm.ExchangeRatesService)
 	sm.ChartService = NewChartService()
 	sm.BackupService = NewBackupService(cfg)
-	sm.EmailService = NewEmailService(cfg)
+	emailService, err := NewEmailService(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize email service: %w", err)
+	}
+	sm.EmailService = emailService
 
-	return sm
+	return sm, nil
 }
