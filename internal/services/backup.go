@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"ypeskov/budget-go/internal/config"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type BackupService struct {

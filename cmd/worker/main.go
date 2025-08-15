@@ -30,6 +30,7 @@ func main() {
 	h := &jobs.Handlers{SM: sm}
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(jobs.TaskEmailSend, h.HandleEmailSend)
+	mux.HandleFunc(jobs.TaskSendActivationEmail, h.HandleSendActivationEmail)
 	mux.HandleFunc(jobs.TaskExchangeRatesDaily, h.HandleExchangeRatesDaily)
 	mux.HandleFunc(jobs.TaskDBBackupDaily, h.HandleDBBackupDaily)
 	mux.HandleFunc(jobs.TaskBudgetsDailyProcessing, h.HandleBudgetsDailyProcessing)

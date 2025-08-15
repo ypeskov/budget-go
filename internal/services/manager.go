@@ -3,6 +3,7 @@ package services
 import (
 	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/database"
+	"ypeskov/budget-go/internal/queue"
 	"ypeskov/budget-go/internal/repositories/accounts"
 	"ypeskov/budget-go/internal/repositories/activationTokens"
 	"ypeskov/budget-go/internal/repositories/budgets"
@@ -14,6 +15,8 @@ import (
 	"ypeskov/budget-go/internal/repositories/transactions"
 	"ypeskov/budget-go/internal/repositories/user"
 	"ypeskov/budget-go/internal/repositories/userSettings"
+
+	"github.com/hibiken/asynq"
 )
 
 type Manager struct {
@@ -31,6 +34,7 @@ type Manager struct {
 	BackupService          *BackupService
 	EmailService           *EmailService
 	ActivationTokenService ActivationTokenService
+	QueueService           queue.Service
 }
 
 var sm *Manager
@@ -50,7 +54,10 @@ func NewServicesManager(db *database.Database, cfg *config.Config) (*Manager, er
 
 	sm = &Manager{}
 
-	sm.UserService = NewUserService(userRepo)
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisAddr})
+	queueService := queue.NewService(asynqClient)
+	sm.QueueService = queueService
+	sm.UserService = NewUserServiceWithQueue(userRepo, queueService)
 	sm.AccountsService = NewAccountsService(accountsRepo, sm)
 	sm.BudgetsService = NewBudgetsService(budgetsRepo, sm)
 	sm.CategoriesService = NewCategoriesService(categoriesRepo)

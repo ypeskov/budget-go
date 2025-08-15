@@ -3,6 +3,7 @@ package services
 import (
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
+	"ypeskov/budget-go/internal/queue"
 	userRepo "ypeskov/budget-go/internal/repositories/user"
 
 	log "github.com/sirupsen/logrus"
@@ -13,18 +14,28 @@ type UserService interface {
 	GetAllUsers() ([]*models.User, error)
 	GetUserByEmail(email string) (*models.User, error)
 	CreateUser(user *models.User) (*models.User, error)
-	RegisterUser(userDTO *dto.UserRegisterRequestDTO, currenciesService CurrenciesService, activationTokenService ActivationTokenService) (*models.User, error)
+	RegisterUser(userDTO *dto.UserRegisterRequestDTO,
+		currenciesService CurrenciesService,
+		activationTokenService ActivationTokenService) (*models.User, error)
 	LoginOrRegisterOAuth(email, firstName, lastName string) (*models.User, error)
 	ActivateUser(userID int) error
 }
 
 type UserServiceInstance struct {
-	userRepo userRepo.RepositoryInterface
+	userRepo     userRepo.RepositoryInterface
+	queueService queue.Service
 }
 
 func NewUserService(userRepo userRepo.RepositoryInterface) UserService {
 	return &UserServiceInstance{
 		userRepo: userRepo,
+	}
+}
+
+func NewUserServiceWithQueue(userRepo userRepo.RepositoryInterface, queueService queue.Service) UserService {
+	return &UserServiceInstance{
+		userRepo:     userRepo,
+		queueService: queueService,
 	}
 }
 
@@ -67,7 +78,9 @@ func (us *UserServiceInstance) CreateUser(user *models.User) (*models.User, erro
 	return createdUser, nil
 }
 
-func (us *UserServiceInstance) RegisterUser(userDTO *dto.UserRegisterRequestDTO, currenciesService CurrenciesService, activationTokenService ActivationTokenService) (*models.User, error) {
+func (us *UserServiceInstance) RegisterUser(userDTO *dto.UserRegisterRequestDTO,
+	currenciesService CurrenciesService,
+	activationTokenService ActivationTokenService) (*models.User, error) {
 	log.Debug("RegisterUser service called")
 
 	// Check if user already exists
@@ -116,12 +129,22 @@ func (us *UserServiceInstance) RegisterUser(userDTO *dto.UserRegisterRequestDTO,
 		return nil, err
 	}
 
-	// Send activation email
-	err = activationTokenService.SendActivationEmail(createdUser, activationToken.Token)
-	if err != nil {
-		log.Error("Error sending activation email: ", err)
-		// Don't fail registration if email fails, just log the error
-		log.Warn("User registered but activation email failed to send")
+	// Queue activation email to be sent asynchronously
+	if us.queueService != nil {
+		err = us.queueService.EnqueueActivationEmail(createdUser.Email, createdUser.FirstName, activationToken.Token)
+		if err != nil {
+			log.Error("Error queuing activation email: ", err)
+			log.Warn("User registered but activation email failed to queue")
+		} else {
+			log.Info("Activation email queued successfully for user: ", createdUser.Email)
+		}
+	} else {
+		// Fallback to synchronous email sending if queue service is not available
+		err = activationTokenService.SendActivationEmail(createdUser, activationToken.Token)
+		if err != nil {
+			log.Error("Error sending activation email: ", err)
+			log.Warn("User registered but activation email failed to send")
+		}
 	}
 
 	return createdUser, nil

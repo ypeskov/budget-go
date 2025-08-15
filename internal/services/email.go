@@ -262,8 +262,6 @@ func (s *EmailService) SendActivationEmail(toEmail, firstName, activationToken s
 	log.Debug("Sending activation email to: ", toEmail)
 
 	activationLink := fmt.Sprintf("%s/activate/%s", s.cfg.FrontendURL, activationToken)
-
-
 	// For development, just log the activation link instead of sending actual email
 	if s.cfg.SendUserEmails == false {
 		log.Infof("ACTIVATION EMAIL: Hi %s, please activate your account: %s", firstName, activationLink)
