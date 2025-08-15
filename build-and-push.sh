@@ -3,7 +3,7 @@ set -euo pipefail
 
 COMPONENTS=("api" "worker" "scheduler")
 API_IMAGE="ypeskov/orgfin-api-go"
-WORKER_IMAGE="ypeskov/orgfing-worker-go"
+WORKER_IMAGE="ypeskov/orgfin-worker-go"
 SCHEDULER_IMAGE="ypeskov/orgfin-scheduler-go"
 
 API_DOCKERFILE="Dockerfile"
