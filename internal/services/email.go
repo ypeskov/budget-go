@@ -129,7 +129,7 @@ func (s *EmailService) sendEmail(emailData *EmailData) error {
 	}
 
 	auth := smtp.PlainAuth("", s.cfg.SMTPUser, s.cfg.SMTPPassword, s.cfg.SMTPHost)
-	addr := fmt.Sprintf("%s:%d", s.cfg.SMTPHost, s.cfg.SMTPPort)
+	addr := fmt.Sprintf("%s:%s", s.cfg.SMTPHost, s.cfg.SMTPPort)
 
 	// Build base email content once (optimization)
 	baseEmailContent, err := s.buildBaseEmailContent(emailData)
@@ -261,17 +261,17 @@ func (s *EmailService) extractEmailAddress() (string, error) {
 func (s *EmailService) SendActivationEmail(toEmail, firstName, activationToken string) error {
 	log.Debug("Sending activation email to: ", toEmail)
 
+	activationLink := fmt.Sprintf("%s/activate/%s", s.cfg.FrontendURL, activationToken)
+
+
 	// For development, just log the activation link instead of sending actual email
-	if s.cfg.Environment == "development" || s.cfg.Environment == "dev" {
-		activationLink := fmt.Sprintf("%s/activate/%s", s.cfg.FrontendURL, activationToken)
+	if s.cfg.SendUserEmails == false {
 		log.Infof("ACTIVATION EMAIL: Hi %s, please activate your account: %s", firstName, activationLink)
 		return nil
 	}
 
 	// Production email sending
 	subject := "Activate Your Budget Account"
-	activationLink := fmt.Sprintf("%s/activate/%s", s.cfg.FrontendURL, activationToken)
-
 	body := fmt.Sprintf(`
 <html>
 <body>
@@ -287,7 +287,6 @@ func (s *EmailService) SendActivationEmail(toEmail, firstName, activationToken s
 </body>
 </html>
 `, firstName, activationLink, activationLink)
-
 	emailData := &EmailData{
 		Subject:    subject,
 		Recipients: []string{toEmail},

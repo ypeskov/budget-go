@@ -44,6 +44,7 @@ type Config struct {
 	AdminEmailsRaw   string `env:"ADMINS_NOTIFICATION_EMAILS" envDefault:""`
 	EmailFromAddress string `env:"EMAIL_FROM_ADDRESS" envDefault:"noreply@budget-app.com"`
 	FrontendURL      string `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
+	SendUserEmails   bool   `env:"SEND_USER_EMAILS" envDefault:"false"`
 
 	// CurrencyBeacon API settings
 	CurrencyBeaconAPIURL     string `env:"CURRENCYBEACON_API_URL" envDefault:"https://api.currencybeacon.com"`

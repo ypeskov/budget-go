@@ -50,15 +50,15 @@ func RegisterAuthRoutes(g *echo.Group, cfgGlobal *config.Config, manager *servic
 	cfg = cfgGlobal
 	sm = manager
 
-	g.POST("/login", Login)
-	g.POST("/register", Register)
+	g.POST("/login", LoginUser)
+	g.POST("/register", RegisterUser)
 	g.POST("/oauth", OAuth)
-	g.GET("/activate/:token", ActivateAccount)
+	g.GET("/activate/:token", ActivateUser)
 	g.GET("/profile", Profile)
 }
 
-func Login(c echo.Context) error {
-	log.Debugf("Login request started: %s %s", c.Request().Method, c.Request().URL)
+func LoginUser(c echo.Context) error {
+	log.Debugf("LoginUser request started: %s %s", c.Request().Method, c.Request().URL)
 
 	u := new(UserLogin)
 	if err := c.Bind(u); err != nil {
@@ -83,15 +83,15 @@ func Login(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
-	log.Debug("Login request completed - POST /auth/login")
+	log.Debug("LoginUser request completed - POST /auth/login")
 	return c.JSON(http.StatusOK, map[string]string{
 		"accessToken": signedToken,
 		"tokenType":   "Bearer",
 	})
 }
 
-func Register(c echo.Context) error {
-	log.Debugf("Register request started: %s %s", c.Request().Method, c.Request().URL)
+func RegisterUser(c echo.Context) error {
+	log.Debugf("RegisterUser request started: %s %s", c.Request().Method, c.Request().URL)
 
 	u := new(dto.UserRegisterRequestDTO)
 	if err := c.Bind(u); err != nil {
@@ -105,7 +105,7 @@ func Register(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "All fields are required")
 	}
 
-	// Register user using service layer (handles complete registration flow)
+	// RegisterUser user using service layer (handles complete registration flow)
 	createdUser, err := sm.UserService.RegisterUser(u, sm.CurrenciesService, sm.ActivationTokenService)
 	if err != nil {
 		if strings.Contains(err.Error(), "User already exists") {
@@ -124,15 +124,15 @@ func Register(c echo.Context) error {
 		LastName:  createdUser.LastName,
 	}
 
-	log.Debug("Register request completed - POST /auth/register")
+	log.Debug("RegisterUser request completed - POST /auth/register")
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"user":    response,
 		"message": "User registered successfully. Please check your email to activate your account.",
 	})
 }
 
-func ActivateAccount(c echo.Context) error {
-	log.Debugf("ActivateAccount request started: %s %s", c.Request().Method, c.Request().URL)
+func ActivateUser(c echo.Context) error {
+	log.Debugf("ActivateUser request started: %s %s", c.Request().Method, c.Request().URL)
 
 	// Extract token from URL parameter
 	token := c.Param("token")
@@ -155,7 +155,7 @@ func ActivateAccount(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
-	log.Debug("ActivateAccount request completed - GET /auth/activate/:token")
+	log.Debug("ActivateUser request completed - GET /auth/activate/:token")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Account activated successfully",
 	})
