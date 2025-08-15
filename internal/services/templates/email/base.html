@@ -149,7 +149,7 @@
         <div class="email-footer">
             <p><strong>{{.AppName}} Team</strong></p>
             <p class="text-muted">This is an automated message. Please do not reply to this email.</p>
-            {{if .EnvName}}
+            {{if and .EnvName (ne .EnvName "prod")}}
             <p class="small text-muted">Environment: {{.EnvName}}</p>
             {{end}}
         </div>

@@ -32,7 +32,7 @@ type Config struct {
 	BudgetsProcMinute   int `env:"DAILY_BUDGETS_PROCESSING_MINUTE" envDefault:"0"`
 
 	// Database backup settings
-	Environment string `env:"ENV" envDefault:"development"`
+	Environment string `env:"ENV" envDefault:"prod"`
 	DBBackupDir string `env:"DB_BACKUP_DIR" envDefault:"./backups"`
 
 	// Email settings for notifications
