@@ -392,28 +392,15 @@ func convertRawToTransactionDetail(raw *dto.TransactionDetailRaw, baseCurrencyCo
 	}
 
 	var categoryDetail dto.CategoryDetailDTO
-	if raw.Category != nil && raw.Category.ID != nil {
-		var createdAt, updatedAt string
-		if raw.Category.CreatedAt != nil {
-			createdAt = *raw.Category.CreatedAt
-		}
-		if raw.Category.UpdatedAt != nil {
-			updatedAt = *raw.Category.UpdatedAt
-		}
-
-		var userId int
-		if raw.Category.UserID != nil {
-			userId = *raw.Category.UserID
-		}
-
+	if raw.Category != nil {
 		categoryDetail = dto.CategoryDetailDTO{
 			Name:      raw.Category.Name,
 			ParentID:  raw.Category.ParentID,
 			IsIncome:  raw.Category.IsIncome,
-			ID:        *raw.Category.ID,
-			UserID:    userId,
-			CreatedAt: createdAt,
-			UpdatedAt: updatedAt,
+			ID:        raw.Category.ID,
+			UserID:    raw.Category.UserID,
+			CreatedAt: raw.Category.CreatedAt,
+			UpdatedAt: raw.Category.UpdatedAt,
 			Children:  []dto.CategoryDetailDTO{},
 		}
 	}

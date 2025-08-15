@@ -3,7 +3,6 @@ package dto
 import (
 	"encoding/json"
 	"github.com/shopspring/decimal"
-	"time"
 	"ypeskov/budget-go/internal/models"
 )
 
@@ -65,31 +64,3 @@ func (a *AccountDTO) MarshalJSON() ([]byte, error) {
 
 // AccountTypeDTO has been consolidated with models.AccountType
 // Use models.AccountType directly for all account type operations
-
-
-func AccountToDTO(account models.Account) AccountDTO {
-	accountDTO := AccountDTO{
-		ID:             account.ID,
-		UserID:         account.UserID,
-		AccountTypeId:  account.AccountTypeId,
-		CurrencyId:     account.CurrencyId,
-		Name:           account.Name,
-		Balance:        account.Balance,
-		InitialBalance: account.InitialBalance,
-		CreditLimit:    account.CreditLimit,
-		OpeningDate:    account.OpeningDate.Format(time.RFC3339),
-		Comment:        account.Comment,
-		IsHidden:       account.IsHidden,
-		ShowInReports:  account.ShowInReports,
-		IsDeleted:      account.IsDeleted,
-		ArchivedAt:     account.ArchivedAt,
-		CreatedAt:      account.CreatedAt.Format(time.RFC3339),
-		UpdateAt:       account.UpdatedAt.Format(time.RFC3339),
-
-		AccountType: models.AccountType{
-			ID: account.AccountTypeId,
-		},
-	}
-
-	return accountDTO
-}

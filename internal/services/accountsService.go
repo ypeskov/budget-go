@@ -158,7 +158,7 @@ func (a *AccountsServiceInstance) CreateAccount(account models.Account) (dto.Acc
 }
 
 func buildAccountDTO(account models.Account) (dto.AccountDTO, error) {
-	accountDto := dto.AccountToDTO(account)
+	accountDto := AccountToDTO(account)
 
 	baseCurrency, err := sm.UserSettingsService.GetBaseCurrency(accountDto.UserID)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
     "time"
     "ypeskov/budget-go/internal/dto"
     "ypeskov/budget-go/internal/repositories/reports"
+    "ypeskov/budget-go/internal/utils"
 
     "github.com/shopspring/decimal"
 )
@@ -232,8 +233,8 @@ func (s *ReportsServiceInstance) GetExpensesByCategories(userID int, input dto.E
 
 func (s *ReportsServiceInstance) GetExpensesDiagramData(userID int, startDate, endDate time.Time) ([]dto.ExpensesDiagramDataDTO, error) {
     input := dto.ExpensesReportInputDTO{
-        StartDate:           dto.CustomDate{Time: startDate},
-        EndDate:             dto.CustomDate{Time: endDate},
+        StartDate:           utils.CustomDate{Time: startDate},
+        EndDate:             utils.CustomDate{Time: endDate},
         HideEmptyCategories: false,
     }
     // Fetch detailed category expenses to be able to aggregate like FastAPI prepare_data (with currency conversion)
