@@ -17,7 +17,7 @@ source "${SCRIPT_DIR}/db_utils.sh"
 cd "${PROJECT_ROOT}"
 
 # Available tables for seeding
-AVAILABLE_TABLES=("currencies" "account_types" "languages" "categories")
+AVAILABLE_TABLES=("currencies" "account_types" "languages" "default_categories")
 
 # Function to seed a specific table
 seed_table() {

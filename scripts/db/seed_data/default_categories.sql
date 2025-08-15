@@ -1,10 +1,10 @@
--- Seed data for categories table
+-- Seed data for default_categories table
 -- Clear existing data and reset sequence
-DELETE FROM categories;
-ALTER SEQUENCE categories_id_seq RESTART WITH 1;
+DELETE FROM default_categories;
+ALTER SEQUENCE default_categories_id_seq RESTART WITH 1;
 
 -- Insert default categories (expenses)
-INSERT INTO categories (id, name, parent_id, is_income, created_at, updated_at) VALUES
+INSERT INTO default_categories (id, name, parent_id, is_income, created_at, updated_at) VALUES
 (1, 'Life', NULL, false, NOW(), NOW()),
 (2, 'Food', NULL, false, NOW(), NOW()),
 (3, 'Automobile', NULL, false, NOW(), NOW()),
@@ -30,4 +30,4 @@ INSERT INTO categories (id, name, parent_id, is_income, created_at, updated_at) 
 (21, 'Other', NULL, true, NOW(), NOW());
 
 -- Update sequence to next available ID
-SELECT setval('categories_id_seq', (SELECT MAX(id) FROM categories) + 1);
+SELECT setval('default_categories_id_seq', (SELECT MAX(id) FROM default_categories) + 1);
