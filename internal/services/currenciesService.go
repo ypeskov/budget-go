@@ -8,6 +8,7 @@ import (
 type CurrenciesService interface {
 	GetCurrencies() ([]models.Currency, error)
 	GetCurrency(id int) (models.Currency, error)
+	GetCurrencyByCode(code string) (models.Currency, error)
 }
 
 type CurrenciesServiceInstance struct {
@@ -26,6 +27,15 @@ func (c *CurrenciesServiceInstance) GetCurrencies() ([]models.Currency, error) {
 
 func (c *CurrenciesServiceInstance) GetCurrency(id int) (models.Currency, error) {
 	currency, err := c.currenciesRepo.GetCurrency(id)
+	if err != nil {
+		return models.Currency{}, err
+	}
+
+	return currency, nil
+}
+
+func (c *CurrenciesServiceInstance) GetCurrencyByCode(code string) (models.Currency, error) {
+	currency, err := c.currenciesRepo.GetCurrencyByCode(code)
 	if err != nil {
 		return models.Currency{}, err
 	}

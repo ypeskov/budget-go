@@ -227,4 +227,3 @@ func (a *AccountsServiceInstance) GetAccountBalance(accountId int) (decimal.Deci
 	log.Debugf("GetAccountBalance Service: account %d", accountId)
 	return a.accountsRepo.GetAccountBalance(accountId)
 }
-

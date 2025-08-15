@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
+	logrus "github.com/sirupsen/logrus"
 	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/jobs"
-	logrus "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -31,18 +31,20 @@ func main() {
 	} else {
 		logrus.Infof("Scheduled task '%s' to run at cron '%s'", jobs.TaskExchangeRatesDaily, ex)
 	}
-	
+
 	if _, err := sch.Register(db, asynq.NewTask(jobs.TaskDBBackupDaily, nil)); err != nil {
 		log.Fatal(err)
 	} else {
 		logrus.Infof("Scheduled task '%s' to run at cron '%s'", jobs.TaskDBBackupDaily, db)
 	}
-	
+
 	if _, err := sch.Register(bud, asynq.NewTask(jobs.TaskBudgetsDailyProcessing, nil)); err != nil {
 		log.Fatal(err)
 	} else {
 		logrus.Infof("Scheduled task '%s' to run at cron '%s'", jobs.TaskBudgetsDailyProcessing, bud)
 	}
 
-	if err := sch.Run(); err != nil { log.Fatal(err) }
+	if err := sch.Run(); err != nil {
+		log.Fatal(err)
+	}
 }

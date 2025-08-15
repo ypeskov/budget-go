@@ -292,11 +292,9 @@ type AccountTypeDetailDTO struct {
 
 type TransactionDetailRaw struct {
 	models.Transaction
-	User        models.User        `db:"users"`
-	Account     models.Account     `db:"accounts"`
-	Currency    models.Currency    `db:"currencies"`
-	AccountType models.AccountType `db:"account_types"`
+	User        models.User          `db:"users"`
+	Account     models.Account       `db:"accounts"`
+	Currency    models.Currency      `db:"currencies"`
+	AccountType models.AccountType   `db:"account_types"`
 	Category    *models.UserCategory `db:"user_categories"`
 }
-
-

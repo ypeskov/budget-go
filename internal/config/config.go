@@ -37,11 +37,13 @@ type Config struct {
 
 	// Email settings for notifications
 	SMTPHost         string `env:"SMTP_HOST" envDefault:"localhost"`
-	SMTPPort         int    `env:"SMTP_PORT" envDefault:"587"`
+	SMTPPort         string `env:"SMTP_PORT" envDefault:"587"`
 	SMTPUser         string `env:"SMTP_USER" envDefault:""`
 	SMTPPassword     string `env:"SMTP_PASSWORD" envDefault:""`
+	SMTPFrom         string `env:"SMTP_FROM" envDefault:"noreply@budget-app.com"`
 	AdminEmailsRaw   string `env:"ADMINS_NOTIFICATION_EMAILS" envDefault:""`
 	EmailFromAddress string `env:"EMAIL_FROM_ADDRESS" envDefault:"noreply@budget-app.com"`
+	FrontendURL      string `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
 
 	// CurrencyBeacon API settings
 	CurrencyBeaconAPIURL     string `env:"CURRENCYBEACON_API_URL" envDefault:"https://api.currencybeacon.com"`

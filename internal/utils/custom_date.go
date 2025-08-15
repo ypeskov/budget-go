@@ -15,31 +15,31 @@ type CustomDate struct {
 func (cd *CustomDate) UnmarshalJSON(data []byte) error {
 	// Remove quotes from JSON string
 	dateStr := strings.Trim(string(data), `"`)
-	
+
 	// Try parsing as date-only format first (YYYY-MM-DD)
 	if t, err := time.Parse("2006-01-02", dateStr); err == nil {
 		cd.Time = t
 		return nil
 	}
-	
+
 	// Try parsing as RFC3339 datetime format
 	if t, err := time.Parse(time.RFC3339, dateStr); err == nil {
 		cd.Time = t
 		return nil
 	}
-	
+
 	// Try parsing as ISO 8601 datetime format without timezone
 	if t, err := time.Parse("2006-01-02T15:04:05", dateStr); err == nil {
 		cd.Time = t
 		return nil
 	}
-	
+
 	// Try parsing as common datetime format
 	if t, err := time.Parse("2006-01-02 15:04:05", dateStr); err == nil {
 		cd.Time = t
 		return nil
 	}
-	
+
 	return fmt.Errorf("cannot parse date: %s", dateStr)
 }
 

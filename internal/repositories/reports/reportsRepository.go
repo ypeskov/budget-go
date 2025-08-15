@@ -233,7 +233,7 @@ func (r *ReportsRepository) getBalanceReportWithFilter(userID int, input dto.Bal
 	argIndex++
 	baseCurrencyIndex := argIndex
 	args = append(args, baseCurrencyCode)
-	
+
 	argIndex++
 	reportDateIndex := argIndex
 	args = append(args, input.BalanceDate.Time.Format("2006-01-02"))
@@ -251,16 +251,16 @@ func (r *ReportsRepository) getBalanceReportWithFilter(userID int, input dto.Bal
 			  AND t.date_time <= $2`
 
 	// Add account filter to CTE if specified
-    if len(input.AccountIds) > 0 {
-        // Include specified accounts OR accounts marked to show in reports
-        query += fmt.Sprintf(" AND (t.account_id IN (%s) OR a.show_in_reports = true)", strings.Join(accountPlaceholders, ","))
-    } else {
-        // No account filter specified: include only accounts marked to show in reports
-        query += " AND a.show_in_reports = true"
-    }
+	if len(input.AccountIds) > 0 {
+		// Include specified accounts OR accounts marked to show in reports
+		query += fmt.Sprintf(" AND (t.account_id IN (%s) OR a.show_in_reports = true)", strings.Join(accountPlaceholders, ","))
+	} else {
+		// No account filter specified: include only accounts marked to show in reports
+		query += " AND a.show_in_reports = true"
+	}
 
 	// The main query - we need to filter accounts here too!
-    if len(input.AccountIds) > 0 {
+	if len(input.AccountIds) > 0 {
 		// If specific accounts requested, only get those accounts
 		query += fmt.Sprintf(`
 		)
@@ -276,7 +276,7 @@ func (r *ReportsRepository) getBalanceReportWithFilter(userID int, input dto.Bal
 		JOIN currencies c ON a.currency_id = c.id
 		LEFT JOIN latest_transactions lt ON a.id = lt.account_id AND lt.rn = 1
         WHERE a.user_id = $1 AND (a.id IN (%s) OR a.show_in_reports = true)`, baseCurrencyIndex, reportDateIndex, strings.Join(accountPlaceholders, ","))
-    } else {
+	} else {
 		// No specific accounts requested
 		query += fmt.Sprintf(`
 		)
@@ -294,7 +294,7 @@ func (r *ReportsRepository) getBalanceReportWithFilter(userID int, input dto.Bal
         WHERE a.user_id = $1 AND a.show_in_reports = true`, baseCurrencyIndex, reportDateIndex)
 	}
 
-    query += " ORDER BY LOWER(a.name)"
+	query += " ORDER BY LOWER(a.name)"
 
 	var results []dto.BalanceReportOutputDTO
 	err = r.db.Select(&results, query, args...)
@@ -364,7 +364,7 @@ func (r *ReportsRepository) GetExpensesByCategories(userID int, input dto.Expens
 			// Format child categories like Python: "Parent >> Child"
 			displayName = fmt.Sprintf("%s >> %s", *cat.ParentName, cat.Name)
 		}
-		
+
 		results[cat.ID] = dto.ExpensesReportOutputItemDTO{
 			ID:            cat.ID,
 			Name:          displayName,
@@ -451,16 +451,16 @@ func (r *ReportsRepository) GetExpensesByCategories(userID int, input dto.Expens
 
 // ExpenseRawRow represents a single expense transaction row for conversion/aggregation in services
 type ExpenseRawRow struct {
-    CategoryID   *int      `db:"category_id"`
-    Amount       float64   `db:"amount"`
-    CurrencyCode string    `db:"currency_code"`
-    DateTime     time.Time `db:"date_time"`
+	CategoryID   *int      `db:"category_id"`
+	Amount       float64   `db:"amount"`
+	CurrencyCode string    `db:"currency_code"`
+	DateTime     time.Time `db:"date_time"`
 }
 
 // GetRawExpensesRows returns per-transaction expenses for the given period and optional category filter.
 // This is used by services to perform currency conversion like the FastAPI implementation.
 func (r *ReportsRepository) GetRawExpensesRows(userID int, input dto.ExpensesReportInputDTO) ([]ExpenseRawRow, error) {
-    query := `
+	query := `
         SELECT 
             t.category_id,
             ABS(t.amount) as amount,
@@ -476,26 +476,26 @@ func (r *ReportsRepository) GetRawExpensesRows(userID int, input dto.ExpensesRep
           AND t.is_deleted = false
           AND t.is_transfer = false`
 
-    args := []interface{}{userID, input.StartDate.Time, input.EndDate.Time.Add(24 * time.Hour)}
+	args := []interface{}{userID, input.StartDate.Time, input.EndDate.Time.Add(24 * time.Hour)}
 
-    if len(input.Categories) > 0 {
-        placeholders := make([]string, len(input.Categories))
-        for i := range input.Categories {
-            placeholders[i] = fmt.Sprintf("$%d", len(args)+1+i)
-        }
-        query += fmt.Sprintf(" AND t.category_id IN (%s)", strings.Join(placeholders, ","))
-        for _, catID := range input.Categories {
-            args = append(args, catID)
-        }
-    }
+	if len(input.Categories) > 0 {
+		placeholders := make([]string, len(input.Categories))
+		for i := range input.Categories {
+			placeholders[i] = fmt.Sprintf("$%d", len(args)+1+i)
+		}
+		query += fmt.Sprintf(" AND t.category_id IN (%s)", strings.Join(placeholders, ","))
+		for _, catID := range input.Categories {
+			args = append(args, catID)
+		}
+	}
 
-    var rows []ExpenseRawRow
-    err := r.db.Select(&rows, query, args...)
-    if err != nil {
-        return nil, fmt.Errorf("failed to get raw expenses: %w", err)
-    }
+	var rows []ExpenseRawRow
+	err := r.db.Select(&rows, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get raw expenses: %w", err)
+	}
 
-    return rows, nil
+	return rows, nil
 }
 
 func (r *ReportsRepository) GetExpensesDiagramData(userID int, input dto.ExpensesReportInputDTO) ([]dto.ExpensesDiagramDataDTO, error) {

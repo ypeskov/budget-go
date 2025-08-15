@@ -180,7 +180,7 @@ func (r *RepositoryInstance) UpdateTransaction(transaction models.Transaction) e
 		"account_id":  transaction.AccountID,
 		"category_id": transaction.CategoryID,
 		"amount":      transaction.Amount,
-        "new_balance": transaction.NewBalance,
+		"new_balance": transaction.NewBalance,
 		"label":       transaction.Label,
 		"notes":       transaction.Notes,
 		"date_time":   transaction.DateTime,
@@ -231,47 +231,47 @@ func (r *RepositoryInstance) GetExpenseTransactionsForBudget(userId int, categor
 		AND is_deleted = FALSE 
 		AND is_income = FALSE 
 		AND is_transfer = FALSE`
-	
+
 	params := map[string]interface{}{
 		"user_id": userId,
 	}
-	
+
 	var filters []string
-	
+
 	// Filter by date range
 	if !startDate.IsZero() {
 		filters = append(filters, "date_time >= :start_date")
 		params["start_date"] = startDate
 	}
 	if !endDate.IsZero() {
-		filters = append(filters, "date_time < :end_date") 
+		filters = append(filters, "date_time < :end_date")
 		params["end_date"] = endDate
 	}
-	
+
 	// Filter by category IDs
 	if len(categoryIds) > 0 {
 		filters = append(filters, "category_id = ANY(:category_ids)")
 		params["category_ids"] = pq.Array(categoryIds)
 	}
-	
+
 	// Filter by specific transaction IDs if provided
 	if len(transactionIds) > 0 {
 		filters = append(filters, "id = ANY(:transaction_ids)")
 		params["transaction_ids"] = pq.Array(transactionIds)
 	}
-	
+
 	if len(filters) > 0 {
 		query += " AND " + strings.Join(filters, " AND ")
 	}
-	
+
 	query += " ORDER BY date_time DESC"
-	
+
 	rows, err := r.db.NamedQuery(query, params)
 	if err != nil {
 		return nil, logAndReturnError(err, "Error executing budget transactions query: ")
 	}
 	defer rows.Close()
-	
+
 	var transactions []models.Transaction
 	for rows.Next() {
 		var transaction models.Transaction
@@ -280,7 +280,7 @@ func (r *RepositoryInstance) GetExpenseTransactionsForBudget(userId int, categor
 		}
 		transactions = append(transactions, transaction)
 	}
-	
+
 	return transactions, nil
 }
 

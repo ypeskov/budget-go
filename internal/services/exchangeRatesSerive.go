@@ -182,7 +182,7 @@ func (s *ExchangeRatesServiceInstance) GetRateBetweenCurrencies(
 	}
 
 	baseCurrency := s.cache.baseCurrencies[dateKey]
-	
+
 	// Handle conversions based on the base currency
 	if currencyFrom == baseCurrency {
 		// Converting from base currency to another currency

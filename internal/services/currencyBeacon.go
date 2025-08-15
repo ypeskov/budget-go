@@ -57,10 +57,10 @@ func (c *CurrencyBeaconService) GetCurrencyRates(date string) (map[string]interf
 	}
 
 	result := map[string]interface{}{
-		"rates":                response.Rates,
-		"actual_date":          response.Date,
-		"base_currency_code":   response.Base,
-		"service_name":         "CurrencyBeacon",
+		"rates":              response.Rates,
+		"actual_date":        response.Date,
+		"base_currency_code": response.Base,
+		"service_name":       "CurrencyBeacon",
 	}
 
 	log.Infof("Successfully fetched exchange rates for %s (base: %s, %d rates)",

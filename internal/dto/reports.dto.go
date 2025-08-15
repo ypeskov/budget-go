@@ -21,7 +21,7 @@ type CashFlowReportOutputDTO struct {
 
 // BalanceReportInputDTO represents input for balance report
 type BalanceReportInputDTO struct {
-	AccountIds  []int             `json:"account_ids"`
+	AccountIds  []int            `json:"account_ids"`
 	BalanceDate utils.CustomDate `json:"balanceDate"`
 }
 
@@ -38,10 +38,10 @@ type BalanceReportOutputDTO struct {
 
 // ExpensesReportInputDTO represents input for expenses report
 type ExpensesReportInputDTO struct {
-	StartDate            utils.CustomDate `json:"startDate" binding:"required"`
-	EndDate              utils.CustomDate `json:"endDate" binding:"required"`
-	Categories           []int            `json:"categories"`
-	HideEmptyCategories  bool             `json:"hideEmptyCategories"`
+	StartDate           utils.CustomDate `json:"startDate" binding:"required"`
+	EndDate             utils.CustomDate `json:"endDate" binding:"required"`
+	Categories          []int            `json:"categories"`
+	HideEmptyCategories bool             `json:"hideEmptyCategories"`
 }
 
 // ExpensesReportOutputItemDTO represents an item in expenses report
@@ -69,7 +69,7 @@ type ChartImageDTO struct {
 
 // AggregatedDiagramItemDTO represents aggregated parent-category data for diagrams
 type AggregatedDiagramItemDTO struct {
-    CategoryID int     `json:"category_id"`
-    Label      string  `json:"label"`
-    Amount     float64 `json:"amount"`
+	CategoryID int     `json:"category_id"`
+	Label      string  `json:"label"`
+	Amount     float64 `json:"amount"`
 }
