@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Activate Your {{.AppName}} Account</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        h2 { color: #2c3e50; }
+        .activation-section { background-color: #f8f9fa; padding: 20px; border-radius: 5px; text-align: center; margin: 20px 0; }
+        .activation-button { 
+            display: inline-block; 
+            background-color: #007bff; 
+            color: white; 
+            padding: 12px 24px; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .activation-button:hover { background-color: #0056b3; }
+        .activation-link { 
+            font-size: 12px; 
+            color: #666; 
+            word-break: break-all;
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 3px;
+            margin-top: 15px;
+        }
+        .expires-note { color: #e74c3c; font-weight: bold; margin-top: 15px; }
+        .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Welcome to {{.AppName}}!</h2>
+        <p>Hi {{.FirstName}},</p>
+        <p>Thank you for registering with {{.AppName}}. To complete your registration and start managing your budget, please activate your account.</p>
+        
+        <div class="activation-section">
+            <h3>Activate Your Account</h3>
+            <p>Click the button below to activate your account:</p>
+            <a href="{{.ActivationLink}}" class="activation-button">Activate Account</a>
+            
+            <p class="expires-note">⚠️ This activation link will expire in 24 hours.</p>
+            
+            <div class="activation-link">
+                <p><strong>If the button above doesn't work, copy and paste this link into your browser:</strong></p>
+                <p>{{.ActivationLink}}</p>
+            </div>
+        </div>
+        
+        <p>Once your account is activated, you'll be able to:</p>
+        <ul>
+            <li>Create and manage your budget categories</li>
+            <li>Track your income and expenses</li>
+            <li>Generate financial reports</li>
+            <li>Set up multiple accounts and currencies</li>
+        </ul>
+        
+        <p>If you didn't create this account, you can safely ignore this email.</p>
+        
+        <div class="footer">
+            <p>Best regards,<br>The {{.AppName}} Team</p>
+            <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>

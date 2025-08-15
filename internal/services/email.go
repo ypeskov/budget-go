@@ -262,31 +262,22 @@ func (s *EmailService) SendActivationEmail(toEmail, firstName, activationToken s
 	log.Debug("Sending activation email to: ", toEmail)
 
 	activationLink := fmt.Sprintf("%s/activate/%s", s.cfg.FrontendURL, activationToken)
+	
 	// For development, just log the activation link instead of sending actual email
 	if s.cfg.SendUserEmails == false {
 		log.Infof("ACTIVATION EMAIL: Hi %s, please activate your account: %s", firstName, activationLink)
 		return nil
 	}
 
-	// Production email sending
-	subject := "Activate Your Budget Account"
-	body := fmt.Sprintf(`
-<html>
-<body>
-<h2>Welcome to Budget!</h2>
-<p>Hi %s,</p>
-<p>Thank you for registering with Budget. Please activate your account by clicking the link below:</p>
-<p><a href="%s" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Activate Account</a></p>
-<p>Or copy and paste this link into your browser:</p>
-<p>%s</p>
-<p>This link will expire in 24 hours.</p>
-<br>
-<p>Best regards,<br>The Budget Team</p>
-</body>
-</html>
-`, firstName, activationLink, activationLink)
+	// Render email body using template
+	body, err := s.templateRenderer.RenderUserActivation(firstName, activationToken)
+	if err != nil {
+		log.Errorf("Failed to render activation email template: %v", err)
+		return fmt.Errorf("failed to render activation email template: %w", err)
+	}
+
 	emailData := &EmailData{
-		Subject:    subject,
+		Subject:    fmt.Sprintf("Activate Your %s Account", s.cfg.AppName),
 		Recipients: []string{toEmail},
 		Body:       body,
 	}

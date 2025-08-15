@@ -51,6 +51,12 @@ type ExchangeRatesTemplateData struct {
 	AppName      string
 }
 
+type UserActivationTemplateData struct {
+	FirstName      string
+	ActivationLink string
+	AppName        string
+}
+
 func (r *EmailTemplateRenderer) RenderBackupNotification(envName, dbName, filename string) (string, error) {
 	data := BackupTemplateData{
 		EnvName:   envName,
@@ -75,6 +81,17 @@ func (r *EmailTemplateRenderer) RenderExchangeRatesNotification(envName string, 
 	}
 
 	return r.renderTemplate("exchange_rates_notification.html", data)
+}
+
+func (r *EmailTemplateRenderer) RenderUserActivation(firstName, activationToken string) (string, error) {
+	activationLink := fmt.Sprintf("%s/activate/%s", r.cfg.FrontendURL, activationToken)
+	data := UserActivationTemplateData{
+		FirstName:      firstName,
+		ActivationLink: activationLink,
+		AppName:        r.cfg.AppName,
+	}
+
+	return r.renderTemplate("user_activation.html", data)
 }
 
 func (r *EmailTemplateRenderer) renderTemplate(templateName string, data interface{}) (string, error) {
