@@ -36,14 +36,14 @@ type EmailData struct {
 
 func (s *EmailService) SendBackupNotification(backupResult *BackupResult) error {
 	if s.cfg.AdminEmailsRaw == "" {
-		log.Warn("No admin emails configured for backup notification")
-		return nil
+		log.Error("No admin emails configured for backup notification")
+		return fmt.Errorf("no admin emails configured for notifications")
 	}
 
 	recipients := s.parseAdminEmails()
 	if len(recipients) == 0 {
-		log.Warn("No valid admin emails found")
-		return nil
+		log.Error("No valid admin emails found")
+		return fmt.Errorf("no valid admin emails found")
 	}
 
 	emailData := &EmailData{
@@ -58,14 +58,14 @@ func (s *EmailService) SendBackupNotification(backupResult *BackupResult) error 
 
 func (s *EmailService) SendExchangeRatesUpdateNotification(exchangeRates *models.ExchangeRates) error {
 	if s.cfg.AdminEmailsRaw == "" {
-		log.Warn("No admin emails configured for exchange rates notification")
-		return nil
+		log.Error("No admin emails configured for exchange rates notification")
+		return fmt.Errorf("no admin emails configured for notifications")
 	}
 
 	recipients := s.parseAdminEmails()
 	if len(recipients) == 0 {
-		log.Warn("No valid admin emails found")
-		return nil
+		log.Error("No valid admin emails found")
+		return fmt.Errorf("no valid admin emails found")
 	}
 
 	emailData := &EmailData{
@@ -204,12 +204,9 @@ func (s *EmailService) generateExchangeRatesEmailBody(exchangeRates *models.Exch
 
 func (s *EmailService) sendEmail(emailData *EmailData) error {
 	if s.cfg.SMTPHost == "" || s.cfg.SMTPUser == "" {
-		log.Info("SMTP not configured, would send email:", emailData.Subject)
-		log.Info("Email body:", emailData.Body)
-		if emailData.AttachmentPath != "" {
-			log.Info("Would attach file:", emailData.AttachmentPath)
-		}
-		return nil
+		log.Error("SMTP not configured, would send email:", emailData.Subject)
+		log.Error("Email body:", emailData.Body)
+		return fmt.Errorf("SMTP not configured")
 	}
 
 	auth := smtp.PlainAuth("", s.cfg.SMTPUser, s.cfg.SMTPPassword, s.cfg.SMTPHost)

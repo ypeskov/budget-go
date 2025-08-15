@@ -295,7 +295,7 @@ func (s *ExchangeRatesServiceInstance) UpdateExchangeRates(date time.Time) (*mod
 	}
 
 	// Create new exchange rates model
-	exchangeRates := &models.ExchangeRates{
+	excRates := &models.ExchangeRates{
 		Rates:            models.JSONB(ratesData["rates"].(map[string]interface{})),
 		ActualDate:       actualDate,
 		BaseCurrencyCode: ratesData["base_currency_code"].(string),
@@ -306,7 +306,7 @@ func (s *ExchangeRatesServiceInstance) UpdateExchangeRates(date time.Time) (*mod
 	}
 
 	// Save to database
-	err = s.exchangeRatesRepository.SaveExchangeRates(exchangeRates)
+	err = s.exchangeRatesRepository.SaveExchangeRates(excRates)
 	if err != nil {
 		log.Errorf("Failed to save exchange rates: %v", err)
 		return nil, err
@@ -320,5 +320,5 @@ func (s *ExchangeRatesServiceInstance) UpdateExchangeRates(date time.Time) (*mod
 	mu.Unlock()
 
 	log.Infof("Exchange rates updated successfully for %s", date.Format("2006-01-02"))
-	return exchangeRates, nil
+	return excRates, nil
 }
