@@ -1,0 +1,159 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{.Subject}} - {{.AppName}}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+        }
+        .email-container { 
+            max-width: 600px; 
+            margin: 20px auto; 
+            background-color: #ffffff; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            overflow: hidden;
+        }
+        .email-header { 
+            background-color: #2c3e50; 
+            color: white; 
+            padding: 20px; 
+            text-align: center; 
+        }
+        .email-header h1 { 
+            margin: 0; 
+            font-size: 24px; 
+            font-weight: normal; 
+        }
+        .email-body { 
+            padding: 30px; 
+        }
+        .email-footer { 
+            background-color: #f8f9fa; 
+            padding: 20px; 
+            border-top: 1px solid #ddd; 
+            font-size: 12px; 
+            color: #666; 
+            text-align: center; 
+        }
+        h2 { 
+            color: #2c3e50; 
+            margin-top: 0; 
+        }
+        h3 { 
+            color: #34495e; 
+        }
+        .button { 
+            display: inline-block; 
+            background-color: #007bff; 
+            color: white; 
+            padding: 12px 24px; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .button:hover { 
+            background-color: #0056b3; 
+        }
+        .button-success { 
+            background-color: #28a745; 
+        }
+        .button-success:hover { 
+            background-color: #1e7e34; 
+        }
+        .button-warning { 
+            background-color: #ffc107; 
+            color: #212529; 
+        }
+        .button-warning:hover { 
+            background-color: #e0a800; 
+        }
+        .alert { 
+            padding: 12px 16px; 
+            border-radius: 4px; 
+            margin: 15px 0; 
+        }
+        .alert-info { 
+            background-color: #d1ecf1; 
+            border: 1px solid #bee5eb; 
+            color: #0c5460; 
+        }
+        .alert-warning { 
+            background-color: #fff3cd; 
+            border: 1px solid #ffeaa7; 
+            color: #856404; 
+        }
+        .alert-danger { 
+            background-color: #f8d7da; 
+            border: 1px solid #f5c6cb; 
+            color: #721c24; 
+        }
+        .details-box { 
+            background-color: #f8f9fa; 
+            padding: 20px; 
+            border-radius: 5px; 
+            margin: 20px 0; 
+        }
+        .details-box ul { 
+            margin: 0; 
+            padding-left: 20px; 
+        }
+        .details-box li { 
+            margin-bottom: 8px; 
+        }
+        .text-center { 
+            text-align: center; 
+        }
+        .text-muted { 
+            color: #6c757d; 
+        }
+        .small { 
+            font-size: 12px; 
+        }
+        .code-block { 
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        @media (max-width: 600px) {
+            .email-container { 
+                margin: 10px; 
+                border-radius: 0; 
+            }
+            .email-body { 
+                padding: 20px; 
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <h1>{{.AppName}}</h1>
+        </div>
+        <div class="email-body">
+            {{template "content" .}}
+        </div>
+        <div class="email-footer">
+            <p><strong>{{.AppName}} Team</strong></p>
+            <p class="text-muted">This is an automated message. Please do not reply to this email.</p>
+            {{if .EnvName}}
+            <p class="small text-muted">Environment: {{.EnvName}}</p>
+            {{end}}
+        </div>
+    </div>
+</body>
+</html>
+{{end}}

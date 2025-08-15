@@ -1,40 +1,24 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Exchange Rates Updated</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        h2 { color: #2c3e50; }
-        .details { background-color: #f8f9fa; padding: 15px; border-radius: 5px; }
-        .details ul { margin: 0; padding-left: 20px; }
-        .details li { margin-bottom: 8px; }
-        .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
-        .success { color: #27ae60; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Exchange Rates Successfully Updated</h2>
-        <p>The exchange rates have been <span class="success">successfully updated</span> for your {{.AppName}} team.</p>
-        
-        <div class="details">
-            <h3>Update Details:</h3>
-            <ul>
-                <li><strong>Environment:</strong> {{.EnvName}}</li>
-                <li><strong>Updated At:</strong> {{.UpdatedAt}}</li>
-                <li><strong>Actual Date:</strong> {{.ActualDate}}</li>
-                <li><strong>Base Currency:</strong> {{.BaseCurrency}}</li>
-                <li><strong>Service:</strong> {{.ServiceName}}</li>
-                <li><strong>Rate Count:</strong> {{.RateCount}} currencies</li>
-            </ul>
-        </div>
-        
-        <p>All exchange rates are now current and available for use in the application.</p>
-        
-        <div class="footer">
-            <p>This is an automated message from your {{.AppName}} team.</p>
-        </div>
-    </div>
-</body>
-</html>
+{{template "base" .}}
+
+{{define "content"}}
+<h2>Exchange Rates Successfully Updated</h2>
+<p>The exchange rates have been <strong style="color: #27ae60;">successfully updated</strong> for your {{.AppName}} system.</p>
+
+<div class="details-box">
+    <h3>Update Details:</h3>
+    <ul>
+        <li><strong>Environment:</strong> {{.EnvName}}</li>
+        <li><strong>Updated At:</strong> {{.UpdatedAt}}</li>
+        <li><strong>Actual Date:</strong> {{.ActualDate}}</li>
+        <li><strong>Base Currency:</strong> {{.BaseCurrency}}</li>
+        <li><strong>Service:</strong> {{.ServiceName}}</li>
+        <li><strong>Rate Count:</strong> {{.RateCount}} currencies</li>
+    </ul>
+</div>
+
+<div class="alert alert-info">
+    <strong>✅ Status:</strong> All exchange rates are now current and available for use in the application.
+</div>
+
+<p class="text-muted">This update was performed automatically as part of your scheduled data refresh routine.</p>
+{{end}}

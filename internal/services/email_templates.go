@@ -34,6 +34,7 @@ func NewEmailTemplateRenderer(cfg *config.Config) (*EmailTemplateRenderer, error
 }
 
 type BackupTemplateData struct {
+	Subject   string
 	EnvName   string
 	DBName    string
 	Filename  string
@@ -42,6 +43,7 @@ type BackupTemplateData struct {
 }
 
 type ExchangeRatesTemplateData struct {
+	Subject      string
 	EnvName      string
 	UpdatedAt    string
 	ActualDate   string
@@ -52,6 +54,8 @@ type ExchangeRatesTemplateData struct {
 }
 
 type UserActivationTemplateData struct {
+	Subject        string
+	EnvName        string
 	FirstName      string
 	ActivationLink string
 	AppName        string
@@ -59,6 +63,7 @@ type UserActivationTemplateData struct {
 
 func (r *EmailTemplateRenderer) RenderBackupNotification(envName, dbName, filename string) (string, error) {
 	data := BackupTemplateData{
+		Subject:   "Database Backup Created",
 		EnvName:   envName,
 		DBName:    dbName,
 		Filename:  filename,
@@ -71,6 +76,7 @@ func (r *EmailTemplateRenderer) RenderBackupNotification(envName, dbName, filena
 
 func (r *EmailTemplateRenderer) RenderExchangeRatesNotification(envName string, exchangeRates *models.ExchangeRates) (string, error) {
 	data := ExchangeRatesTemplateData{
+		Subject:      "Exchange Rates Updated",
 		EnvName:      envName,
 		UpdatedAt:    time.Now().Format("2006-01-02 15:04:05 MST"),
 		ActualDate:   exchangeRates.ActualDate.Format("2006-01-02"),
@@ -86,6 +92,8 @@ func (r *EmailTemplateRenderer) RenderExchangeRatesNotification(envName string, 
 func (r *EmailTemplateRenderer) RenderUserActivation(firstName, activationToken string) (string, error) {
 	activationLink := fmt.Sprintf("%s/activate/%s", r.cfg.FrontendURL, activationToken)
 	data := UserActivationTemplateData{
+		Subject:        fmt.Sprintf("Activate Your %s Account", r.cfg.AppName),
+		EnvName:        r.cfg.Environment,
 		FirstName:      firstName,
 		ActivationLink: activationLink,
 		AppName:        r.cfg.AppName,
@@ -95,8 +103,15 @@ func (r *EmailTemplateRenderer) RenderUserActivation(firstName, activationToken 
 }
 
 func (r *EmailTemplateRenderer) renderTemplate(templateName string, data interface{}) (string, error) {
+	// Parse base template and the specific template
+	tmpl, err := template.New("email").ParseFS(emailTemplates, "templates/email/base.html", "templates/email/"+templateName)
+	if err != nil {
+		log.Errorf("Failed to parse templates for %s: %v", templateName, err)
+		return "", fmt.Errorf("failed to parse templates for %s: %w", templateName, err)
+	}
+
 	var buf bytes.Buffer
-	err := r.templates.ExecuteTemplate(&buf, templateName, data)
+	err = tmpl.ExecuteTemplate(&buf, templateName, data)
 	if err != nil {
 		log.Errorf("Failed to execute template %s: %v", templateName, err)
 		return "", fmt.Errorf("failed to execute template %s: %w", templateName, err)
