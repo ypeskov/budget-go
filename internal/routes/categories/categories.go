@@ -24,7 +24,7 @@ func RegisterCategoriesRoutes(g *echo.Group, manager *services.Manager) {
 }
 
 func GetCategories(c echo.Context) error {
-	log.Debug("GetCategories Route")
+	log.Debugf("GetCategories request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -52,11 +52,12 @@ func GetCategories(c echo.Context) error {
 		categories = append(categories, category)
 	}
 
+	log.Debug("GetCategories request completed - GET /categories")
 	return c.JSON(200, categories)
 }
 
 func GetGroupedCategories(c echo.Context) error {
-	log.Debug("GetGroupedCategories Route")
+	log.Debugf("GetGroupedCategories request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -68,11 +69,12 @@ func GetGroupedCategories(c echo.Context) error {
 		return c.JSON(500, map[string]string{"error": err.Error()})
 	}
 
+	log.Debug("GetGroupedCategories request completed - GET /categories/grouped")
 	return c.JSON(200, groupedCategories)
 }
 
 func CreateCategory(c echo.Context) error {
-	log.Debug("CreateCategory Route")
+	log.Debugf("CreateCategory request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -114,5 +116,6 @@ func CreateCategory(c echo.Context) error {
 		UpdatedAt:  &createdCategory.UpdatedAt,
 	}
 
+	log.Debug("CreateCategory request completed - POST /categories")
 	return c.JSON(http.StatusCreated, categoryDTO)
 }

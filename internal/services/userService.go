@@ -1,15 +1,19 @@
 package services
 
 import (
-	log "github.com/sirupsen/logrus"
 	userModel "ypeskov/budget-go/internal/models"
 	userRepo "ypeskov/budget-go/internal/repositories/user"
+	"ypeskov/budget-go/internal/dto"
+
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService interface {
 	GetAllUsers() ([]*userModel.User, error)
 	GetUserByEmail(email string) (*userModel.User, error)
 	CreateUser(user *userModel.User) (*userModel.User, error)
+	RegisterUser(userDTO *dto.UserRegisterRequestDTO) (*userModel.User, error)
 	LoginOrRegisterOAuth(email, firstName, lastName string) (*userModel.User, error)
 }
 
@@ -56,6 +60,43 @@ func (us *UserServiceInstance) CreateUser(user *userModel.User) (*userModel.User
 	return createdUser, nil
 }
 
+func (us *UserServiceInstance) RegisterUser(userDTO *dto.UserRegisterRequestDTO) (*userModel.User, error) {
+	log.Debug("RegisterUser service called")
+	
+	// Check if user already exists
+	existingUser, err := us.userRepo.GetUserByEmail(userDTO.Email)
+	if err == nil && existingUser != nil {
+		log.Error("User already exists with email: ", userDTO.Email)
+		return nil, &UserAlreadyExistsError{Email: userDTO.Email}
+	}
+
+	// Hash the password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userDTO.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Error("Error hashing password: ", err)
+		return nil, err
+	}
+
+	// Create new user
+	newUser := &userModel.User{
+		Email:          userDTO.Email,
+		FirstName:      userDTO.FirstName,
+		LastName:       userDTO.LastName,
+		PasswordHash:   string(hashedPassword),
+		IsActive:       true,
+		BaseCurrencyID: 1, // Default to USD or first currency
+		IsDeleted:      false,
+	}
+
+	createdUser, err := us.CreateUser(newUser)
+	if err != nil {
+		log.Error("Error creating user: ", err)
+		return nil, err
+	}
+
+	return createdUser, nil
+}
+
 func (us *UserServiceInstance) LoginOrRegisterOAuth(email, firstName, lastName string) (*userModel.User, error) {
 	log.Debug("LoginOrRegisterOAuth service called")
 	
@@ -89,4 +130,12 @@ type UserNotActivatedError struct {
 
 func (e *UserNotActivatedError) Error() string {
 	return "User not activated: " + e.Email
+}
+
+type UserAlreadyExistsError struct {
+	Email string
+}
+
+func (e *UserAlreadyExistsError) Error() string {
+	return "User already exists: " + e.Email
 }

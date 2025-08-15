@@ -5,14 +5,15 @@ import (
 	"ypeskov/budget-go/internal/routes/budgets"
 	"ypeskov/budget-go/internal/routes/categories"
 	"ypeskov/budget-go/internal/routes/currencies"
+	"ypeskov/budget-go/internal/routes/management"
 	"ypeskov/budget-go/internal/routes/reports"
 	"ypeskov/budget-go/internal/routes/transactions"
 	settings "ypeskov/budget-go/internal/routes/userSettings"
-	"ypeskov/budget-go/internal/routes/management"
 	"ypeskov/budget-go/internal/services"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	log "github.com/sirupsen/logrus"
 
 	"ypeskov/budget-go/internal/config"
 	customMiddleware "ypeskov/budget-go/internal/middleware"
@@ -75,5 +76,7 @@ func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo
 }
 
 func Health(c echo.Context) error {
+	log.Debug("Health request started - GET /health")
+	log.Debug("Health request completed - GET /health")
 	return c.String(http.StatusOK, "OK")
 }

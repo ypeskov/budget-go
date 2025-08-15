@@ -33,7 +33,7 @@ func RegisterAccountsRoutes(g *echo.Group, cfgGlobal *config.Config, manager *se
 }
 
 func GetAccounts(c echo.Context) error {
-	log.Debug("GetAccounts Route")
+	log.Debugf("GetAccounts request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -67,11 +67,12 @@ func GetAccounts(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
+	log.Debug("GetAccounts request completed - GET /accounts")
 	return c.JSON(http.StatusOK, userAccounts)
 }
 
 func GetAccountsTypes(c echo.Context) error {
-	log.Debug("GetAccountsTypes Route")
+	log.Debugf("GetAccountsTypes request started: %s %s", c.Request().Method, c.Request().URL)
 	accountTypes, err := sm.AccountsService.GetAccountTypes()
 	if err != nil {
 		log.Error("Error getting account types: ", err)
@@ -83,11 +84,12 @@ func GetAccountsTypes(c echo.Context) error {
 		accountTypesDTO = append(accountTypesDTO, accountType)
 	}
 
+	log.Debug("GetAccountsTypes request completed - GET /accounts/types")
 	return c.JSON(http.StatusOK, accountTypesDTO)
 }
 
 func GetAccountById(c echo.Context) error {
-	log.Debug("GetAccountById Route")
+	log.Debugf("GetAccountById request started: %s %s", c.Request().Method, c.Request().URL)
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -100,11 +102,12 @@ func GetAccountById(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
 
+	log.Debug("GetAccountById request completed - GET /accounts/:id")
 	return c.JSON(http.StatusOK, account)
 }
 
 func CreateAccount(c echo.Context) error {
-	log.Debug("CreateAccount Route")
+	log.Debugf("CreateAccount request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -125,11 +128,12 @@ func CreateAccount(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
+	log.Debug("CreateAccount request completed - POST /accounts")
 	return c.JSON(http.StatusOK, createdAccount)
 }
 
 func UpdateAccount(c echo.Context) error {
-	log.Debug("UpdateAccount Route")
+	log.Debugf("UpdateAccount request started: %s %s", c.Request().Method, c.Request().URL)
 
 	account, err := prepareAccount(c)
 	if err != nil {
@@ -162,6 +166,7 @@ func UpdateAccount(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
+	log.Debug("UpdateAccount request completed - PUT /accounts/:id")
 	return c.JSON(http.StatusOK, updatedAccount)
 }
 

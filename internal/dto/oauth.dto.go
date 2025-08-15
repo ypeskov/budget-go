@@ -17,3 +17,4 @@ type Token struct {
 	AccessToken string `json:"accessToken"`
 	TokenType   string `json:"tokenType"`
 }
+

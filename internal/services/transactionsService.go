@@ -171,7 +171,7 @@ func (s *TransactionsServiceInstance) createRegularTransaction(transaction model
 	// Calculate transaction effect and new balance
 	effect := s.calculateTransactionEffect(transaction.AccountID, transaction.Amount, transaction.IsIncome, transaction.IsTransfer, false)
 	newBalance := currentBalance.Add(effect)
-	
+
 	// Set the new balance in the transaction record
 	transaction.NewBalance = &newBalance
 
@@ -193,18 +193,18 @@ func (s *TransactionsServiceInstance) createRegularTransaction(transaction model
 		return nil, err
 	}
 
-    // Update only affected budgets (recompute), if this is an expense transaction
-    if !transaction.IsIncome && !transaction.IsTransfer {
-        pairs := []AffectedCategoryDate{}
-        if transaction.CategoryID != nil && transaction.DateTime != nil {
-            pairs = append(pairs, AffectedCategoryDate{CategoryID: *transaction.CategoryID, Date: *transaction.DateTime})
-        }
-        if len(pairs) > 0 {
-            if err := s.sm.BudgetsService.UpdateBudgetCollectedAmountsForCategories(transaction.UserID, pairs); err != nil {
-                log.Error("Error updating affected budgets after transaction creation: ", err)
-            }
-        }
-    }
+	// Update only affected budgets (recompute), if this is an expense transaction
+	if !transaction.IsIncome && !transaction.IsTransfer {
+		pairs := []AffectedCategoryDate{}
+		if transaction.CategoryID != nil && transaction.DateTime != nil {
+			pairs = append(pairs, AffectedCategoryDate{CategoryID: *transaction.CategoryID, Date: *transaction.DateTime})
+		}
+		if len(pairs) > 0 {
+			if err := s.sm.BudgetsService.UpdateBudgetCollectedAmountsForCategories(transaction.UserID, pairs); err != nil {
+				log.Error("Error updating affected budgets after transaction creation: ", err)
+			}
+		}
+	}
 
 	return createdTransaction, nil
 }
@@ -240,7 +240,7 @@ func (s *TransactionsServiceInstance) createTransferTransaction(transaction mode
 	// Calculate effects and new balances
 	sourceEffect := s.calculateTransactionEffect(sourceTransaction.AccountID, sourceTransaction.Amount, sourceTransaction.IsIncome, sourceTransaction.IsTransfer, false)
 	targetEffect := s.calculateTransactionEffect(*targetAccountID, *targetAmount, true, true, true) // Transfer in is always income for target
-	
+
 	sourceNewBalance := sourceCurrentBalance.Add(sourceEffect)
 	targetNewBalance := targetCurrentBalance.Add(targetEffect)
 
@@ -285,11 +285,11 @@ func (s *TransactionsServiceInstance) createTransferTransaction(transaction mode
 		AccountID:           *targetAccountID,
 		Amount:              *targetAmount,
 		CategoryID:          transaction.CategoryID, // Can use same category or make it configurable
-		Label:               transaction.Label, // Use the same label as the source transaction
-		IsIncome:            true, // Transfer in is always income for target
+		Label:               transaction.Label,      // Use the same label as the source transaction
+		IsIncome:            true,                   // Transfer in is always income for target
 		IsTransfer:          true,
 		LinkedTransactionID: createdSourceTx.ID, // Link to the created source transaction
-		NewBalance:          &targetNewBalance, // Set the new balance for target account
+		NewBalance:          &targetNewBalance,  // Set the new balance for target account
 		Notes:               transaction.Notes,
 		DateTime:            transaction.DateTime,
 		CreatedAt:           transaction.CreatedAt,
@@ -432,7 +432,7 @@ func convertRawToTransactionDetail(raw *dto.TransactionDetailRaw, baseCurrencyCo
 		IsIncome:        raw.IsIncome,
 		IsTemplate:      nil,
 		UserID:          raw.UserID,
-		User: dto.UserDTO{
+		User: dto.UserRegisterResponseDTO{
 			Email:     raw.User.Email,
 			ID:        raw.User.ID,
 			FirstName: raw.User.FirstName,
@@ -543,20 +543,20 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 		}
 	}
 
-    // Update only affected budgets (recompute) for expense impact
-    // Consider both old and new values if either side is expense and not transfer
-    var pairs []AffectedCategoryDate
-    if !existingTransaction.IsIncome && !existingTransaction.IsTransfer && existingTransaction.CategoryID != nil && existingTransaction.DateTime != nil {
-        pairs = append(pairs, AffectedCategoryDate{CategoryID: *existingTransaction.CategoryID, Date: *existingTransaction.DateTime})
-    }
-    if !transaction.IsIncome && !transaction.IsTransfer && transaction.CategoryID != nil && transaction.DateTime != nil {
-        pairs = append(pairs, AffectedCategoryDate{CategoryID: *transaction.CategoryID, Date: *transaction.DateTime})
-    }
-    if len(pairs) > 0 {
-        if err := s.sm.BudgetsService.UpdateBudgetCollectedAmountsForCategories(userId, pairs); err != nil {
-            log.Error("Error updating affected budgets after transaction update: ", err)
-        }
-    }
+	// Update only affected budgets (recompute) for expense impact
+	// Consider both old and new values if either side is expense and not transfer
+	var pairs []AffectedCategoryDate
+	if !existingTransaction.IsIncome && !existingTransaction.IsTransfer && existingTransaction.CategoryID != nil && existingTransaction.DateTime != nil {
+		pairs = append(pairs, AffectedCategoryDate{CategoryID: *existingTransaction.CategoryID, Date: *existingTransaction.DateTime})
+	}
+	if !transaction.IsIncome && !transaction.IsTransfer && transaction.CategoryID != nil && transaction.DateTime != nil {
+		pairs = append(pairs, AffectedCategoryDate{CategoryID: *transaction.CategoryID, Date: *transaction.DateTime})
+	}
+	if len(pairs) > 0 {
+		if err := s.sm.BudgetsService.UpdateBudgetCollectedAmountsForCategories(userId, pairs); err != nil {
+			log.Error("Error updating affected budgets after transaction update: ", err)
+		}
+	}
 
 	return nil
 }
@@ -587,13 +587,13 @@ func (s *TransactionsServiceInstance) DeleteTransaction(transactionId int, userI
 		return err
 	}
 
-    // Update only affected budgets (recompute) if this was an expense transaction
-    if !existingTransaction.IsIncome && !existingTransaction.IsTransfer && existingTransaction.CategoryID != nil && existingTransaction.DateTime != nil {
-        pairs := []AffectedCategoryDate{{CategoryID: *existingTransaction.CategoryID, Date: *existingTransaction.DateTime}}
-        if err := s.sm.BudgetsService.UpdateBudgetCollectedAmountsForCategories(userId, pairs); err != nil {
-            log.Error("Error updating affected budgets after transaction deletion: ", err)
-        }
-    }
+	// Update only affected budgets (recompute) if this was an expense transaction
+	if !existingTransaction.IsIncome && !existingTransaction.IsTransfer && existingTransaction.CategoryID != nil && existingTransaction.DateTime != nil {
+		pairs := []AffectedCategoryDate{{CategoryID: *existingTransaction.CategoryID, Date: *existingTransaction.DateTime}}
+		if err := s.sm.BudgetsService.UpdateBudgetCollectedAmountsForCategories(userId, pairs); err != nil {
+			log.Error("Error updating affected budgets after transaction deletion: ", err)
+		}
+	}
 
 	return nil
 }
@@ -660,7 +660,7 @@ func (s *TransactionsServiceInstance) handleAccountBalanceUpdates(oldTx *dto.Tra
 				oldLinkedEffect := s.calculateTransactionEffect(linkedTx.AccountID, oldTx.Amount, !oldTx.IsIncome, linkedTx.IsTransfer, true)
 				newLinkedEffect := s.calculateTransactionEffect(linkedTx.AccountID, newTx.Amount, !newTx.IsIncome, linkedTx.IsTransfer, true)
 				linkedDifference := newLinkedEffect.Sub(oldLinkedEffect)
-				
+
 				if !linkedDifference.IsZero() {
 					err = s.updateAccountBalanceByEffect(linkedTx.AccountID, linkedDifference)
 					if err != nil {
@@ -709,7 +709,7 @@ func (s *TransactionsServiceInstance) calculateTransactionEffect(accountID int, 
 			return amount.Neg()
 		}
 	}
-	
+
 	if isIncome {
 		return amount // Positive effect
 	} else {
@@ -761,15 +761,15 @@ func (s *TransactionsServiceInstance) updateLinkedTransferTransaction(existingTx
 		ID:                  linkedTx.ID,
 		UserID:              linkedTx.UserID,
 		AccountID:           linkedTx.AccountID,
-		Amount:              linkedAmount, // Use the determined amount
-		CategoryID:          linkedTx.CategoryID, // Keep existing category
+		Amount:              linkedAmount,          // Use the determined amount
+		CategoryID:          linkedTx.CategoryID,   // Keep existing category
 		Label:               updatedSourceTx.Label, // Sync label with source
-		IsIncome:            linkedTx.IsIncome, // Keep original direction
+		IsIncome:            linkedTx.IsIncome,     // Keep original direction
 		IsTransfer:          linkedTx.IsTransfer,
-		LinkedTransactionID: updatedSourceTx.ID, // Link back to source
-		Notes:               updatedSourceTx.Notes, // Sync notes with source
+		LinkedTransactionID: updatedSourceTx.ID,       // Link back to source
+		Notes:               updatedSourceTx.Notes,    // Sync notes with source
 		DateTime:            updatedSourceTx.DateTime, // Sync datetime with source
-		NewBalance:          &linkedCurrentBalance, // Current balance after updates
+		NewBalance:          &linkedCurrentBalance,    // Current balance after updates
 		UpdatedAt:           &now,
 	}
 

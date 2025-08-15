@@ -78,5 +78,5 @@ func (h *Handlers) HandleBudgetsDailyProcessing(ctx context.Context, t *asynq.Ta
 	}
 
 	log.Info("Budgets daily processing task completed successfully")
-	return err
+	return nil
 }

@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
+	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/middleware"
 	"ypeskov/budget-go/internal/utils"
-	"ypeskov/budget-go/internal/dto"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -26,10 +26,19 @@ type UserLogin struct {
 	Password string `json:"password"`
 }
 
+
 type JWTCustomClaims struct {
 	Id    int    `json:"id"`
 	Email string `json:"email"`
 	jwt.RegisteredClaims
+}
+type ProfileDTO struct {
+	ID           int               `json:"id"`
+	FirstName    string            `json:"first_name"`
+	LastName     string            `json:"last_name"`
+	Email        string            `json:"email"`
+	Settings     map[string]string `json:"settings"`
+	BaseCurrency string            `json:"baseCurrency"`
 }
 
 var (
@@ -42,11 +51,14 @@ func RegisterAuthRoutes(g *echo.Group, cfgGlobal *config.Config, manager *servic
 	sm = manager
 
 	g.POST("/login", Login)
+	g.POST("/register", Register)
 	g.POST("/oauth", OAuth)
 	g.GET("/profile", Profile)
 }
 
 func Login(c echo.Context) error {
+	log.Debugf("Login request started: %s %s", c.Request().Method, c.Request().URL)
+
 	u := new(UserLogin)
 	if err := c.Bind(u); err != nil {
 		log.Error(err)
@@ -70,22 +82,65 @@ func Login(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
+	log.Debug("Login request completed - POST /auth/login")
 	return c.JSON(http.StatusOK, map[string]string{
 		"accessToken": signedToken,
 		"tokenType":   "Bearer",
 	})
 }
 
-type ProfileDTO struct {
-	ID           int               `json:"id"`
-	FirstName    string            `json:"first_name"`
-	LastName     string            `json:"last_name"`
-	Email        string            `json:"email"`
-	Settings     map[string]string `json:"settings"`
-	BaseCurrency string            `json:"baseCurrency"`
+func Register(c echo.Context) error {
+	log.Debugf("Register request started: %s %s", c.Request().Method, c.Request().URL)
+
+	u := new(dto.UserRegisterRequestDTO)
+	if err := c.Bind(u); err != nil {
+		log.Error("Error binding registration data: ", err)
+		return c.String(http.StatusBadRequest, "Bad request")
+	}
+
+	// Basic validation
+	if u.Email == "" || u.Password == "" || u.FirstName == "" || u.LastName == "" {
+		log.Error("Missing required registration fields")
+		return c.String(http.StatusBadRequest, "All fields are required")
+	}
+
+	// Register user using service layer
+	createdUser, err := sm.UserService.RegisterUser(u)
+	if err != nil {
+		if strings.Contains(err.Error(), "User already exists") {
+			log.Error("User already exists with email: ", u.Email)
+			return c.String(http.StatusConflict, "User already exists")
+		}
+		log.Error("Error registering user: ", err)
+		return c.String(http.StatusInternalServerError, "Internal server error")
+	}
+
+	// Generate JWT token for the new user
+	signedToken, err := utils.GenerateAccessToken(createdUser, cfg)
+	if err != nil {
+		log.Error("Error generating token: ", err)
+		return c.String(http.StatusInternalServerError, "Internal server error")
+	}
+
+	// Create response DTO
+	response := dto.UserRegisterResponseDTO{
+		ID:        createdUser.ID,
+		Email:     createdUser.Email,
+		FirstName: createdUser.FirstName,
+		LastName:  createdUser.LastName,
+	}
+
+	log.Debug("Register request completed - POST /auth/register")
+	return c.JSON(http.StatusCreated, map[string]interface{}{
+		"user":        response,
+		"accessToken": signedToken,
+		"tokenType":   "Bearer",
+	})
 }
 
 func Profile(c echo.Context) error {
+	log.Debugf("Profile request started: %s %s", c.Request().Method, c.Request().URL)
+
 	cfg := c.Get("config").(*config.Config)
 
 	// Accept both Authorization: Bearer and legacy auth-token header
@@ -142,17 +197,20 @@ func Profile(c echo.Context) error {
 		}
 	}
 
+	log.Debug("Profile request completed - GET /auth/profile")
 	return c.JSON(http.StatusOK, ProfileDTO{
-		ID:        user.ID,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		Email:     user.Email,
-		Settings:  settings,
+		ID:           user.ID,
+		FirstName:    user.FirstName,
+		LastName:     user.LastName,
+		Email:        user.Email,
+		Settings:     settings,
 		BaseCurrency: baseCurrency.Code,
 	})
 }
 
 func OAuth(c echo.Context) error {
+	log.Debugf("OAuth request started: %s %s", c.Request().Method, c.Request().URL)
+
 	oauthToken := new(dto.OAuthToken)
 	if err := c.Bind(oauthToken); err != nil {
 		log.Error("Bad request: ", err)
@@ -200,6 +258,7 @@ func OAuth(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"detail": "Internal server error. See logs for details"})
 	}
 
+	log.Debug("OAuth request completed - POST /auth/oauth")
 	return c.JSON(http.StatusOK, dto.Token{
 		AccessToken: signedToken,
 		TokenType:   "Bearer",

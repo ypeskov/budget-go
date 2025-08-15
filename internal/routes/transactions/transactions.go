@@ -33,7 +33,7 @@ func RegisterTransactionsRoutes(g *echo.Group, manager *services.Manager) {
 }
 
 func GetTransactions(c echo.Context) error {
-	log.Debug("GetTransactions Route")
+	log.Debugf("GetTransactions request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -67,11 +67,12 @@ func GetTransactions(c echo.Context) error {
 	}
 	transactionsDTO := dto.ConvertTransactionsToResponseList(transactions, baseCurrency)
 
+	log.Debug("GetTransactions request completed - GET /transactions")
 	return c.JSON(http.StatusOK, transactionsDTO)
 }
 
 func GetTemplates(c echo.Context) error {
-	log.Debug("GetTemplates Route")
+	log.Debugf("GetTemplates request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -83,11 +84,12 @@ func GetTemplates(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
+	log.Debug("GetTemplates request completed - GET /transactions/templates")
 	return c.JSON(http.StatusOK, templateDTOs)
 }
 
 func DeleteTemplates(c echo.Context) error {
-	log.Debug("DeleteTemplates Route")
+	log.Debugf("DeleteTemplates request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -114,13 +116,14 @@ func DeleteTemplates(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
+	log.Debug("DeleteTemplates request completed - DELETE /transactions/templates")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Templates deleted successfully",
 	})
 }
 
 func CreateTransaction(c echo.Context) error {
-	log.Debug("CreateTransaction Route")
+	log.Debugf("CreateTransaction request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -151,13 +154,14 @@ func CreateTransaction(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
+	log.Debug("CreateTransaction request completed - POST /transactions")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Transaction created successfully",
 	})
 }
 
 func GetTransactionDetail(c echo.Context) error {
-	log.Debug("GetTransactionDetail Route")
+	log.Debugf("GetTransactionDetail request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -183,11 +187,12 @@ func GetTransactionDetail(c echo.Context) error {
 		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "transaction", ID: transactionId}, http.StatusNotFound)
 	}
 
+	log.Debug("GetTransactionDetail request completed - GET /transactions/:id")
 	return c.JSON(http.StatusOK, transactionDetail)
 }
 
 func UpdateTransaction(c echo.Context) error {
-	log.Debug("UpdateTransaction Route")
+	log.Debugf("UpdateTransaction request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -221,13 +226,14 @@ func UpdateTransaction(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
+	log.Debug("UpdateTransaction request completed - PUT /transactions")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Transaction updated successfully",
 	})
 }
 
 func DeleteTransaction(c echo.Context) error {
-	log.Debug("DeleteTransaction Route")
+	log.Debugf("DeleteTransaction request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -260,6 +266,7 @@ func DeleteTransaction(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
+	log.Debug("DeleteTransaction request completed - DELETE /transactions/:id")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Transaction deleted successfully",
 	})

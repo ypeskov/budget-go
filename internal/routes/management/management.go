@@ -27,6 +27,8 @@ func RegisterManagementRoutes(g *echo.Group, cfg *config.Config, _ *services.Man
 }
 
 func triggerBackup(c echo.Context) error {
+	log.Debugf("triggerBackup request started: %s %s", c.Request().Method, c.Request().URL)
+	
 	// Enqueue DB backup task
 	if asynqClient == nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "queue not initialized"})
@@ -38,10 +40,13 @@ func triggerBackup(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to enqueue task"})
 	}
 
+	log.Debug("triggerBackup request completed - GET /management/backup")
 	return c.JSON(http.StatusAccepted, map[string]string{"message": "backup scheduled"})
 }
 
 func triggerUpdateExchangeRates(c echo.Context) error {
+	log.Debugf("triggerUpdateExchangeRates request started: %s %s", c.Request().Method, c.Request().URL)
+	
     if asynqClient == nil {
         return c.JSON(http.StatusInternalServerError, map[string]string{"error": "queue not initialized"})
     }
@@ -50,5 +55,6 @@ func triggerUpdateExchangeRates(c echo.Context) error {
         log.Errorf("failed to enqueue exchange rates update task: %v", err)
         return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to enqueue task"})
     }
+    log.Debug("triggerUpdateExchangeRates request completed - GET /management/update-exchange-rates")
     return c.JSON(http.StatusAccepted, map[string]string{"message": "exchange rates update scheduled"})
 }

@@ -24,7 +24,7 @@ func RegisterSettingsRoutes(g *echo.Group, manager *services.Manager) {
 }
 
 func GetBaseCurrency(c echo.Context) error {
-	log.Debug("GetBaseCurrency Route")
+	log.Debugf("GetBaseCurrency request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -37,11 +37,12 @@ func GetBaseCurrency(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get base currency")
 	}
 
+	log.Debug("GetBaseCurrency request completed - GET /settings/base-currency")
 	return c.JSON(http.StatusOK, baseCurrency)
 }
 
 func GetLanguages(c echo.Context) error {
-	log.Debug("GetLanguages Route")
+	log.Debugf("GetLanguages request started: %s %s", c.Request().Method, c.Request().URL)
 
 	languages, err := sm.LanguagesService.GetLanguages()
 	if err != nil {
@@ -49,11 +50,12 @@ func GetLanguages(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get languages")
 	}
 
+	log.Debug("GetLanguages request completed - GET /settings/languages")
 	return c.JSON(http.StatusOK, languages)
 }
 
 func UpdateSettings(c echo.Context) error {
-	log.Debug("UpdateSettings Route")
+	log.Debugf("UpdateSettings request started: %s %s", c.Request().Method, c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -82,5 +84,6 @@ func UpdateSettings(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to update settings")
 	}
 
+	log.Debug("UpdateSettings request completed - POST /settings")
 	return c.JSON(http.StatusOK, userSettings)
 }

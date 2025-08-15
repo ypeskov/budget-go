@@ -256,10 +256,10 @@ func getQueryParamAsTime(c echo.Context, paramName string) (time.Time, error) {
 
 type TransactionWithAccount struct {
 	models.Transaction
-	Account     AccountDTO          `db:"accounts"`
-	Currency    models.Currency     `db:"currencies"`
-	AccountType models.AccountType  `db:"account_types"`
-	Category    *CategoryDTO        `db:"user_categories"`
+	Account     AccountDTO         `db:"accounts"`
+	Currency    models.Currency    `db:"currencies"`
+	AccountType models.AccountType `db:"account_types"`
+	Category    *CategoryDTO       `db:"user_categories"`
 }
 
 type CreateTransactionDTO struct {
@@ -437,26 +437,26 @@ func (r *ResponseTransactionDTO) MarshalJSON() ([]byte, error) {
 }
 
 type TransactionDetailDTO struct {
-	ID                  int               `json:"id"`
-	AccountID           int               `json:"accountId"`
-	TargetAccountID     *int              `json:"targetAccountId"`
-	CategoryID          *int              `json:"categoryId"`
-	Amount              decimal.Decimal   `json:"amount"`
-	TargetAmount        *decimal.Decimal  `json:"targetAmount"`
-	Label               string            `json:"label"`
-	Notes               string            `json:"notes"`
-	DateTime            *time.Time        `json:"dateTime"`
-	IsTransfer          bool              `json:"isTransfer"`
-	IsIncome            bool              `json:"isIncome"`
-	IsTemplate          *bool             `json:"isTemplate"`
-	UserID              int               `json:"userId"`
-	User                UserDTO           `json:"user"`
-	Account             AccountDetailDTO  `json:"account"`
-	BaseCurrencyAmount  decimal.Decimal   `json:"baseCurrencyAmount"`
-	BaseCurrencyCode    string            `json:"baseCurrencyCode"`
-	NewBalance          decimal.Decimal   `json:"newBalance"`
-	Category            CategoryDetailDTO `json:"category"`
-	LinkedTransactionID *int              `json:"linkedTransactionId"`
+	ID                  int                     `json:"id"`
+	AccountID           int                     `json:"accountId"`
+	TargetAccountID     *int                    `json:"targetAccountId"`
+	CategoryID          *int                    `json:"categoryId"`
+	Amount              decimal.Decimal         `json:"amount"`
+	TargetAmount        *decimal.Decimal        `json:"targetAmount"`
+	Label               string                  `json:"label"`
+	Notes               string                  `json:"notes"`
+	DateTime            *time.Time              `json:"dateTime"`
+	IsTransfer          bool                    `json:"isTransfer"`
+	IsIncome            bool                    `json:"isIncome"`
+	IsTemplate          *bool                   `json:"isTemplate"`
+	UserID              int                     `json:"userId"`
+	User                UserRegisterResponseDTO `json:"user"`
+	Account             AccountDetailDTO        `json:"account"`
+	BaseCurrencyAmount  decimal.Decimal         `json:"baseCurrencyAmount"`
+	BaseCurrencyCode    string                  `json:"baseCurrencyCode"`
+	NewBalance          decimal.Decimal         `json:"newBalance"`
+	Category            CategoryDetailDTO       `json:"category"`
+	LinkedTransactionID *int                    `json:"linkedTransactionId"`
 }
 
 func (t *TransactionDetailDTO) MarshalJSON() ([]byte, error) {
@@ -485,13 +485,6 @@ func (t *TransactionDetailDTO) MarshalJSON() ([]byte, error) {
 // =============================================================================
 // SUPPORTING DTOs AND THEIR METHODS
 // =============================================================================
-
-type UserDTO struct {
-	Email     string `json:"email"`
-	ID        int    `json:"id"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-}
 
 type AccountDetailDTO struct {
 	UserID                int                  `json:"userId"`
@@ -554,11 +547,11 @@ type CategoryDetailDTO struct {
 
 type TransactionDetailRaw struct {
 	models.Transaction
-	User        models.User         `db:"users"`
-	Account     models.Account      `db:"accounts"`
-	Currency    models.Currency     `db:"currencies"`
-	AccountType models.AccountType  `db:"account_types"`
-	Category    *CategoryRaw        `db:"user_categories"`
+	User        models.User        `db:"users"`
+	Account     models.Account     `db:"accounts"`
+	Currency    models.Currency    `db:"currencies"`
+	AccountType models.AccountType `db:"account_types"`
+	Category    *CategoryRaw       `db:"user_categories"`
 }
 
 type CategoryRaw struct {
@@ -635,7 +628,7 @@ func ConvertToResponseTransaction(twa TransactionWithAccount, baseCurrency model
 			CreditLimit: &creditLimit,
 			OpeningDate: twa.Account.OpeningDate,
 			Comment:     twa.Account.Comment,
-			Currency: twa.Account.Currency,
+			Currency:    twa.Account.Currency,
 			AccountType: twa.Account.AccountType,
 		},
 		Category: CategoryDTO{

@@ -40,6 +40,8 @@ func getUserID(c echo.Context) (int, error) {
 }
 
 func GetCashFlow(c echo.Context) error {
+	log.Debugf("GetCashFlow request started: %s %s", c.Request().Method, c.Request().URL)
+	
 	userID, err := getUserID(c)
 	if err != nil {
 		return err
@@ -56,10 +58,13 @@ func GetCashFlow(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
 	}
 
+	log.Debug("GetCashFlow request completed - POST /reports/cashflow")
 	return c.JSON(http.StatusOK, result)
 }
 
 func GetBalanceReport(c echo.Context) error {
+	log.Debugf("GetBalanceReport request started: %s %s", c.Request().Method, c.Request().URL)
+	
 	userID, err := getUserID(c)
 	if err != nil {
 		return err
@@ -76,10 +81,13 @@ func GetBalanceReport(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
 	}
 
+	log.Debug("GetBalanceReport request completed - POST /reports/balance")
 	return c.JSON(http.StatusOK, result)
 }
 
 func GetNonHiddenBalance(c echo.Context) error {
+	log.Debugf("GetNonHiddenBalance request started: %s %s", c.Request().Method, c.Request().URL)
+	
 	userID, err := getUserID(c)
 	if err != nil {
 		return err
@@ -96,10 +104,13 @@ func GetNonHiddenBalance(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
 	}
 
+	log.Debug("GetNonHiddenBalance request completed - POST /reports/balance/non-hidden")
 	return c.JSON(http.StatusOK, result)
 }
 
 func GetExpensesByCategories(c echo.Context) error {
+	log.Debugf("GetExpensesByCategories request started: %s %s", c.Request().Method, c.Request().URL)
+	
 	userID, err := getUserID(c)
 	if err != nil {
 		return err
@@ -117,10 +128,13 @@ func GetExpensesByCategories(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
 	}
 
+	log.Debug("GetExpensesByCategories request completed - POST /reports/expenses-by-categories")
 	return c.JSON(http.StatusOK, result)
 }
 
 func GetDiagram(c echo.Context) error {
+	log.Debugf("GetDiagram request started: %s %s", c.Request().Method, c.Request().URL)
+	
 	userID, err := getUserID(c)
 	if err != nil {
 		return err
@@ -159,10 +173,13 @@ func GetDiagram(c echo.Context) error {
     }
 
     // Return the image in the expected format: { "image": "data:image/png;base64,..." }
+    log.Debug("GetDiagram request completed - GET /reports/diagram/:diagram_type/:start_date/:end_date")
     return c.JSON(http.StatusOK, chartImage)
 }
 
 func GetExpensesData(c echo.Context) error {
+	log.Debugf("GetExpensesData request started: %s %s", c.Request().Method, c.Request().URL)
+	
 	userID, err := getUserID(c)
 	if err != nil {
 		return err
@@ -186,6 +203,7 @@ func GetExpensesData(c echo.Context) error {
     // Sort desc
     sort.Slice(aggregated, func(i, j int) bool { return aggregated[i].Amount > aggregated[j].Amount })
 
+    log.Debug("GetExpensesData request completed - POST /reports/expenses-data")
     return c.JSON(http.StatusOK, aggregated)
 }
 
