@@ -16,7 +16,6 @@ import (
 //go:embed templates/email/*.html
 var emailTemplates embed.FS
 
-
 type EmailTemplateRenderer struct {
 	templates *template.Template
 	cfg       *config.Config
@@ -27,7 +26,6 @@ func NewEmailTemplateRenderer(cfg *config.Config) (*EmailTemplateRenderer, error
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse email templates: %w", err)
 	}
-
 
 	return &EmailTemplateRenderer{
 		templates: templates,

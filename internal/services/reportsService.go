@@ -1,13 +1,14 @@
 package services
 
 import (
-    "sort"
-    "strings"
-    "time"
-    "ypeskov/budget-go/internal/dto"
-    "ypeskov/budget-go/internal/repositories/reports"
+	"sort"
+	"strings"
+	"time"
+	"ypeskov/budget-go/internal/dto"
+	"ypeskov/budget-go/internal/repositories/reports"
+	"ypeskov/budget-go/internal/utils"
 
-    "github.com/shopspring/decimal"
+	"github.com/shopspring/decimal"
 )
 
 type ReportsService interface {
@@ -112,218 +113,218 @@ func (s *ReportsServiceInstance) GetCashFlow(userID int, input dto.CashFlowRepor
 }
 
 func (s *ReportsServiceInstance) GetBalanceReport(userID int, input dto.BalanceReportInputDTO) ([]dto.BalanceReportOutputDTO, error) {
-    results, err := s.reportsRepo.GetBalanceReport(userID, input)
-    if err != nil {
-        return nil, err
-    }
+	results, err := s.reportsRepo.GetBalanceReport(userID, input)
+	if err != nil {
+		return nil, err
+	}
 
-    // Convert each account balance into user's base currency using the balance date
-    // Repository already filled BaseCurrencyCode; use that as conversion target
-    for i := range results {
-        amountDec := decimal.NewFromFloat(results[i].Balance)
-        converted, convErr := s.exchangeRatesService.CalcAmountFromCurrency(
-            input.BalanceDate.Time,
-            amountDec,
-            results[i].CurrencyCode,
-            results[i].BaseCurrencyCode,
-        )
-        if convErr != nil {
-            // Fallback to original balance if conversion fails
-            converted = amountDec
-        }
-        results[i].BaseCurrencyBalance, _ = converted.Round(2).Float64()
-    }
+	// Convert each account balance into user's base currency using the balance date
+	// Repository already filled BaseCurrencyCode; use that as conversion target
+	for i := range results {
+		amountDec := decimal.NewFromFloat(results[i].Balance)
+		converted, convErr := s.exchangeRatesService.CalcAmountFromCurrency(
+			input.BalanceDate.Time,
+			amountDec,
+			results[i].CurrencyCode,
+			results[i].BaseCurrencyCode,
+		)
+		if convErr != nil {
+			// Fallback to original balance if conversion fails
+			converted = amountDec
+		}
+		results[i].BaseCurrencyBalance, _ = converted.Round(2).Float64()
+	}
 
-    return results, nil
+	return results, nil
 }
 
 func (s *ReportsServiceInstance) GetNonHiddenBalanceReport(userID int, input dto.BalanceReportInputDTO) ([]dto.BalanceReportOutputDTO, error) {
-    results, err := s.reportsRepo.GetNonHiddenBalanceReport(userID, input)
-    if err != nil {
-        return nil, err
-    }
+	results, err := s.reportsRepo.GetNonHiddenBalanceReport(userID, input)
+	if err != nil {
+		return nil, err
+	}
 
-    for i := range results {
-        amountDec := decimal.NewFromFloat(results[i].Balance)
-        converted, convErr := s.exchangeRatesService.CalcAmountFromCurrency(
-            input.BalanceDate.Time,
-            amountDec,
-            results[i].CurrencyCode,
-            results[i].BaseCurrencyCode,
-        )
-        if convErr != nil {
-            converted = amountDec
-        }
-        results[i].BaseCurrencyBalance, _ = converted.Round(2).Float64()
-    }
+	for i := range results {
+		amountDec := decimal.NewFromFloat(results[i].Balance)
+		converted, convErr := s.exchangeRatesService.CalcAmountFromCurrency(
+			input.BalanceDate.Time,
+			amountDec,
+			results[i].CurrencyCode,
+			results[i].BaseCurrencyCode,
+		)
+		if convErr != nil {
+			converted = amountDec
+		}
+		results[i].BaseCurrencyBalance, _ = converted.Round(2).Float64()
+	}
 
-    return results, nil
+	return results, nil
 }
 
 func (s *ReportsServiceInstance) GetExpensesByCategories(userID int, input dto.ExpensesReportInputDTO) ([]dto.ExpensesReportOutputItemDTO, error) {
-    // Match FastAPI: convert amounts to user's base currency per transaction
-    baseCurrency, err := s.reportsRepo.GetUserBaseCurrency(userID)
-    if err != nil {
-        return nil, err
-    }
+	// Match FastAPI: convert amounts to user's base currency per transaction
+	baseCurrency, err := s.reportsRepo.GetUserBaseCurrency(userID)
+	if err != nil {
+		return nil, err
+	}
 
-    // Load flat categories like repository currently does
-    categories, err := s.reportsRepo.GetExpensesByCategories(userID, dto.ExpensesReportInputDTO{
-        StartDate:            input.StartDate,
-        EndDate:              input.EndDate,
-        Categories:           input.Categories,
-        HideEmptyCategories:  false, // get full set
-    })
-    if err != nil {
-        return nil, err
-    }
+	// Load flat categories like repository currently does
+	categories, err := s.reportsRepo.GetExpensesByCategories(userID, dto.ExpensesReportInputDTO{
+		StartDate:           input.StartDate,
+		EndDate:             input.EndDate,
+		Categories:          input.Categories,
+		HideEmptyCategories: false, // get full set
+	})
+	if err != nil {
+		return nil, err
+	}
 
-    // Build index for quick lookup
-    byID := make(map[int]*dto.ExpensesReportOutputItemDTO)
-    for i := range categories {
-        categories[i].TotalExpenses = 0
-    }
-    for i := range categories {
-        byID[categories[i].ID] = &categories[i]
-    }
+	// Build index for quick lookup
+	byID := make(map[int]*dto.ExpensesReportOutputItemDTO)
+	for i := range categories {
+		categories[i].TotalExpenses = 0
+	}
+	for i := range categories {
+		byID[categories[i].ID] = &categories[i]
+	}
 
-    // Fetch raw transactions for conversion
-    rawRows, err := s.reportsRepo.GetRawExpensesRows(userID, input)
-    if err != nil {
-        return nil, err
-    }
+	// Fetch raw transactions for conversion
+	rawRows, err := s.reportsRepo.GetRawExpensesRows(userID, input)
+	if err != nil {
+		return nil, err
+	}
 
-    // Sum converted amounts into categories
-    for _, row := range rawRows {
-        // Skip transactions without a category (NULL category_id)
-        if row.CategoryID == nil {
-            continue
-        }
-        
-        // Convert each transaction amount to base currency using its date
-        converted, convErr := s.exchangeRatesService.CalcAmountFromCurrency(row.DateTime, decimal.NewFromFloat(row.Amount), row.CurrencyCode, baseCurrency)
-        if convErr != nil {
-            // Fallback to original amount if conversion fails (parity with FastAPI)
-            converted = decimal.NewFromFloat(row.Amount)
-        }
-        if cat, ok := byID[*row.CategoryID]; ok {
-            val, _ := converted.Float64()
-            cat.TotalExpenses += val
-            cat.CurrencyCode = &baseCurrency
-        }
-    }
+	// Sum converted amounts into categories
+	for _, row := range rawRows {
+		// Skip transactions without a category (NULL category_id)
+		if row.CategoryID == nil {
+			continue
+		}
 
-    // Apply hideEmptyCategories filter
-    result := make([]dto.ExpensesReportOutputItemDTO, 0, len(categories))
-    for _, c := range categories {
-        if input.HideEmptyCategories && c.TotalExpenses == 0 {
-            continue
-        }
-        result = append(result, c)
-    }
+		// Convert each transaction amount to base currency using its date
+		converted, convErr := s.exchangeRatesService.CalcAmountFromCurrency(row.DateTime, decimal.NewFromFloat(row.Amount), row.CurrencyCode, baseCurrency)
+		if convErr != nil {
+			// Fallback to original amount if conversion fails (parity with FastAPI)
+			converted = decimal.NewFromFloat(row.Amount)
+		}
+		if cat, ok := byID[*row.CategoryID]; ok {
+			val, _ := converted.Float64()
+			cat.TotalExpenses += val
+			cat.CurrencyCode = &baseCurrency
+		}
+	}
 
-    // Order by name (case-insensitive)
-    sort.SliceStable(result, func(i, j int) bool {
-        return strings.ToLower(result[i].Name) < strings.ToLower(result[j].Name)
-    })
+	// Apply hideEmptyCategories filter
+	result := make([]dto.ExpensesReportOutputItemDTO, 0, len(categories))
+	for _, c := range categories {
+		if input.HideEmptyCategories && c.TotalExpenses == 0 {
+			continue
+		}
+		result = append(result, c)
+	}
 
-    return result, nil
+	// Order by name (case-insensitive)
+	sort.SliceStable(result, func(i, j int) bool {
+		return strings.ToLower(result[i].Name) < strings.ToLower(result[j].Name)
+	})
+
+	return result, nil
 }
 
 func (s *ReportsServiceInstance) GetExpensesDiagramData(userID int, startDate, endDate time.Time) ([]dto.ExpensesDiagramDataDTO, error) {
-    input := dto.ExpensesReportInputDTO{
-        StartDate:           dto.CustomDate{Time: startDate},
-        EndDate:             dto.CustomDate{Time: endDate},
-        HideEmptyCategories: false,
-    }
-    // Fetch detailed category expenses to be able to aggregate like FastAPI prepare_data (with currency conversion)
-    items, err := s.GetExpensesByCategories(userID, input)
-    if err != nil {
-        return nil, err
-    }
+	input := dto.ExpensesReportInputDTO{
+		StartDate:           utils.CustomDate{Time: startDate},
+		EndDate:             utils.CustomDate{Time: endDate},
+		HideEmptyCategories: false,
+	}
+	// Fetch detailed category expenses to be able to aggregate like FastAPI prepare_data (with currency conversion)
+	items, err := s.GetExpensesByCategories(userID, input)
+	if err != nil {
+		return nil, err
+	}
 
-    // Prepare aggregated data at parent category level (like Python prepare_data)
-    data := prepareDiagramData(items)
+	// Prepare aggregated data at parent category level (like Python prepare_data)
+	data := prepareDiagramData(items)
 
-    // Combine small categories into "Other" like FastAPI implementation
-    combined := combineSmallCategories(data, 0.02)
+	// Combine small categories into "Other" like FastAPI implementation
+	combined := combineSmallCategories(data, 0.02)
 
-    // Sort by amount descending
-    sort.Slice(combined, func(i, j int) bool { return combined[i].Amount > combined[j].Amount })
+	// Sort by amount descending
+	sort.Slice(combined, func(i, j int) bool { return combined[i].Amount > combined[j].Amount })
 
-    // Assign colors deterministically after combining and map proper field names
-    colors := []string{"#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40", "#FF6384", "#C9CBCF"}
-    for i := range combined {
-        // Ensure field naming parity: use Label instead of categoryName in downstream usage
-        // Here we keep CategoryName for internal chart service; the /expenses-data endpoint will output AggregatedDiagramItemDTO
-        combined[i].Color = colors[i%len(colors)]
-    }
+	// Assign colors deterministically after combining and map proper field names
+	colors := []string{"#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40", "#FF6384", "#C9CBCF"}
+	for i := range combined {
+		// Ensure field naming parity: use Label instead of categoryName in downstream usage
+		// Here we keep CategoryName for internal chart service; the /expenses-data endpoint will output AggregatedDiagramItemDTO
+		combined[i].Color = colors[i%len(colors)]
+	}
 
-    return combined, nil
+	return combined, nil
 }
 
 // prepareDiagramData aggregates child categories into their parent and produces diagram data
 // Equivalent to Python prepare_data(categories, category_id=None) but only for top-level parents.
 func prepareDiagramData(items []dto.ExpensesReportOutputItemDTO) []dto.ExpensesDiagramDataDTO {
-    // Index items by id and by parent id
-    // Collect top-level parent categories (ParentID == nil)
-    parents := make([]dto.ExpensesReportOutputItemDTO, 0)
-    for _, it := range items {
-        if it.ParentID == nil { // top-level parent
-            parents = append(parents, it)
-        }
-    }
+	// Index items by id and by parent id
+	// Collect top-level parent categories (ParentID == nil)
+	parents := make([]dto.ExpensesReportOutputItemDTO, 0)
+	for _, it := range items {
+		if it.ParentID == nil { // top-level parent
+			parents = append(parents, it)
+		}
+	}
 
-    // For each parent, sum its own and its direct children amounts
-    result := make([]dto.ExpensesDiagramDataDTO, 0, len(parents))
-    for _, parent := range parents {
-        total := parent.TotalExpenses
-        for _, it := range items {
-            if it.ParentID != nil && parent.ID == *it.ParentID {
-                total += it.TotalExpenses
-            }
-        }
+	// For each parent, sum its own and its direct children amounts
+	result := make([]dto.ExpensesDiagramDataDTO, 0, len(parents))
+	for _, parent := range parents {
+		total := parent.TotalExpenses
+		for _, it := range items {
+			if it.ParentID != nil && parent.ID == *it.ParentID {
+				total += it.TotalExpenses
+			}
+		}
 
-        result = append(result, dto.ExpensesDiagramDataDTO{
-            CategoryName: parent.Name, // label is parent name in Python builder
-            Amount:       total,
-        })
-    }
+		result = append(result, dto.ExpensesDiagramDataDTO{
+			CategoryName: parent.Name, // label is parent name in Python builder
+			Amount:       total,
+		})
+	}
 
-    return result
+	return result
 }
 
 // combineSmallCategories merges categories contributing less than `threshold` (fraction of total)
 // into a single "Other" category. Threshold defaults to 0.02 (2%) in caller.
 func combineSmallCategories(data []dto.ExpensesDiagramDataDTO, threshold float64) []dto.ExpensesDiagramDataDTO {
-    if len(data) == 0 {
-        return data
-    }
+	if len(data) == 0 {
+		return data
+	}
 
-    // Compute total amount
-    var total float64
-    for _, d := range data {
-        total += d.Amount
-    }
-    if total <= 0 {
-        return data
-    }
+	// Compute total amount
+	var total float64
+	for _, d := range data {
+		total += d.Amount
+	}
+	if total <= 0 {
+		return data
+	}
 
-    // Separate large and small categories
-    large := make([]dto.ExpensesDiagramDataDTO, 0, len(data))
-    var otherAmount float64
-    for _, d := range data {
-        size := d.Amount / total
-        if size < threshold {
-            otherAmount += d.Amount
-        } else {
-            large = append(large, dto.ExpensesDiagramDataDTO{CategoryName: d.CategoryName, Amount: d.Amount})
-        }
-    }
+	// Separate large and small categories
+	large := make([]dto.ExpensesDiagramDataDTO, 0, len(data))
+	var otherAmount float64
+	for _, d := range data {
+		size := d.Amount / total
+		if size < threshold {
+			otherAmount += d.Amount
+		} else {
+			large = append(large, dto.ExpensesDiagramDataDTO{CategoryName: d.CategoryName, Amount: d.Amount})
+		}
+	}
 
-    if otherAmount > 0 {
-        large = append(large, dto.ExpensesDiagramDataDTO{CategoryName: "Other", Amount: otherAmount})
-    }
+	if otherAmount > 0 {
+		large = append(large, dto.ExpensesDiagramDataDTO{CategoryName: "Other", Amount: otherAmount})
+	}
 
-    return large
+	return large
 }

@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const DefaultCurrency = "USD"
+
 type Currency struct {
 	ID        int       `db:"id"`
 	Code      string    `db:"code"`

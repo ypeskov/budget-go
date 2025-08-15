@@ -21,8 +21,8 @@ type BudgetsService interface {
 	ArchiveBudget(budgetID int, userID int) error
 	ProcessOutdatedBudgets() ([]int, error)
 	UpdateBudgetCollectedAmounts(userID int) error
-    // UpdateBudgetCollectedAmountsForCategories recalculates only budgets affected by given category/date pairs
-    UpdateBudgetCollectedAmountsForCategories(userID int, pairs []AffectedCategoryDate) error
+	// UpdateBudgetCollectedAmountsForCategories recalculates only budgets affected by given category/date pairs
+	UpdateBudgetCollectedAmountsForCategories(userID int, pairs []AffectedCategoryDate) error
 }
 
 type BudgetsServiceInstance struct {
@@ -32,8 +32,8 @@ type BudgetsServiceInstance struct {
 
 // AffectedCategoryDate describes a category and the date to match budgets' period window
 type AffectedCategoryDate struct {
-    CategoryID int
-    Date       time.Time
+	CategoryID int
+	Date       time.Time
 }
 
 func NewBudgetsService(budgetsRepository budgetRepo.Repository, sManager *Manager) BudgetsService {
@@ -273,7 +273,7 @@ func (s *BudgetsServiceInstance) UpdateBudgetCollectedAmounts(userID int) error 
 	// Process budgets concurrently
 	var wg sync.WaitGroup
 	errorChan := make(chan error, len(userBudgets))
-	
+
 	// Limit concurrent goroutines to avoid overwhelming the database
 	const maxConcurrency = 10
 	semaphore := make(chan struct{}, maxConcurrency)
@@ -283,11 +283,11 @@ func (s *BudgetsServiceInstance) UpdateBudgetCollectedAmounts(userID int) error 
 			wg.Add(1)
 			go func(budgetID int, budgetName string) {
 				defer wg.Done()
-				
+
 				// Acquire semaphore
 				semaphore <- struct{}{}
 				defer func() { <-semaphore }()
-				
+
 				if err := s.fillBudgetWithExistingTransactionsOptimized(budgetID, userID, transactionCache, &cacheMutex); err != nil {
 					log.Errorf("Failed to update budget %d (%s) for user %d: %v", budgetID, budgetName, userID, err)
 					errorChan <- fmt.Errorf("budget %d (%s): %w", budgetID, budgetName, err)
@@ -317,59 +317,59 @@ func (s *BudgetsServiceInstance) UpdateBudgetCollectedAmounts(userID int) error 
 // UpdateBudgetCollectedAmountsForCategories finds budgets active at given dates that include the categories,
 // de-duplicates budgets, and recomputes their collected amounts (full scan of matching transactions).
 func (s *BudgetsServiceInstance) UpdateBudgetCollectedAmountsForCategories(userID int, pairs []AffectedCategoryDate) error {
-    if len(pairs) == 0 {
-        return nil
-    }
+	if len(pairs) == 0 {
+		return nil
+	}
 
-    // Collect affected budget IDs
-    budgetIDSet := make(map[int]struct{})
-    for _, p := range pairs {
-        if p.CategoryID == 0 || p.Date.IsZero() {
-            continue
-        }
-        budgets, err := s.budgetsRepository.GetActiveBudgetsByCategoryAndDate(userID, p.CategoryID, p.Date)
-        if err != nil {
-            log.Errorf("failed to get active budgets for user=%d category=%d date=%s: %v", userID, p.CategoryID, p.Date.Format(time.DateOnly), err)
-            continue
-        }
-        for _, b := range budgets {
-            if b.ID != nil {
-                budgetIDSet[*b.ID] = struct{}{}
-            }
-        }
-    }
+	// Collect affected budget IDs
+	budgetIDSet := make(map[int]struct{})
+	for _, p := range pairs {
+		if p.CategoryID == 0 || p.Date.IsZero() {
+			continue
+		}
+		budgets, err := s.budgetsRepository.GetActiveBudgetsByCategoryAndDate(userID, p.CategoryID, p.Date)
+		if err != nil {
+			log.Errorf("failed to get active budgets for user=%d category=%d date=%s: %v", userID, p.CategoryID, p.Date.Format(time.DateOnly), err)
+			continue
+		}
+		for _, b := range budgets {
+			if b.ID != nil {
+				budgetIDSet[*b.ID] = struct{}{}
+			}
+		}
+	}
 
-    if len(budgetIDSet) == 0 {
-        return nil
-    }
+	if len(budgetIDSet) == 0 {
+		return nil
+	}
 
-    // Prepare shared cache for transaction queries
-    transactionCache := make(map[string][]models.Transaction)
-    cacheMutex := sync.RWMutex{}
+	// Prepare shared cache for transaction queries
+	transactionCache := make(map[string][]models.Transaction)
+	cacheMutex := sync.RWMutex{}
 
-    // Process affected budgets concurrently but limited
-    const maxConcurrency = 10
-    semaphore := make(chan struct{}, maxConcurrency)
-    var wg sync.WaitGroup
-    var firstErr error
-    var firstErrOnce sync.Once
+	// Process affected budgets concurrently but limited
+	const maxConcurrency = 10
+	semaphore := make(chan struct{}, maxConcurrency)
+	var wg sync.WaitGroup
+	var firstErr error
+	var firstErrOnce sync.Once
 
-    for budgetID := range budgetIDSet {
-        wg.Add(1)
-        id := budgetID
-        go func() {
-            defer wg.Done()
-            semaphore <- struct{}{}
-            defer func() { <-semaphore }()
-            if err := s.fillBudgetWithExistingTransactionsOptimized(id, userID, transactionCache, &cacheMutex); err != nil {
-                log.Errorf("failed to update budget %d for user %d: %v", id, userID, err)
-                firstErrOnce.Do(func() { firstErr = err })
-            }
-        }()
-    }
-    wg.Wait()
+	for budgetID := range budgetIDSet {
+		wg.Add(1)
+		id := budgetID
+		go func() {
+			defer wg.Done()
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+			if err := s.fillBudgetWithExistingTransactionsOptimized(id, userID, transactionCache, &cacheMutex); err != nil {
+				log.Errorf("failed to update budget %d for user %d: %v", id, userID, err)
+				firstErrOnce.Do(func() { firstErr = err })
+			}
+		}()
+	}
+	wg.Wait()
 
-    return firstErr
+	return firstErr
 }
 
 func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactions(budgetID int, userID int) error {
@@ -394,7 +394,7 @@ func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactions(budgetID int
 	transactions, err := s.sm.TransactionsService.GetExpenseTransactionsForBudget(
 		budget.UserID, categoryIDs, *budget.StartDate, *budget.EndDate, transactionIds)
 	if err != nil {
-		return fmt.Errorf("failed to get expense transactions for budget %d (user=%d, categories=%v, start=%v, end=%v): %w", 
+		return fmt.Errorf("failed to get expense transactions for budget %d (user=%d, categories=%v, start=%v, end=%v): %w",
 			budgetID, budget.UserID, categoryIDs, budget.StartDate, budget.EndDate, err)
 	}
 
@@ -404,10 +404,10 @@ func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactions(budgetID int
 		// Convert transaction amount to budget currency
 		convertedAmount, err := s.convertTransactionAmountToBudgetCurrency(transaction, budget.CurrencyID)
 		if err != nil {
-			return fmt.Errorf("failed to convert transaction %d (amount=%s) to budget %d currency: %w", 
+			return fmt.Errorf("failed to convert transaction %d (amount=%s) to budget %d currency: %w",
 				*transaction.ID, transaction.Amount.String(), budgetID, err)
 		}
-		
+
 		totalAmount = totalAmount.Add(convertedAmount)
 	}
 
@@ -416,7 +416,7 @@ func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactions(budgetID int
 	if err != nil {
 		return fmt.Errorf("failed to update collected amount for budget %d to %s: %w", budgetID, totalAmount.String(), err)
 	}
-	
+
 	return nil
 }
 
@@ -426,32 +426,32 @@ func (s *BudgetsServiceInstance) convertTransactionAmountToBudgetCurrency(transa
 	if err != nil {
 		return decimal.Zero, fmt.Errorf("failed to get account %d for transaction %d: %w", transaction.AccountID, *transaction.ID, err)
 	}
-	
+
 	// If transaction account currency matches budget currency, no conversion needed
 	if accountDTO.CurrencyId == budgetCurrencyID {
 		return transaction.Amount, nil
 	}
-	
+
 	// If transaction has base_currency_amount and user's base currency matches budget currency
 	userBaseCurrency, err := s.sm.UserSettingsService.GetBaseCurrency(transaction.UserID)
 	if err == nil && transaction.BaseCurrencyAmount != nil && userBaseCurrency.ID == budgetCurrencyID {
 		return *transaction.BaseCurrencyAmount, nil
 	}
-	
+
 	// Get budget currency details to get the currency code
 	budgetCurrency, err := s.sm.CurrenciesService.GetCurrency(budgetCurrencyID)
 	if err != nil {
 		return decimal.Zero, fmt.Errorf("failed to get budget currency %d: %w", budgetCurrencyID, err)
 	}
-	
+
 	// Need currency conversion - use exchange rate service with currency codes
 	convertedAmount, err := s.sm.ExchangeRatesService.CalcAmountFromCurrency(
 		*transaction.DateTime, transaction.Amount, accountDTO.Currency.Code, budgetCurrency.Code)
 	if err != nil {
-		return decimal.Zero, fmt.Errorf("failed to convert %s %s to %s on %v: %w", 
+		return decimal.Zero, fmt.Errorf("failed to convert %s %s to %s on %v: %w",
 			transaction.Amount.String(), accountDTO.Currency.Code, budgetCurrency.Code, transaction.DateTime.Format("2006-01-02"), err)
 	}
-	
+
 	return convertedAmount, nil
 }
 
@@ -475,7 +475,7 @@ func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactionsOptimized(bud
 
 	// Create cache key for this query
 	cacheKey := fmt.Sprintf("%v:%s:%s", categoryIDs, budget.StartDate.Format("2006-01-02"), budget.EndDate.Format("2006-01-02"))
-	
+
 	// Try to get transactions from cache first
 	cacheMutex.RLock()
 	transactions, found := transactionCache[cacheKey]
@@ -487,7 +487,7 @@ func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactionsOptimized(bud
 		transactions, err = s.sm.TransactionsService.GetExpenseTransactionsForBudget(
 			budget.UserID, categoryIDs, *budget.StartDate, *budget.EndDate, transactionIds)
 		if err != nil {
-			return fmt.Errorf("failed to get expense transactions for budget %d (user=%d, categories=%v, start=%v, end=%v): %w", 
+			return fmt.Errorf("failed to get expense transactions for budget %d (user=%d, categories=%v, start=%v, end=%v): %w",
 				budgetID, budget.UserID, categoryIDs, budget.StartDate, budget.EndDate, err)
 		}
 
@@ -503,10 +503,10 @@ func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactionsOptimized(bud
 		// Convert transaction amount to budget currency
 		convertedAmount, err := s.convertTransactionAmountToBudgetCurrency(transaction, budget.CurrencyID)
 		if err != nil {
-			return fmt.Errorf("failed to convert transaction %d (amount=%s) to budget %d currency: %w", 
+			return fmt.Errorf("failed to convert transaction %d (amount=%s) to budget %d currency: %w",
 				*transaction.ID, transaction.Amount.String(), budgetID, err)
 		}
-		
+
 		totalAmount = totalAmount.Add(convertedAmount)
 	}
 
@@ -515,7 +515,7 @@ func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactionsOptimized(bud
 	if err != nil {
 		return fmt.Errorf("failed to update collected amount for budget %d to %s: %w", budgetID, totalAmount.String(), err)
 	}
-	
+
 	return nil
 }
 

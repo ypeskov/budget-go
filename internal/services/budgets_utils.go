@@ -11,12 +11,12 @@ func ConvertCategoryIDsToString(categoryIDs []int) string {
 	if len(categoryIDs) == 0 {
 		return ""
 	}
-	
+
 	strIDs := make([]string, len(categoryIDs))
 	for i, id := range categoryIDs {
 		strIDs[i] = strconv.Itoa(id)
 	}
-	
+
 	return strings.Join(strIDs, ",")
 }
 
@@ -28,7 +28,7 @@ func ParseCategoryIDsFromString(categoriesStr string) ([]int, error) {
 
 	strIDs := strings.Split(categoriesStr, ",")
 	categoryIDs := make([]int, len(strIDs))
-	
+
 	for i, strID := range strIDs {
 		id, err := strconv.Atoi(strings.TrimSpace(strID))
 		if err != nil {
@@ -36,6 +36,6 @@ func ParseCategoryIDsFromString(categoriesStr string) ([]int, error) {
 		}
 		categoryIDs[i] = id
 	}
-	
+
 	return categoryIDs, nil
 }

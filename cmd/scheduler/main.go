@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
-	"ypeskov/budget-go/internal/config"
-	"ypeskov/budget-go/internal/jobs"
 	logrus "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/config"
+	"ypeskov/budget-go/internal/constants"
 )
 
 func main() {
@@ -26,23 +26,25 @@ func main() {
 	db := fmt.Sprintf("%d %d * * *", cfg.DBBackupMinute, cfg.DBBackupHour)
 	bud := fmt.Sprintf("%d %d * * *", cfg.BudgetsProcMinute, cfg.BudgetsProcHour)
 
-	if _, err := sch.Register(ex, asynq.NewTask(jobs.TaskExchangeRatesDaily, nil)); err != nil {
+	if _, err := sch.Register(ex, asynq.NewTask(constants.TaskExchangeRatesDaily, nil)); err != nil {
 		log.Fatal(err)
 	} else {
-		logrus.Infof("Scheduled task '%s' to run at cron '%s'", jobs.TaskExchangeRatesDaily, ex)
-	}
-	
-	if _, err := sch.Register(db, asynq.NewTask(jobs.TaskDBBackupDaily, nil)); err != nil {
-		log.Fatal(err)
-	} else {
-		logrus.Infof("Scheduled task '%s' to run at cron '%s'", jobs.TaskDBBackupDaily, db)
-	}
-	
-	if _, err := sch.Register(bud, asynq.NewTask(jobs.TaskBudgetsDailyProcessing, nil)); err != nil {
-		log.Fatal(err)
-	} else {
-		logrus.Infof("Scheduled task '%s' to run at cron '%s'", jobs.TaskBudgetsDailyProcessing, bud)
+		logrus.Infof("Scheduled task '%s' to run at cron '%s'", constants.TaskExchangeRatesDaily, ex)
 	}
 
-	if err := sch.Run(); err != nil { log.Fatal(err) }
+	if _, err := sch.Register(db, asynq.NewTask(constants.TaskDBBackupDaily, nil)); err != nil {
+		log.Fatal(err)
+	} else {
+		logrus.Infof("Scheduled task '%s' to run at cron '%s'", constants.TaskDBBackupDaily, db)
+	}
+
+	if _, err := sch.Register(bud, asynq.NewTask(constants.TaskBudgetsDailyProcessing, nil)); err != nil {
+		log.Fatal(err)
+	} else {
+		logrus.Infof("Scheduled task '%s' to run at cron '%s'", constants.TaskBudgetsDailyProcessing, bud)
+	}
+
+	if err := sch.Run(); err != nil {
+		log.Fatal(err)
+	}
 }

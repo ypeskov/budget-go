@@ -57,26 +57,26 @@ func sanitizeValidationError(errorStr string) string {
 		// strconv.Atoi errors for categoryId
 		{`strconv\.Atoi: parsing "([^"]*)" for categoryId: invalid syntax`, "Invalid value for categoryId: expected a number but got '$1'"},
 		{`strconv\.Atoi: parsing "([^"]*)".*invalid syntax`, "Invalid number format: expected a number but got '$1'"},
-		
+
 		// decimal parsing errors for amount
 		{`can't convert ([^\s]+) to decimal`, "Invalid amount format: '$1' is not a valid number"},
 		{`decimal: can't convert ([^\s]+) to decimal`, "Invalid amount format: '$1' is not a valid number"},
-		
+
 		// JSON unmarshaling errors
 		{`json: cannot unmarshal string "([^"]*)" into Go struct field.*\.categoryId of type int`, "Invalid categoryId: expected a number but got '$1'"},
 		{`json: cannot unmarshal string "([^"]*)" into Go struct field.*\.amount`, "Invalid amount: expected a number but got '$1'"},
-		
+
 		// General JSON binding errors
 		{`failed to bind request body:.*json: cannot unmarshal`, "Invalid request format: check your JSON data"},
 		{`failed to bind request body:.*`, "Invalid request format"},
-		
+
 		// EOF and syntax errors
 		{`unexpected end of JSON input`, "Incomplete JSON data"},
 		{`invalid character.*looking for beginning of value`, "Invalid JSON format"},
 	}
 
 	sanitized := errorStr
-	
+
 	// Apply replacement patterns
 	for _, p := range patterns {
 		re := regexp.MustCompile(p.pattern)

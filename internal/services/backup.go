@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"ypeskov/budget-go/internal/config"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type BackupService struct {
@@ -54,13 +55,13 @@ func (s *BackupService) CreatePostgresBackup() (*BackupResult, error) {
 	}
 
 	cmd := exec.Command(command[0], command[1:]...)
-	
+
 	env := os.Environ()
 	env = append(env, fmt.Sprintf("PGPASSWORD=%s", s.cfg.DbPassword))
 	cmd.Env = env
 
 	log.Infof("Creating database backup: %s", backupPath)
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Errorf("Failed to create database backup: %s", string(output))
@@ -68,7 +69,7 @@ func (s *BackupService) CreatePostgresBackup() (*BackupResult, error) {
 	}
 
 	log.Infof("Database backup successfully created: %s", backupPath)
-	
+
 	return &BackupResult{
 		Filename: filename,
 		FilePath: backupPath,
@@ -87,7 +88,7 @@ func (s *BackupService) ensureBackupDir() error {
 
 func (s *BackupService) cleanBackupDir() error {
 	log.Infof("Cleaning backup directory: %s (running in container)", s.cfg.DBBackupDir)
-	
+
 	// Read all files in backup directory
 	files, err := os.ReadDir(s.cfg.DBBackupDir)
 	if err != nil {

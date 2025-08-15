@@ -9,6 +9,7 @@ type RepositoryInterface interface {
 	GetAllUsers() ([]*models.User, error)
 	GetUserByEmail(email string) (*models.User, error)
 	CreateUser(user *models.User) (*models.User, error)
+	ActivateUser(userID int) error
 }
 
 type RepositoryInstance struct {
@@ -46,11 +47,26 @@ func (u *RepositoryInstance) CreateUser(user *models.User) (*models.User, error)
 		INSERT INTO users (email, first_name, last_name, password_hash, is_active, base_currency_id, is_deleted)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, created_at, updated_at`
-	
-	err := u.db.Db.QueryRow(query, user.Email, user.FirstName, user.LastName, user.PasswordHash, user.IsActive, user.BaseCurrencyID, user.IsDeleted).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+
+	err := u.db.Db.QueryRow(
+		query,
+		user.Email,
+		user.FirstName,
+		user.LastName,
+		user.PasswordHash,
+		user.IsActive,
+		user.BaseCurrencyID,
+		user.IsDeleted,
+	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 
 	return user, nil
+}
+
+func (u *RepositoryInstance) ActivateUser(userID int) error {
+	query := `UPDATE users SET is_active = true, updated_at = NOW() WHERE id = $1`
+	_, err := u.db.Db.Exec(query, userID)
+	return err
 }

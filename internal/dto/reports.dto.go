@@ -1,45 +1,14 @@
 package dto
 
 import (
-	"time"
+	"ypeskov/budget-go/internal/utils"
 )
-
-// CustomDate handles both time.Time and string date formats
-type CustomDate struct {
-	time.Time
-}
-
-// UnmarshalJSON implements custom unmarshaling for date strings
-func (cd *CustomDate) UnmarshalJSON(data []byte) error {
-	// Remove quotes
-	str := string(data)
-	if len(str) >= 2 && str[0] == '"' && str[len(str)-1] == '"' {
-		str = str[1 : len(str)-1]
-	}
-	
-	// Try parsing different date formats
-	formats := []string{
-		"2006-01-02",
-		"2006-01-02T15:04:05Z",
-		"2006-01-02T15:04:05.000Z",
-		time.RFC3339,
-	}
-	
-	for _, format := range formats {
-		if t, err := time.Parse(format, str); err == nil {
-			cd.Time = t
-			return nil
-		}
-	}
-	
-	return nil // Return nil for empty or invalid dates
-}
 
 // CashFlowReportInputDTO represents input for cash flow report
 type CashFlowReportInputDTO struct {
-	StartDate *CustomDate `json:"startDate"`
-	EndDate   *CustomDate `json:"endDate"`
-	Period    string      `json:"period" binding:"required"`
+	StartDate *utils.CustomDate `json:"startDate"`
+	EndDate   *utils.CustomDate `json:"endDate"`
+	Period    string            `json:"period" binding:"required"`
 }
 
 // CashFlowReportOutputDTO represents cash flow report output
@@ -52,8 +21,8 @@ type CashFlowReportOutputDTO struct {
 
 // BalanceReportInputDTO represents input for balance report
 type BalanceReportInputDTO struct {
-	AccountIds  []int      `json:"account_ids"`
-	BalanceDate CustomDate `json:"balanceDate"`
+	AccountIds  []int            `json:"account_ids"`
+	BalanceDate utils.CustomDate `json:"balanceDate"`
 }
 
 // BalanceReportOutputDTO represents balance report output
@@ -69,10 +38,10 @@ type BalanceReportOutputDTO struct {
 
 // ExpensesReportInputDTO represents input for expenses report
 type ExpensesReportInputDTO struct {
-	StartDate            CustomDate `json:"startDate" binding:"required"`
-	EndDate              CustomDate `json:"endDate" binding:"required"`
-	Categories           []int      `json:"categories"`
-	HideEmptyCategories  bool       `json:"hideEmptyCategories"`
+	StartDate           utils.CustomDate `json:"startDate" binding:"required"`
+	EndDate             utils.CustomDate `json:"endDate" binding:"required"`
+	Categories          []int            `json:"categories"`
+	HideEmptyCategories bool             `json:"hideEmptyCategories"`
 }
 
 // ExpensesReportOutputItemDTO represents an item in expenses report
@@ -100,7 +69,7 @@ type ChartImageDTO struct {
 
 // AggregatedDiagramItemDTO represents aggregated parent-category data for diagrams
 type AggregatedDiagramItemDTO struct {
-    CategoryID int     `json:"category_id"`
-    Label      string  `json:"label"`
-    Amount     float64 `json:"amount"`
+	CategoryID int     `json:"category_id"`
+	Label      string  `json:"label"`
+	Amount     float64 `json:"amount"`
 }

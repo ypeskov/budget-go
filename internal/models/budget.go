@@ -1,9 +1,9 @@
 package models
 
 import (
+	"github.com/shopspring/decimal"
 	"strings"
 	"time"
-	"github.com/shopspring/decimal"
 )
 
 type PeriodEnum string
@@ -44,20 +44,20 @@ func GetValidPeriods() []string {
 }
 
 type Budget struct {
-	ID                   *int            `json:"id" db:"id"`
-	UserID               int             `json:"userId" db:"user_id"`
-	Name                 string          `json:"name" db:"name"`
-	CurrencyID           int             `json:"currencyId" db:"currency_id"`
-	TargetAmount         decimal.Decimal `json:"targetAmount" db:"target_amount"`
-	CollectedAmount      decimal.Decimal `json:"collectedAmount" db:"collected_amount"`
-	Period               string          `json:"period" db:"period"`
-	Repeat               bool            `json:"repeat" db:"repeat"`
-	StartDate            *time.Time      `json:"startDate" db:"start_date"`
-	EndDate              *time.Time      `json:"endDate" db:"end_date"`
-	IncludedCategories   *string         `json:"includedCategories" db:"included_categories"`
-	Comment              *string         `json:"comment" db:"comment"`
-	IsDeleted            bool            `json:"isDeleted" db:"is_deleted"`
-	IsArchived           bool            `json:"isArchived" db:"is_archived"`
-	CreatedAt            *time.Time      `json:"createdAt" db:"created_at"`
-	UpdatedAt            *time.Time      `json:"updatedAt" db:"updated_at"`
+	ID                 *int            `json:"id" db:"id"`
+	UserID             int             `json:"userId" db:"user_id"`
+	Name               string          `json:"name" db:"name"`
+	CurrencyID         int             `json:"currencyId" db:"currency_id"`
+	TargetAmount       decimal.Decimal `json:"targetAmount" db:"target_amount"`
+	CollectedAmount    decimal.Decimal `json:"collectedAmount" db:"collected_amount"`
+	Period             string          `json:"period" db:"period"`
+	Repeat             bool            `json:"repeat" db:"repeat"`
+	StartDate          *time.Time      `json:"startDate" db:"start_date"`
+	EndDate            *time.Time      `json:"endDate" db:"end_date"`
+	IncludedCategories *string         `json:"includedCategories" db:"included_categories"`
+	Comment            *string         `json:"comment" db:"comment"`
+	IsDeleted          bool            `json:"isDeleted" db:"is_deleted"`
+	IsArchived         bool            `json:"isArchived" db:"is_archived"`
+	CreatedAt          *time.Time      `json:"createdAt" db:"created_at"`
+	UpdatedAt          *time.Time      `json:"updatedAt" db:"updated_at"`
 }

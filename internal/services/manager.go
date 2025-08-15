@@ -1,11 +1,11 @@
 package services
 
 import (
-	"fmt"
-	
 	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/database"
+	"ypeskov/budget-go/internal/queue"
 	"ypeskov/budget-go/internal/repositories/accounts"
+	"ypeskov/budget-go/internal/repositories/activationTokens"
 	"ypeskov/budget-go/internal/repositories/budgets"
 	"ypeskov/budget-go/internal/repositories/categories"
 	"ypeskov/budget-go/internal/repositories/currencies"
@@ -15,22 +15,26 @@ import (
 	"ypeskov/budget-go/internal/repositories/transactions"
 	"ypeskov/budget-go/internal/repositories/user"
 	"ypeskov/budget-go/internal/repositories/userSettings"
+
+	"github.com/hibiken/asynq"
 )
 
 type Manager struct {
-	UserService          UserService
-	AccountsService      AccountsService
-	BudgetsService       BudgetsService
-	CategoriesService    CategoriesService
-	UserSettingsService  UserSettingsService
-	CurrenciesService    CurrenciesService
-	LanguagesService     LanguagesService
-	TransactionsService  TransactionsService
-	ExchangeRatesService ExchangeRatesService
-	ReportsService       ReportsService
-	ChartService         ChartService
-	BackupService        *BackupService
-	EmailService         *EmailService
+	UserService            UserService
+	AccountsService        AccountsService
+	BudgetsService         BudgetsService
+	CategoriesService      CategoriesService
+	UserSettingsService    UserSettingsService
+	CurrenciesService      CurrenciesService
+	LanguagesService       LanguagesService
+	TransactionsService    TransactionsService
+	ExchangeRatesService   ExchangeRatesService
+	ReportsService         ReportsService
+	ChartService           ChartService
+	BackupService          *BackupService
+	EmailService           *EmailService
+	ActivationTokenService ActivationTokenService
+	QueueService           queue.Service
 }
 
 var sm *Manager
@@ -46,10 +50,14 @@ func NewServicesManager(db *database.Database, cfg *config.Config) (*Manager, er
 	languagesRepo := languages.NewLanguagesRepository(db.Db)
 	transactionsRepo := transactions.NewTransactionsRepository(db.Db)
 	reportsRepo := reports.NewReportsRepository(db.Db)
+	activationTokensRepo := activationTokens.New(db)
 
 	sm = &Manager{}
 
-	sm.UserService = NewUserService(userRepo)
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisAddr})
+	queueService := queue.NewService(asynqClient)
+	sm.QueueService = queueService
+	sm.UserService = NewUserServiceWithQueue(userRepo, queueService)
 	sm.AccountsService = NewAccountsService(accountsRepo, sm)
 	sm.BudgetsService = NewBudgetsService(budgetsRepo, sm)
 	sm.CategoriesService = NewCategoriesService(categoriesRepo)
@@ -63,9 +71,10 @@ func NewServicesManager(db *database.Database, cfg *config.Config) (*Manager, er
 	sm.BackupService = NewBackupService(cfg)
 	emailService, err := NewEmailService(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize email service: %w", err)
+		return nil, err
 	}
 	sm.EmailService = emailService
+	sm.ActivationTokenService = NewActivationTokenService(activationTokensRepo, sm.EmailService)
 
 	return sm, nil
 }

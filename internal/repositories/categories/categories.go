@@ -22,7 +22,7 @@ func NewCategoriesRepository(dbInstance *sqlx.DB) Repository {
 }
 
 func (r *RepositoryInstance) GetUserCategories(userId int) ([]models.UserCategory, error) {
-    const getUserCategoriesQuery = `
+	const getUserCategoriesQuery = `
 SELECT 
     c.id,
     c.name,
@@ -100,6 +100,6 @@ WHERE id = $1 AND user_id = $2 AND is_deleted = false
 	if err != nil {
 		return false, err
 	}
-	
+
 	return count > 0, nil
 }

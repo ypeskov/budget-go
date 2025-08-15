@@ -11,6 +11,7 @@ import (
 type Repository interface {
 	GetCurrencies() ([]models.Currency, error)
 	GetCurrency(id int) (models.Currency, error)
+	GetCurrencyByCode(code string) (models.Currency, error)
 }
 
 type RepositoryInstance struct{}
@@ -39,6 +40,19 @@ func (r *RepositoryInstance) GetCurrency(id int) (models.Currency, error) {
 
 	var currency models.Currency
 	err := db.Get(&currency, getCurrencyQuery, id)
+	if err != nil {
+		return models.Currency{}, err
+	}
+
+	return currency, nil
+}
+
+func (r *RepositoryInstance) GetCurrencyByCode(code string) (models.Currency, error) {
+	const getCurrencyByCodeQuery = `SELECT id, code, name, created_at, updated_at
+FROM currencies WHERE code = $1 AND is_deleted = false;`
+
+	var currency models.Currency
+	err := db.Get(&currency, getCurrencyByCodeQuery, code)
 	if err != nil {
 		return models.Currency{}, err
 	}

@@ -190,29 +190,29 @@ func (a *RepositoryInstance) UpdateAccountBalance(accountId int, newBalance deci
 		SET balance = $1, updated_at = NOW() 
 		WHERE id = $2
 	`
-	
+
 	result, err := db.Exec(updateBalanceQuery, newBalance, accountId)
 	if err != nil {
 		log.Error("Error updating account balance: ", err)
 		return err
 	}
-	
+
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	
+
 	if rowsAffected == 0 {
 		return customErrors.ErrNoAccountFound
 	}
-	
+
 	return nil
 }
 
 func (a *RepositoryInstance) GetAccountBalance(accountId int) (decimal.Decimal, error) {
 	log.Debugf("GetAccountBalance Repository: account %d", accountId)
 	const getBalanceQuery = `SELECT balance FROM accounts WHERE id = $1`
-	
+
 	var balance decimal.Decimal
 	err := db.Get(&balance, getBalanceQuery, accountId)
 	if err != nil {
@@ -222,6 +222,6 @@ func (a *RepositoryInstance) GetAccountBalance(accountId int) (decimal.Decimal, 
 		log.Error("Error getting account balance: ", err)
 		return decimal.Zero, err
 	}
-	
+
 	return balance, nil
 }

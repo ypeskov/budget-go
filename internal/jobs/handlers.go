@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"ypeskov/budget-go/internal/queue"
 	"ypeskov/budget-go/internal/services"
 
 	"github.com/hibiken/asynq"
@@ -78,5 +79,24 @@ func (h *Handlers) HandleBudgetsDailyProcessing(ctx context.Context, t *asynq.Ta
 	}
 
 	log.Info("Budgets daily processing task completed successfully")
+	return nil
+}
+
+func (h *Handlers) HandleSendActivationEmail(ctx context.Context, t *asynq.Task) error {
+	var p queue.ActivationEmailPayload
+	if err := json.Unmarshal(t.Payload(), &p); err != nil {
+		log.Errorf("Failed to unmarshal activation email payload: %v", err)
+		return err
+	}
+
+	log.Infof("Sending activation email to %s", p.UserEmail)
+
+	err := h.SM.EmailService.SendActivationEmail(p.UserEmail, p.UserName, p.Token)
+	if err != nil {
+		log.Errorf("Failed to send activation email: %v", err)
+		return err
+	}
+
+	log.Infof("Activation email sent successfully to %s", p.UserEmail)
 	return nil
 }

@@ -114,8 +114,6 @@ func (s *EmailService) parseAdminEmails() []string {
 	return validEmails
 }
 
-
-
 func (s *EmailService) sendEmail(emailData *EmailData) error {
 	if s.cfg.SMTPHost == "" || s.cfg.SMTPUser == "" {
 		log.Error("SMTP not configured, would send email:", emailData.Subject)
@@ -131,7 +129,7 @@ func (s *EmailService) sendEmail(emailData *EmailData) error {
 	}
 
 	auth := smtp.PlainAuth("", s.cfg.SMTPUser, s.cfg.SMTPPassword, s.cfg.SMTPHost)
-	addr := fmt.Sprintf("%s:%d", s.cfg.SMTPHost, s.cfg.SMTPPort)
+	addr := fmt.Sprintf("%s:%s", s.cfg.SMTPHost, s.cfg.SMTPPort)
 
 	// Build base email content once (optimization)
 	baseEmailContent, err := s.buildBaseEmailContent(emailData)
@@ -229,7 +227,6 @@ func (s *EmailService) addRecipientHeader(baseContent, recipient string) string 
 	return fmt.Sprintf("To: %s\r\n%s", recipient, baseContent)
 }
 
-
 func (s *EmailService) formatFromAddress() (string, error) {
 	// Parse the from address to ensure it's properly formatted
 	addr, err := mail.ParseAddress(s.cfg.EmailFromAddress)
@@ -256,7 +253,43 @@ func (s *EmailService) extractEmailAddress() (string, error) {
 		}
 		return "", fmt.Errorf("invalid email format: %w", err)
 	}
-	
+
 	// Return just the email address without display name
 	return addr.Address, nil
+}
+
+func (s *EmailService) SendActivationEmail(toEmail, firstName, activationToken string) error {
+	log.Debug("Sending activation email to: ", toEmail)
+
+	activationLink := fmt.Sprintf("%s/activate/%s", s.cfg.FrontendURL, activationToken)
+	// For development, just log the activation link instead of sending actual email
+	if s.cfg.SendUserEmails == false {
+		log.Infof("ACTIVATION EMAIL: Hi %s, please activate your account: %s", firstName, activationLink)
+		return nil
+	}
+
+	// Production email sending
+	subject := "Activate Your Budget Account"
+	body := fmt.Sprintf(`
+<html>
+<body>
+<h2>Welcome to Budget!</h2>
+<p>Hi %s,</p>
+<p>Thank you for registering with Budget. Please activate your account by clicking the link below:</p>
+<p><a href="%s" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Activate Account</a></p>
+<p>Or copy and paste this link into your browser:</p>
+<p>%s</p>
+<p>This link will expire in 24 hours.</p>
+<br>
+<p>Best regards,<br>The Budget Team</p>
+</body>
+</html>
+`, firstName, activationLink, activationLink)
+	emailData := &EmailData{
+		Subject:    subject,
+		Recipients: []string{toEmail},
+		Body:       body,
+	}
+
+	return s.sendEmail(emailData)
 }

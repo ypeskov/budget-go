@@ -1,24 +1,29 @@
 package services
 
 import (
-	userModel "ypeskov/budget-go/internal/models"
-	userRepo "ypeskov/budget-go/internal/repositories/user"
 	"ypeskov/budget-go/internal/dto"
+	"ypeskov/budget-go/internal/models"
+	"ypeskov/budget-go/internal/queue"
+	userRepo "ypeskov/budget-go/internal/repositories/user"
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService interface {
-	GetAllUsers() ([]*userModel.User, error)
-	GetUserByEmail(email string) (*userModel.User, error)
-	CreateUser(user *userModel.User) (*userModel.User, error)
-	RegisterUser(userDTO *dto.UserRegisterRequestDTO) (*userModel.User, error)
-	LoginOrRegisterOAuth(email, firstName, lastName string) (*userModel.User, error)
+	GetAllUsers() ([]*models.User, error)
+	GetUserByEmail(email string) (*models.User, error)
+	CreateUser(user *models.User) (*models.User, error)
+	RegisterUser(userDTO *dto.UserRegisterRequestDTO,
+		currenciesService CurrenciesService,
+		activationTokenService ActivationTokenService) (*models.User, error)
+	LoginOrRegisterOAuth(email, firstName, lastName string) (*models.User, error)
+	ActivateUser(userID int) error
 }
 
 type UserServiceInstance struct {
-	userRepo userRepo.RepositoryInterface
+	userRepo     userRepo.RepositoryInterface
+	queueService queue.Service
 }
 
 func NewUserService(userRepo userRepo.RepositoryInterface) UserService {
@@ -27,7 +32,14 @@ func NewUserService(userRepo userRepo.RepositoryInterface) UserService {
 	}
 }
 
-func (us *UserServiceInstance) GetAllUsers() ([]*userModel.User, error) {
+func NewUserServiceWithQueue(userRepo userRepo.RepositoryInterface, queueService queue.Service) UserService {
+	return &UserServiceInstance{
+		userRepo:     userRepo,
+		queueService: queueService,
+	}
+}
+
+func (us *UserServiceInstance) GetAllUsers() ([]*models.User, error) {
 	log.Debug("GetAllUsers service called")
 	users, err := us.userRepo.GetAllUsers()
 	if err != nil {
@@ -38,7 +50,7 @@ func (us *UserServiceInstance) GetAllUsers() ([]*userModel.User, error) {
 	return users, nil
 }
 
-func (us *UserServiceInstance) GetUserByEmail(email string) (*userModel.User, error) {
+func (us *UserServiceInstance) GetUserByEmail(email string) (*models.User, error) {
 	log.Debug("GetUserByEmail service called")
 	user, err := us.userRepo.GetUserByEmail(email)
 	if err != nil {
@@ -49,7 +61,12 @@ func (us *UserServiceInstance) GetUserByEmail(email string) (*userModel.User, er
 	return user, nil
 }
 
-func (us *UserServiceInstance) CreateUser(user *userModel.User) (*userModel.User, error) {
+// CreateUser creates a new user in the repository
+// and returns the created user or an error if the creation fails.
+// It is used internally by the service and should not be exposed as a public API.
+// This method is typically called after validating the user data.
+// It is not intended for direct use by clients of the service.
+func (us *UserServiceInstance) CreateUser(user *models.User) (*models.User, error) {
 	log.Debug("CreateUser service called")
 	createdUser, err := us.userRepo.CreateUser(user)
 	if err != nil {
@@ -57,12 +74,15 @@ func (us *UserServiceInstance) CreateUser(user *userModel.User) (*userModel.User
 		return nil, err
 	}
 
+	log.Debug("Created user: ", createdUser)
 	return createdUser, nil
 }
 
-func (us *UserServiceInstance) RegisterUser(userDTO *dto.UserRegisterRequestDTO) (*userModel.User, error) {
+func (us *UserServiceInstance) RegisterUser(userDTO *dto.UserRegisterRequestDTO,
+	currenciesService CurrenciesService,
+	activationTokenService ActivationTokenService) (*models.User, error) {
 	log.Debug("RegisterUser service called")
-	
+
 	// Check if user already exists
 	existingUser, err := us.userRepo.GetUserByEmail(userDTO.Email)
 	if err == nil && existingUser != nil {
@@ -77,14 +97,22 @@ func (us *UserServiceInstance) RegisterUser(userDTO *dto.UserRegisterRequestDTO)
 		return nil, err
 	}
 
-	// Create new user
-	newUser := &userModel.User{
+	// Get default currency ID
+	defaultCurrency, err := currenciesService.GetCurrencyByCode(models.DefaultCurrency)
+	if err != nil {
+		log.Error("Error getting default currency: ", err)
+		// Fallback to currency ID 1 if default currency not found
+		defaultCurrency.ID = 1
+	}
+
+	// Create new user in INACTIVE state
+	newUser := &models.User{
 		Email:          userDTO.Email,
 		FirstName:      userDTO.FirstName,
 		LastName:       userDTO.LastName,
 		PasswordHash:   string(hashedPassword),
-		IsActive:       true,
-		BaseCurrencyID: 1, // Default to USD or first currency
+		IsActive:       false, // User starts as inactive
+		BaseCurrencyID: defaultCurrency.ID,
 		IsDeleted:      false,
 	}
 
@@ -94,16 +122,41 @@ func (us *UserServiceInstance) RegisterUser(userDTO *dto.UserRegisterRequestDTO)
 		return nil, err
 	}
 
+	// Create activation token
+	activationToken, err := activationTokenService.CreateActivationToken(createdUser.ID)
+	if err != nil {
+		log.Error("Error creating activation token: ", err)
+		return nil, err
+	}
+
+	// Queue activation email to be sent asynchronously
+	if us.queueService != nil {
+		err = us.queueService.EnqueueActivationEmail(createdUser.Email, createdUser.FirstName, activationToken.Token)
+		if err != nil {
+			log.Error("Error queuing activation email: ", err)
+			log.Warn("User registered but activation email failed to queue")
+		} else {
+			log.Info("Activation email queued successfully for user: ", createdUser.Email)
+		}
+	} else {
+		// Fallback to synchronous email sending if queue service is not available
+		err = activationTokenService.SendActivationEmail(createdUser, activationToken.Token)
+		if err != nil {
+			log.Error("Error sending activation email: ", err)
+			log.Warn("User registered but activation email failed to send")
+		}
+	}
+
 	return createdUser, nil
 }
 
-func (us *UserServiceInstance) LoginOrRegisterOAuth(email, firstName, lastName string) (*userModel.User, error) {
+func (us *UserServiceInstance) LoginOrRegisterOAuth(email, firstName, lastName string) (*models.User, error) {
 	log.Debug("LoginOrRegisterOAuth service called")
-	
+
 	existingUser, err := us.userRepo.GetUserByEmail(email)
 	if err != nil {
 		log.Debug("User not found, creating new user")
-		newUser := &userModel.User{
+		newUser := &models.User{
 			Email:          email,
 			FirstName:      firstName,
 			LastName:       lastName,
@@ -112,7 +165,7 @@ func (us *UserServiceInstance) LoginOrRegisterOAuth(email, firstName, lastName s
 			BaseCurrencyID: 1,
 			IsDeleted:      false,
 		}
-		
+
 		return us.CreateUser(newUser)
 	}
 
@@ -122,6 +175,12 @@ func (us *UserServiceInstance) LoginOrRegisterOAuth(email, firstName, lastName s
 	}
 
 	return existingUser, nil
+}
+
+func (us *UserServiceInstance) ActivateUser(userID int) error {
+	log.Debug("ActivateUser service called for user ID: ", userID)
+
+	return us.userRepo.ActivateUser(userID)
 }
 
 type UserNotActivatedError struct {

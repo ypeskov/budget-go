@@ -41,7 +41,7 @@ func GetTransactions(c echo.Context) error {
 	}
 
 	// ParseTransactionFilters extracts and validates query parameters for transaction filtering.
-	filters, err := dto.ParseTransactionFilters(c)
+	filters, err := utils.ParseTransactionFilters(c)
 	if err != nil {
 		return utils.LogAndReturnError(c, err, http.StatusBadRequest)
 	}
@@ -65,7 +65,7 @@ func GetTransactions(c echo.Context) error {
 	if err != nil {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
-	transactionsDTO := dto.ConvertTransactionsToResponseList(transactions, baseCurrency)
+	transactionsDTO := services.ConvertTransactionsToResponseList(transactions, baseCurrency)
 
 	log.Debug("GetTransactions request completed - GET /transactions")
 	return c.JSON(http.StatusOK, transactionsDTO)

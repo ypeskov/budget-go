@@ -57,7 +57,7 @@ func (r *RepositoryInstance) UpsertUserSettings(userID int, settingsData map[str
 
 	var userSettings models.UserSettings
 	var settingsStr string
-	
+
 	err = db.QueryRow(updateSettingsQuery, userID, string(settingsJSON)).Scan(
 		&userSettings.ID,
 		&userSettings.UserID,
@@ -104,7 +104,7 @@ func (r *RepositoryInstance) GetUserSettings(userID int) (*models.UserSettings, 
 
 	var userSettings models.UserSettings
 	var settingsStr string
-	
+
 	err := db.QueryRow(getUserSettingsQuery, userID).Scan(
 		&userSettings.ID,
 		&userSettings.UserID,

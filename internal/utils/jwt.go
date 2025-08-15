@@ -18,7 +18,7 @@ type JWTCustomClaims struct {
 // GenerateAccessToken creates a new JWT token for the given user
 func GenerateAccessToken(user *models.User, cfg *config.Config) (string, error) {
 	expirationTime := time.Now().Add(time.Hour * 1)
-	
+
 	claims := &JWTCustomClaims{
 		Id:       user.ID,
 		Email:    user.Email,

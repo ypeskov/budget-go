@@ -18,3 +18,14 @@ type CreateCategoryDTO struct {
 	ParentID  *int   `json:"parentId"`
 	IsDeleted bool   `json:"isDeleted"`
 }
+
+type CategoryDetailDTO struct {
+	ID        int                 `json:"id"`
+	Name      string              `json:"name"`
+	ParentID  *int                `json:"parentId"`
+	IsIncome  bool                `json:"isIncome"`
+	UserID    int                 `json:"userId"`
+	CreatedAt string              `json:"createdAt"`
+	UpdatedAt string              `json:"updatedAt"`
+	Children  []CategoryDetailDTO `json:"children"`
+}

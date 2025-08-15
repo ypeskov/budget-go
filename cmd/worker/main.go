@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"ypeskov/budget-go/internal/config"
+	"ypeskov/budget-go/internal/constants"
 	"ypeskov/budget-go/internal/database"
 	"ypeskov/budget-go/internal/jobs"
 	"ypeskov/budget-go/internal/services"
@@ -29,10 +30,11 @@ func main() {
 
 	h := &jobs.Handlers{SM: sm}
 	mux := asynq.NewServeMux()
-	mux.HandleFunc(jobs.TaskEmailSend, h.HandleEmailSend)
-	mux.HandleFunc(jobs.TaskExchangeRatesDaily, h.HandleExchangeRatesDaily)
-	mux.HandleFunc(jobs.TaskDBBackupDaily, h.HandleDBBackupDaily)
-	mux.HandleFunc(jobs.TaskBudgetsDailyProcessing, h.HandleBudgetsDailyProcessing)
+	mux.HandleFunc(constants.TaskEmailSend, h.HandleEmailSend)
+	mux.HandleFunc(constants.TaskSendActivationEmail, h.HandleSendActivationEmail)
+	mux.HandleFunc(constants.TaskExchangeRatesDaily, h.HandleExchangeRatesDaily)
+	mux.HandleFunc(constants.TaskDBBackupDaily, h.HandleDBBackupDaily)
+	mux.HandleFunc(constants.TaskBudgetsDailyProcessing, h.HandleBudgetsDailyProcessing)
 
 	// Run blocks and processes jobs until the process receives a shutdown signal
 	if err := srv.Run(mux); err != nil {
