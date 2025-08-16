@@ -9,8 +9,13 @@ import (
 )
 
 type Config struct {
+	// Server settings
 	Port           string `env:"SERVER_PORT" envDefault:"8000"`
 	LogLevel       string `env:"LOG_LEVEL" envDefault:"info"`
+	FrontendURL    string `env:"FRONTEND_URL" envDefault:"http://https://orgfin.run"`
+	SendUserEmails bool   `env:"SEND_USER_EMAILS" envDefault:"false"`
+
+	// Database connection settings
 	DbUser         string `env:"DB_USER" envDefault:"postgres"`
 	DbPassword     string `env:"DB_PASSWORD" envDefault:"password"`
 	DbHost         string `env:"DB_HOST" envDefault:"localhost"`
@@ -43,8 +48,6 @@ type Config struct {
 	SMTPFrom         string `env:"SMTP_FROM" envDefault:"noreply@budget-app.com"`
 	AdminEmailsRaw   string `env:"ADMINS_NOTIFICATION_EMAILS" envDefault:""`
 	EmailFromAddress string `env:"EMAIL_FROM_ADDRESS" envDefault:"noreply@budget-app.com"`
-	FrontendURL      string `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
-	SendUserEmails   bool   `env:"SEND_USER_EMAILS" envDefault:"false"`
 
 	// CurrencyBeacon API settings
 	CurrencyBeaconAPIURL     string `env:"CURRENCYBEACON_API_URL" envDefault:"https://api.currencybeacon.com"`

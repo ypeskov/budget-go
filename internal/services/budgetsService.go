@@ -240,9 +240,8 @@ func (s *BudgetsServiceInstance) ProcessOutdatedBudgets() ([]int, error) {
 		if budget.Repeat {
 			// Create a copy for the next period
 			err = s.createCopyOfOutdatedBudget(budget)
-			if err != nil {
+			if err != nil { // handle error but continue processing
 				log.Error("Error creating copy of outdated budget: ", err)
-				continue
 			}
 		}
 

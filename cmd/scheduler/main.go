@@ -2,17 +2,25 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"strings"
 	"time"
 
-	"github.com/hibiken/asynq"
-	logrus "github.com/sirupsen/logrus"
 	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/constants"
+
+	"github.com/hibiken/asynq"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 	cfg := config.New()
+
+	lvlStr := strings.TrimSpace(strings.ToLower(cfg.LogLevel))
+	level, err := log.ParseLevel(lvlStr)
+	if err != nil {
+		log.Fatalf("Invalid log level in config: %s", cfg.LogLevel)
+	}
+	log.SetLevel(level)
 
 	loc, err := time.LoadLocation(cfg.Timezone)
 	if err != nil {
@@ -29,19 +37,19 @@ func main() {
 	if _, err := sch.Register(ex, asynq.NewTask(constants.TaskExchangeRatesDaily, nil)); err != nil {
 		log.Fatal(err)
 	} else {
-		logrus.Infof("Scheduled task '%s' to run at cron '%s'", constants.TaskExchangeRatesDaily, ex)
+		log.Infof("Scheduled task '%s' to run at cron '%s'", constants.TaskExchangeRatesDaily, ex)
 	}
 
 	if _, err := sch.Register(db, asynq.NewTask(constants.TaskDBBackupDaily, nil)); err != nil {
 		log.Fatal(err)
 	} else {
-		logrus.Infof("Scheduled task '%s' to run at cron '%s'", constants.TaskDBBackupDaily, db)
+		log.Infof("Scheduled task '%s' to run at cron '%s'", constants.TaskDBBackupDaily, db)
 	}
 
 	if _, err := sch.Register(bud, asynq.NewTask(constants.TaskBudgetsDailyProcessing, nil)); err != nil {
 		log.Fatal(err)
 	} else {
-		logrus.Infof("Scheduled task '%s' to run at cron '%s'", constants.TaskBudgetsDailyProcessing, bud)
+		log.Infof("Scheduled task '%s' to run at cron '%s'", constants.TaskBudgetsDailyProcessing, bud)
 	}
 
 	if err := sch.Run(); err != nil {
