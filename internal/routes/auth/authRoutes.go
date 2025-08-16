@@ -68,19 +68,25 @@ func LoginUser(c echo.Context) error {
 		case errors.As(err, new(*appErrors.UserNotFoundError)),
 			errors.As(err, new(*appErrors.InvalidCredentialsError)):
 			log.Warn("Login failed: ", err)
-			return c.String(http.StatusUnauthorized, "Unauthorized")
+			return c.JSON(http.StatusUnauthorized, map[string]string{
+				"detail": "Invalid email or password",
+			})
 
 		case errors.As(err, new(*appErrors.UserNotActivatedError)):
 			log.Warn("User not activated: ", err)
-			return c.String(http.StatusUnauthorized, "User not activated")
+			return c.JSON(http.StatusUnauthorized, map[string]string{
+				"detail": "User not activated",
+			})
 
 		case errors.As(err, new(*appErrors.UserDeletedError)):
 			log.Warn("User is deleted: ", err)
-			return c.String(http.StatusUnauthorized, "User account is disabled")
+			return c.JSON(http.StatusUnauthorized, map[string]string{
+				"detail": "User account is deleted",
+			})
 
 		default:
 			log.Error("Unexpected login error: ", err)
-			return c.String(http.StatusInternalServerError, "Internal server error")
+			return c.JSON(http.StatusInternalServerError, "Internal server error")
 		}
 	}
 

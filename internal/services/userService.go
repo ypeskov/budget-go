@@ -190,26 +190,26 @@ func (us *UserServiceInstance) LoginUser(loginDTO *dto.UserLoginDTO) (*models.Us
 	// Get user by email
 	user, err := us.userRepo.GetUserByEmail(loginDTO.Email)
 	if err != nil {
-		log.Error("Error getting user by email: ", err)
+		log.Warn("Error getting user by email: ", err)
 		return nil, &errors.UserNotFoundError{Email: loginDTO.Email}
 	}
 
 	// Check if user is deleted
 	if user.IsDeleted {
-		log.Error("User is deleted: ", loginDTO.Email)
+		log.Warn("User is deleted: ", loginDTO.Email)
 		return nil, &errors.UserDeletedError{Email: loginDTO.Email}
 	}
 
 	// Check if user is activated
 	if !user.IsActive {
-		log.Error("User is not activated: ", loginDTO.Email)
+		log.Warn("User is not activated: ", loginDTO.Email)
 		return nil, &errors.UserNotActivatedError{Email: loginDTO.Email}
 	}
 
 	// Compare password
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(loginDTO.Password))
 	if err != nil {
-		log.Error("Passwords do not match for user: ", loginDTO.Email)
+		log.Warn("Passwords do not match for user: ", loginDTO.Email)
 		return nil, &errors.InvalidCredentialsError{Email: loginDTO.Email}
 	}
 
