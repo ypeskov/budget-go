@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"strings"
 
 	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/constants"
@@ -10,6 +10,7 @@ import (
 	"ypeskov/budget-go/internal/services"
 
 	"github.com/hibiken/asynq"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -18,6 +19,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	lvlStr := strings.TrimSpace(strings.ToLower(cfg.LogLevel))
+	level, err := log.ParseLevel(lvlStr)
+	if err != nil {
+		log.Fatalf("Invalid log level in config: %s", cfg.LogLevel)
+	}
+	log.SetLevel(level)
+
 	sm, err := services.NewServicesManager(db, cfg)
 	if err != nil {
 		log.Fatal(err)

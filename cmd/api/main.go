@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -26,7 +27,8 @@ func main() {
 
 	// log.SetReportCaller(true)
 
-	level, err := log.ParseLevel(cfg.LogLevel)
+	lvlStr := strings.TrimSpace(strings.ToLower(cfg.LogLevel))
+	level, err := log.ParseLevel(lvlStr)
 	if err != nil {
 		log.Fatalf("Invalid log level in config: %s", cfg.LogLevel)
 	}
