@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"ypeskov/budget-go/internal/config"
@@ -12,12 +13,26 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type BackupService struct {
+type BackupService interface {
+	CreatePostgresBackup() (*BackupResult, error)
+}
+
+type BackupServiceInstance struct {
 	cfg *config.Config
 }
 
-func NewBackupService(cfg *config.Config) *BackupService {
-	return &BackupService{cfg: cfg}
+var (
+	backupInstance *BackupServiceInstance
+	backupOnce     sync.Once
+)
+
+func NewBackupService(cfg *config.Config) BackupService {
+	backupOnce.Do(func() {
+		log.Debug("Creating BackupService instance")
+		backupInstance = &BackupServiceInstance{cfg: cfg}
+	})
+
+	return backupInstance
 }
 
 type BackupResult struct {
@@ -25,7 +40,7 @@ type BackupResult struct {
 	FilePath string
 }
 
-func (s *BackupService) CreatePostgresBackup() (*BackupResult, error) {
+func (s *BackupServiceInstance) CreatePostgresBackup() (*BackupResult, error) {
 	if err := s.ensureBackupDir(); err != nil {
 		return nil, fmt.Errorf("failed to create backup directory: %w", err)
 	}
@@ -76,7 +91,7 @@ func (s *BackupService) CreatePostgresBackup() (*BackupResult, error) {
 	}, nil
 }
 
-func (s *BackupService) ensureBackupDir() error {
+func (s *BackupServiceInstance) ensureBackupDir() error {
 	if _, err := os.Stat(s.cfg.DBBackupDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(s.cfg.DBBackupDir, 0755); err != nil {
 			return err
@@ -86,7 +101,7 @@ func (s *BackupService) ensureBackupDir() error {
 	return nil
 }
 
-func (s *BackupService) cleanBackupDir() error {
+func (s *BackupServiceInstance) cleanBackupDir() error {
 	log.Infof("Cleaning backup directory: %s (running in container)", s.cfg.DBBackupDir)
 
 	// Read all files in backup directory

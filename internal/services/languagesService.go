@@ -1,8 +1,11 @@
 package services
 
 import (
+	"sync"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/languages"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type LanguagesService interface {
@@ -13,10 +16,20 @@ type LanguagesServiceInstance struct {
 	languagesRepo languages.Repository
 }
 
+var (
+	languagesInstance *LanguagesServiceInstance
+	languagesOnce     sync.Once
+)
+
 func NewLanguagesService(languagesRepo languages.Repository) LanguagesService {
-	return &LanguagesServiceInstance{
-		languagesRepo: languagesRepo,
-	}
+	languagesOnce.Do(func() {
+		log.Debug("Creating LanguagesService instance")
+		languagesInstance = &LanguagesServiceInstance{
+			languagesRepo: languagesRepo,
+		}
+	})
+
+	return languagesInstance
 }
 
 func (l *LanguagesServiceInstance) GetLanguages() ([]models.Language, error) {

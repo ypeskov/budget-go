@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"sync"
 
 	"ypeskov/budget-go/internal/dto"
 
 	"github.com/wcharczuk/go-chart/v2"
 	"github.com/wcharczuk/go-chart/v2/drawing"
+	log "github.com/sirupsen/logrus"
 )
 
 // pieSliceLabel represents a label and amount for a pie slice with a color
@@ -38,8 +40,18 @@ type ChartService interface {
 
 type ChartServiceInstance struct{}
 
+var (
+	chartInstance *ChartServiceInstance
+	chartOnce     sync.Once
+)
+
 func NewChartService() ChartService {
-	return &ChartServiceInstance{}
+	chartOnce.Do(func() {
+		log.Debug("Creating ChartService instance")
+		chartInstance = &ChartServiceInstance{}
+	})
+
+	return chartInstance
 }
 
 func (s *ChartServiceInstance) GeneratePieChart(data []dto.ExpensesDiagramDataDTO, currency string) (*dto.ChartImageDTO, error) {

@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 	"ypeskov/budget-go/internal/dto"
 	customErrors "ypeskov/budget-go/internal/errors"
@@ -32,11 +33,21 @@ type AccountsServiceInstance struct {
 	sm           *Manager
 }
 
+var (
+	accountsInstance *AccountsServiceInstance
+	accountsOnce     sync.Once
+)
+
 func NewAccountsService(accountsRepository accounts.Repository, sManager *Manager) AccountsService {
-	return &AccountsServiceInstance{
-		accountsRepo: accountsRepository,
-		sm:           sManager,
-	}
+	accountsOnce.Do(func() {
+		log.Debug("Creating AccountsService instance")
+		accountsInstance = &AccountsServiceInstance{
+			accountsRepo: accountsRepository,
+			sm:           sManager,
+		}
+	})
+
+	return accountsInstance
 }
 
 func (a *AccountsServiceInstance) GetUserAccounts(

@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/models"
@@ -17,21 +19,42 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type EmailService struct {
-	cfg              *config.Config
-	templateRenderer *EmailTemplateRenderer
+type EmailService interface {
+	SendBackupNotification(backupResult *BackupResult) error
+	SendExchangeRatesUpdateNotification(exchangeRates *models.ExchangeRates) error
+	SendActivationEmail(toEmail, firstName, activationToken string) error
 }
 
-func NewEmailService(cfg *config.Config) (*EmailService, error) {
-	templateRenderer, err := NewEmailTemplateRenderer(cfg)
+type EmailServiceInstance struct {
+	cfg              *config.Config
+	templateRenderer EmailTemplateRenderer
+}
+
+var (
+	emailInstance *EmailServiceInstance
+	emailOnce     sync.Once
+)
+
+func NewEmailService(cfg *config.Config) (EmailService, error) {
+	var err error
+	emailOnce.Do(func() {
+		log.Debug("Creating EmailServiceInstance instance")
+		templateRenderer, renderErr := NewEmailTemplateRenderer(cfg)
+		if renderErr != nil {
+			err = fmt.Errorf("failed to initialize email template renderer: %w", renderErr)
+			return
+		}
+		emailInstance = &EmailServiceInstance{
+			cfg:              cfg,
+			templateRenderer: templateRenderer,
+		}
+	})
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize email template renderer: %w", err)
+		return nil, err
 	}
 
-	return &EmailService{
-		cfg:              cfg,
-		templateRenderer: templateRenderer,
-	}, nil
+	return emailInstance, nil
 }
 
 type EmailData struct {
@@ -41,7 +64,7 @@ type EmailData struct {
 	AttachmentPath string
 }
 
-func (s *EmailService) SendBackupNotification(backupResult *BackupResult) error {
+func (s *EmailServiceInstance) SendBackupNotification(backupResult *BackupResult) error {
 	if s.cfg.AdminEmailsRaw == "" {
 		log.Error("No admin emails configured for backup notification")
 		return fmt.Errorf("no admin emails configured for notifications")
@@ -53,7 +76,14 @@ func (s *EmailService) SendBackupNotification(backupResult *BackupResult) error 
 		return fmt.Errorf("no valid admin emails found")
 	}
 
-	body, err := s.templateRenderer.RenderBackupNotification(s.cfg.Environment, s.cfg.DbName, backupResult.Filename)
+	body, err := s.templateRenderer.RenderBackupNotification(&BackupTemplateData{
+		Subject:   "Database Backup Created",
+		EnvName:   s.cfg.Environment,
+		DBName:    s.cfg.DbName,
+		Filename:  backupResult.Filename,
+		CreatedAt: time.Now().Format("2006-01-02 15:04:05 MST"),
+		AppName:   s.cfg.AppName,
+	})
 	if err != nil {
 		log.Errorf("Failed to render backup email template: %v", err)
 		return fmt.Errorf("failed to render backup email template: %w", err)
@@ -69,7 +99,7 @@ func (s *EmailService) SendBackupNotification(backupResult *BackupResult) error 
 	return s.sendEmail(emailData)
 }
 
-func (s *EmailService) SendExchangeRatesUpdateNotification(exchangeRates *models.ExchangeRates) error {
+func (s *EmailServiceInstance) SendExchangeRatesUpdateNotification(exchangeRates *models.ExchangeRates) error {
 	if s.cfg.AdminEmailsRaw == "" {
 		log.Error("No admin emails configured for exchange rates notification")
 		return fmt.Errorf("no admin emails configured for notifications")
@@ -81,7 +111,16 @@ func (s *EmailService) SendExchangeRatesUpdateNotification(exchangeRates *models
 		return fmt.Errorf("no valid admin emails found")
 	}
 
-	body, err := s.templateRenderer.RenderExchangeRatesNotification(s.cfg.Environment, exchangeRates)
+	body, err := s.templateRenderer.RenderExchangeRatesUpdate(&ExchangeRatesTemplateData{
+		Subject:      "Exchange Rates Updated",
+		EnvName:      s.cfg.Environment,
+		UpdatedAt:    time.Now().Format("2006-01-02 15:04:05 MST"),
+		ActualDate:   exchangeRates.ActualDate.Format("2006-01-02"),
+		BaseCurrency: exchangeRates.BaseCurrencyCode,
+		ServiceName:  exchangeRates.ServiceName,
+		RateCount:    len(exchangeRates.Rates),
+		AppName:      s.cfg.AppName,
+	})
 	if err != nil {
 		log.Errorf("Failed to render exchange rates email template: %v", err)
 		return fmt.Errorf("failed to render exchange rates email template: %w", err)
@@ -96,7 +135,7 @@ func (s *EmailService) SendExchangeRatesUpdateNotification(exchangeRates *models
 	return s.sendEmail(emailData)
 }
 
-func (s *EmailService) parseAdminEmails() []string {
+func (s *EmailServiceInstance) parseAdminEmails() []string {
 	if s.cfg.AdminEmailsRaw == "" {
 		return []string{}
 	}
@@ -114,7 +153,7 @@ func (s *EmailService) parseAdminEmails() []string {
 	return validEmails
 }
 
-func (s *EmailService) sendEmail(emailData *EmailData) error {
+func (s *EmailServiceInstance) sendEmail(emailData *EmailData) error {
 	if s.cfg.SMTPHost == "" || s.cfg.SMTPUser == "" {
 		log.Error("SMTP not configured, would send email:", emailData.Subject)
 		log.Error("Email body:", emailData.Body)
@@ -155,7 +194,7 @@ func (s *EmailService) sendEmail(emailData *EmailData) error {
 	return nil
 }
 
-func (s *EmailService) buildBaseEmailContent(emailData *EmailData) (string, error) {
+func (s *EmailServiceInstance) buildBaseEmailContent(emailData *EmailData) (string, error) {
 	boundary := "boundary123456789"
 	var msg bytes.Buffer
 
@@ -222,12 +261,12 @@ func (s *EmailService) buildBaseEmailContent(emailData *EmailData) (string, erro
 	return msg.String(), nil
 }
 
-func (s *EmailService) addRecipientHeader(baseContent, recipient string) string {
+func (s *EmailServiceInstance) addRecipientHeader(baseContent, recipient string) string {
 	// Add To: header at the beginning
 	return fmt.Sprintf("To: %s\r\n%s", recipient, baseContent)
 }
 
-func (s *EmailService) formatFromAddress() (string, error) {
+func (s *EmailServiceInstance) formatFromAddress() (string, error) {
 	// Parse the from address to ensure it's properly formatted
 	addr, err := mail.ParseAddress(s.cfg.EmailFromAddress)
 	if err != nil {
@@ -243,7 +282,7 @@ func (s *EmailService) formatFromAddress() (string, error) {
 	return addr.String(), nil
 }
 
-func (s *EmailService) extractEmailAddress() (string, error) {
+func (s *EmailServiceInstance) extractEmailAddress() (string, error) {
 	// Parse the from address and extract just the email part for SMTP envelope
 	addr, err := mail.ParseAddress(s.cfg.EmailFromAddress)
 	if err != nil {
@@ -258,7 +297,7 @@ func (s *EmailService) extractEmailAddress() (string, error) {
 	return addr.Address, nil
 }
 
-func (s *EmailService) SendActivationEmail(toEmail, firstName, activationToken string) error {
+func (s *EmailServiceInstance) SendActivationEmail(toEmail, firstName, activationToken string) error {
 	log.Debug("Sending activation email to: ", toEmail)
 
 	activationLink := fmt.Sprintf("%s/activate/%s", s.cfg.FrontendURL, activationToken)
@@ -270,7 +309,13 @@ func (s *EmailService) SendActivationEmail(toEmail, firstName, activationToken s
 	}
 
 	// Render email body using template
-	body, err := s.templateRenderer.RenderUserActivation(firstName, activationToken)
+	body, err := s.templateRenderer.RenderActivationEmail(&ActivationEmailTemplateData{
+		Subject:        fmt.Sprintf("Activate Your %s Account", s.cfg.AppName),
+		EnvName:        s.cfg.Environment,
+		FirstName:      firstName,
+		ActivationLink: activationLink,
+		AppName:        s.cfg.AppName,
+	})
 	if err != nil {
 		log.Errorf("Failed to render activation email template: %v", err)
 		return fmt.Errorf("failed to render activation email template: %w", err)

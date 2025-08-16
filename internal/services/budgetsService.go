@@ -36,8 +36,21 @@ type AffectedCategoryDate struct {
 	Date       time.Time
 }
 
+var (
+	budgetsInstance *BudgetsServiceInstance
+	budgetsOnce     sync.Once
+)
+
 func NewBudgetsService(budgetsRepository budgetRepo.Repository, sManager *Manager) BudgetsService {
-	return &BudgetsServiceInstance{budgetsRepository: budgetsRepository, sm: sManager}
+	budgetsOnce.Do(func() {
+		log.Debug("Creating BudgetsService instance")
+		budgetsInstance = &BudgetsServiceInstance{
+			budgetsRepository: budgetsRepository,
+			sm:                sManager,
+		}
+	})
+
+	return budgetsInstance
 }
 
 func (s *BudgetsServiceInstance) CreateBudget(budgetDTO dto.CreateBudgetDTO, userID int) (*models.Budget, error) {

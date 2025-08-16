@@ -5,10 +5,8 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
-	"time"
+	"sync"
 	"ypeskov/budget-go/internal/config"
-
-	"ypeskov/budget-go/internal/models"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -16,21 +14,42 @@ import (
 //go:embed templates/email/*.html
 var emailTemplates embed.FS
 
-type EmailTemplateRenderer struct {
+type EmailTemplateRenderer interface {
+	RenderBackupNotification(data *BackupTemplateData) (string, error)
+	RenderExchangeRatesUpdate(data *ExchangeRatesTemplateData) (string, error)
+	RenderActivationEmail(data *ActivationEmailTemplateData) (string, error)
+}
+
+type EmailTemplateRendererInstance struct {
 	templates *template.Template
 	cfg       *config.Config
 }
 
-func NewEmailTemplateRenderer(cfg *config.Config) (*EmailTemplateRenderer, error) {
-	templates, err := template.ParseFS(emailTemplates, "templates/email/*.html")
+var (
+	emailTemplateInstance *EmailTemplateRendererInstance
+	emailTemplateOnce     sync.Once
+)
+
+func NewEmailTemplateRenderer(cfg *config.Config) (EmailTemplateRenderer, error) {
+	var err error
+	emailTemplateOnce.Do(func() {
+		log.Debug("Creating EmailTemplateRenderer instance")
+		templates, parseErr := template.ParseFS(emailTemplates, "templates/email/*.html")
+		if parseErr != nil {
+			err = fmt.Errorf("failed to parse email templates: %w", parseErr)
+			return
+		}
+		emailTemplateInstance = &EmailTemplateRendererInstance{
+			templates: templates,
+			cfg:       cfg,
+		}
+	})
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse email templates: %w", err)
+		return nil, err
 	}
 
-	return &EmailTemplateRenderer{
-		templates: templates,
-		cfg:       cfg,
-	}, nil
+	return emailTemplateInstance, nil
 }
 
 type BackupTemplateData struct {
@@ -53,7 +72,7 @@ type ExchangeRatesTemplateData struct {
 	AppName      string
 }
 
-type UserActivationTemplateData struct {
+type ActivationEmailTemplateData struct {
 	Subject        string
 	EnvName        string
 	FirstName      string
@@ -61,48 +80,19 @@ type UserActivationTemplateData struct {
 	AppName        string
 }
 
-func (r *EmailTemplateRenderer) RenderBackupNotification(envName, dbName, filename string) (string, error) {
-	data := BackupTemplateData{
-		Subject:   "Database Backup Created",
-		EnvName:   envName,
-		DBName:    dbName,
-		Filename:  filename,
-		CreatedAt: time.Now().Format("2006-01-02 15:04:05 MST"),
-		AppName:   r.cfg.AppName,
-	}
-
+func (r *EmailTemplateRendererInstance) RenderBackupNotification(data *BackupTemplateData) (string, error) {
 	return r.renderTemplate("backup_notification.html", data)
 }
 
-func (r *EmailTemplateRenderer) RenderExchangeRatesNotification(envName string, exchangeRates *models.ExchangeRates) (string, error) {
-	data := ExchangeRatesTemplateData{
-		Subject:      "Exchange Rates Updated",
-		EnvName:      envName,
-		UpdatedAt:    time.Now().Format("2006-01-02 15:04:05 MST"),
-		ActualDate:   exchangeRates.ActualDate.Format("2006-01-02"),
-		BaseCurrency: exchangeRates.BaseCurrencyCode,
-		ServiceName:  exchangeRates.ServiceName,
-		RateCount:    len(exchangeRates.Rates),
-		AppName:      r.cfg.AppName,
-	}
-
+func (r *EmailTemplateRendererInstance) RenderExchangeRatesUpdate(data *ExchangeRatesTemplateData) (string, error) {
 	return r.renderTemplate("exchange_rates_notification.html", data)
 }
 
-func (r *EmailTemplateRenderer) RenderUserActivation(firstName, activationToken string) (string, error) {
-	activationLink := fmt.Sprintf("%s/activate/%s", r.cfg.FrontendURL, activationToken)
-	data := UserActivationTemplateData{
-		Subject:        fmt.Sprintf("Activate Your %s Account", r.cfg.AppName),
-		EnvName:        r.cfg.Environment,
-		FirstName:      firstName,
-		ActivationLink: activationLink,
-		AppName:        r.cfg.AppName,
-	}
-
+func (r *EmailTemplateRendererInstance) RenderActivationEmail(data *ActivationEmailTemplateData) (string, error) {
 	return r.renderTemplate("user_activation.html", data)
 }
 
-func (r *EmailTemplateRenderer) renderTemplate(templateName string, data interface{}) (string, error) {
+func (r *EmailTemplateRendererInstance) renderTemplate(templateName string, data interface{}) (string, error) {
 	// Parse base template and the specific template
 	tmpl, err := template.New("email").ParseFS(emailTemplates, "templates/email/base.html", "templates/email/"+templateName)
 	if err != nil {

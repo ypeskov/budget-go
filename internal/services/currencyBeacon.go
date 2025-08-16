@@ -5,12 +5,17 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 	"ypeskov/budget-go/internal/config"
 )
 
-type CurrencyBeaconService struct {
+type CurrencyBeaconService interface {
+	GetCurrencyRates(date string) (map[string]interface{}, error)
+}
+
+type CurrencyBeaconServiceInstance struct {
 	config *config.Config
 }
 
@@ -20,11 +25,21 @@ type CurrencyBeaconResponse struct {
 	Rates map[string]interface{} `json:"rates"`
 }
 
-func NewCurrencyBeaconService(cfg *config.Config) *CurrencyBeaconService {
-	return &CurrencyBeaconService{config: cfg}
+var (
+	currencyBeaconInstance *CurrencyBeaconServiceInstance
+	currencyBeaconOnce     sync.Once
+)
+
+func NewCurrencyBeaconService(cfg *config.Config) CurrencyBeaconService {
+	currencyBeaconOnce.Do(func() {
+		log.Debug("Creating CurrencyBeaconService instance")
+		currencyBeaconInstance = &CurrencyBeaconServiceInstance{config: cfg}
+	})
+
+	return currencyBeaconInstance
 }
 
-func (c *CurrencyBeaconService) GetCurrencyRates(date string) (map[string]interface{}, error) {
+func (c *CurrencyBeaconServiceInstance) GetCurrencyRates(date string) (map[string]interface{}, error) {
 	if c.config.CurrencyBeaconAPIKey == "" {
 		return nil, fmt.Errorf("CurrencyBeacon API key is not configured")
 	}

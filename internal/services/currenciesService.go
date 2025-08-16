@@ -1,8 +1,11 @@
 package services
 
 import (
+	"sync"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/currencies"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type CurrenciesService interface {
@@ -15,10 +18,20 @@ type CurrenciesServiceInstance struct {
 	currenciesRepo currencies.Repository
 }
 
+var (
+	currenciesInstance *CurrenciesServiceInstance
+	currenciesOnce     sync.Once
+)
+
 func NewCurrenciesService(currenciesRepo currencies.Repository) CurrenciesService {
-	return &CurrenciesServiceInstance{
-		currenciesRepo: currenciesRepo,
-	}
+	currenciesOnce.Do(func() {
+		log.Debug("Creating CurrenciesService instance")
+		currenciesInstance = &CurrenciesServiceInstance{
+			currenciesRepo: currenciesRepo,
+		}
+	})
+
+	return currenciesInstance
 }
 
 func (c *CurrenciesServiceInstance) GetCurrencies() ([]models.Currency, error) {

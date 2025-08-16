@@ -25,7 +25,7 @@ type ExchangeRatesService interface {
 type ExchangeRatesServiceInstance struct {
 	exchangeRatesRepository exchangeRates.Repository
 	cache                   *ExchangeRatesHistoryCache
-	currencyBeaconService   *CurrencyBeaconService
+	currencyBeaconService   CurrencyBeaconService
 	config                  *config.Config
 }
 
@@ -38,15 +38,15 @@ type ExchangeRatesHistoryCache struct {
 }
 
 var (
-	instance *ExchangeRatesServiceInstance
-	once     sync.Once
-	mu       sync.RWMutex
+	exchangeRatesInstance *ExchangeRatesServiceInstance
+	exchangeRatesOnce     sync.Once
+	exchangeRatesMu       sync.RWMutex
 )
 
 func NewExchangeRatesService(exchangeRatesRepository exchangeRates.Repository, cfg *config.Config) ExchangeRatesService {
-	once.Do(func() {
+	exchangeRatesOnce.Do(func() {
 		log.Debug("Creating ExchangeRatesService instance")
-		instance = &ExchangeRatesServiceInstance{
+		exchangeRatesInstance = &ExchangeRatesServiceInstance{
 			exchangeRatesRepository: exchangeRatesRepository,
 			cache: &ExchangeRatesHistoryCache{
 				data:           make(map[string]map[string]decimal.Decimal),
@@ -57,7 +57,7 @@ func NewExchangeRatesService(exchangeRatesRepository exchangeRates.Repository, c
 		}
 	})
 
-	return instance
+	return exchangeRatesInstance
 }
 
 func (s *ExchangeRatesServiceInstance) fetchExchangeRates() ([]models.ExchangeRates, error) {
@@ -85,8 +85,8 @@ func (s *ExchangeRatesServiceInstance) GetExchangeRates() (map[string]map[string
 }
 
 func (s *ExchangeRatesServiceInstance) fillCache(exchangeRates []models.ExchangeRates) {
-	mu.Lock()
-	defer mu.Unlock()
+	exchangeRatesMu.Lock()
+	defer exchangeRatesMu.Unlock()
 
 	for _, exchangeRate := range exchangeRates {
 		convertedRates := make(map[string]decimal.Decimal)
@@ -123,8 +123,8 @@ func (s *ExchangeRatesServiceInstance) isCacheExpired() bool {
 }
 
 func (s *ExchangeRatesServiceInstance) GetExchangeRateByDate(date time.Time) (map[string]decimal.Decimal, error) {
-	mu.RLock()
-	defer mu.RUnlock()
+	exchangeRatesMu.RLock()
+	defer exchangeRatesMu.RUnlock()
 
 	// get all date keys from cache that are before or equal to the date
 	dateKeys := make([]string, 0, len(s.cache.data))
@@ -221,8 +221,8 @@ func (s *ExchangeRatesServiceInstance) GetRateBetweenCurrencies(
 
 // getDateKeyForRates finds the appropriate date key for the given date
 func (s *ExchangeRatesServiceInstance) getDateKeyForRates(date time.Time) string {
-	mu.RLock()
-	defer mu.RUnlock()
+	exchangeRatesMu.RLock()
+	defer exchangeRatesMu.RUnlock()
 
 	// Get all date keys from cache that are before or equal to the date
 	dateKeys := make([]string, 0, len(s.cache.data))
@@ -313,11 +313,11 @@ func (s *ExchangeRatesServiceInstance) UpdateExchangeRates(date time.Time) (*mod
 	}
 
 	// Clear cache to force refresh
-	mu.Lock()
+	exchangeRatesMu.Lock()
 	s.cache.data = make(map[string]map[string]decimal.Decimal)
 	s.cache.baseCurrencies = make(map[string]string)
 	s.cache.lastUpdate = time.Time{}
-	mu.Unlock()
+	exchangeRatesMu.Unlock()
 
 	log.Infof("Exchange rates updated successfully for %s", date.Format("2006-01-02"))
 	return excRates, nil

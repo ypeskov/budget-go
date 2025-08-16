@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/categories"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type CategoriesService interface {
@@ -19,10 +22,20 @@ type CategoryServiceInstance struct {
 	categoriesRepo categories.Repository
 }
 
+var (
+	categoriesInstance *CategoryServiceInstance
+	categoriesOnce     sync.Once
+)
+
 func NewCategoriesService(repository categories.Repository) CategoriesService {
-	return &CategoryServiceInstance{
-		categoriesRepo: repository,
-	}
+	categoriesOnce.Do(func() {
+		log.Debug("Creating CategoriesService instance")
+		categoriesInstance = &CategoryServiceInstance{
+			categoriesRepo: repository,
+		}
+	})
+
+	return categoriesInstance
 }
 
 func (c *CategoryServiceInstance) GetUserCategories(userId int) ([]models.UserCategory, error) {

@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"sync"
 	"time"
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
@@ -36,8 +37,21 @@ type TransactionsServiceInstance struct {
 	sm                     *Manager
 }
 
+var (
+	transactionsInstance *TransactionsServiceInstance
+	transactionsOnce     sync.Once
+)
+
 func NewTransactionsService(transactionsRepository transactions.Repository, sManager *Manager) TransactionsService {
-	return &TransactionsServiceInstance{transactionsRepository: transactionsRepository, sm: sManager}
+	transactionsOnce.Do(func() {
+		log.Debug("Creating TransactionsService instance")
+		transactionsInstance = &TransactionsServiceInstance{
+			transactionsRepository: transactionsRepository,
+			sm:                     sManager,
+		}
+	})
+
+	return transactionsInstance
 }
 
 func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int,

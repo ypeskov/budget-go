@@ -1,6 +1,7 @@
 package services
 
 import (
+	"sync"
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/queue"
@@ -23,20 +24,24 @@ type UserService interface {
 
 type UserServiceInstance struct {
 	userRepo     userRepo.RepositoryInterface
-	queueService queue.Service
+	queueService queue.QueueService
 }
 
-func NewUserService(userRepo userRepo.RepositoryInterface) UserService {
-	return &UserServiceInstance{
-		userRepo: userRepo,
-	}
-}
+var (
+	userInstance *UserServiceInstance
+	userOnce     sync.Once
+)
 
-func NewUserServiceWithQueue(userRepo userRepo.RepositoryInterface, queueService queue.Service) UserService {
-	return &UserServiceInstance{
-		userRepo:     userRepo,
-		queueService: queueService,
-	}
+func NewUserService(userRepo userRepo.RepositoryInterface, queueService queue.QueueService) UserService {
+	userOnce.Do(func() {
+		log.Debug("Creating UserService instance")
+		userInstance = &UserServiceInstance{
+			userRepo:     userRepo,
+			queueService: queueService,
+		}
+	})
+
+	return userInstance
 }
 
 func (us *UserServiceInstance) GetAllUsers() ([]*models.User, error) {

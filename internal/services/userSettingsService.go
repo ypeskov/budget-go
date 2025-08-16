@@ -1,6 +1,7 @@
 package services
 
 import (
+	"sync"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/userSettings"
 
@@ -17,10 +18,20 @@ type UserSettingsServiceInstance struct {
 	userSettingsRepo userSettings.Repository
 }
 
+var (
+	userSettingsInstance *UserSettingsServiceInstance
+	userSettingsOnce     sync.Once
+)
+
 func NewUserSettingsService(userSettingsRepo userSettings.Repository) UserSettingsService {
-	return &UserSettingsServiceInstance{
-		userSettingsRepo: userSettingsRepo,
-	}
+	userSettingsOnce.Do(func() {
+		log.Debug("Creating UserSettingsService instance")
+		userSettingsInstance = &UserSettingsServiceInstance{
+			userSettingsRepo: userSettingsRepo,
+		}
+	})
+
+	return userSettingsInstance
 }
 
 func (u *UserSettingsServiceInstance) GetBaseCurrency(userId int) (models.Currency, error) {

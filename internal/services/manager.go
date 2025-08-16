@@ -31,15 +31,17 @@ type Manager struct {
 	ExchangeRatesService   ExchangeRatesService
 	ReportsService         ReportsService
 	ChartService           ChartService
-	BackupService          *BackupService
-	EmailService           *EmailService
+	BackupService          BackupService
+	EmailService           EmailService
 	ActivationTokenService ActivationTokenService
-	QueueService           queue.Service
+	QueueService           queue.QueueService
 }
 
 var sm *Manager
 
 func NewServicesManager(db *database.Database, cfg *config.Config) (*Manager, error) {
+	var err error
+
 	userRepo := user.New(db)
 	exchangeRatesRepo := exchangeRates.NewExchangeRatesRepository(db.Db)
 	accountsRepo := accounts.NewAccountsService(db.Db)
@@ -55,9 +57,8 @@ func NewServicesManager(db *database.Database, cfg *config.Config) (*Manager, er
 	sm = &Manager{}
 
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisAddr})
-	queueService := queue.NewService(asynqClient)
-	sm.QueueService = queueService
-	sm.UserService = NewUserServiceWithQueue(userRepo, queueService)
+	sm.QueueService = queue.NewQueueService(asynqClient)
+	sm.UserService = NewUserService(userRepo, sm.QueueService)
 	sm.AccountsService = NewAccountsService(accountsRepo, sm)
 	sm.BudgetsService = NewBudgetsService(budgetsRepo, sm)
 	sm.CategoriesService = NewCategoriesService(categoriesRepo)
@@ -69,11 +70,12 @@ func NewServicesManager(db *database.Database, cfg *config.Config) (*Manager, er
 	sm.ReportsService = NewReportsService(reportsRepo, sm.ExchangeRatesService)
 	sm.ChartService = NewChartService()
 	sm.BackupService = NewBackupService(cfg)
-	emailService, err := NewEmailService(cfg)
+
+	sm.EmailService, err = NewEmailService(cfg)
 	if err != nil {
 		return nil, err
 	}
-	sm.EmailService = emailService
+
 	sm.ActivationTokenService = NewActivationTokenService(activationTokensRepo, sm.EmailService)
 
 	return sm, nil

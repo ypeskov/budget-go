@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"sync"
 	"time"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/activationTokens"
@@ -19,14 +20,24 @@ type ActivationTokenService interface {
 
 type ActivationTokenServiceInstance struct {
 	tokenRepo    activationTokens.RepositoryInterface
-	emailService *EmailService
+	emailService EmailService
 }
 
-func NewActivationTokenService(tokenRepo activationTokens.RepositoryInterface, emailService *EmailService) ActivationTokenService {
-	return &ActivationTokenServiceInstance{
-		tokenRepo:    tokenRepo,
-		emailService: emailService,
-	}
+var (
+	activationTokenInstance *ActivationTokenServiceInstance
+	activationTokenOnce     sync.Once
+)
+
+func NewActivationTokenService(tokenRepo activationTokens.RepositoryInterface, emailService EmailService) ActivationTokenService {
+	activationTokenOnce.Do(func() {
+		log.Debug("Creating ActivationTokenService instance")
+		activationTokenInstance = &ActivationTokenServiceInstance{
+			tokenRepo:    tokenRepo,
+			emailService: emailService,
+		}
+	})
+
+	return activationTokenInstance
 }
 
 func (a *ActivationTokenServiceInstance) CreateActivationToken(userID int) (*models.ActivationToken, error) {

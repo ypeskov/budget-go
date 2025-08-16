@@ -2,6 +2,7 @@ package queue
 
 import (
 	"encoding/json"
+	"sync"
 	"ypeskov/budget-go/internal/constants"
 
 	"github.com/hibiken/asynq"
@@ -14,23 +15,33 @@ type ActivationEmailPayload struct {
 	Token     string `json:"token"`
 }
 
-type Service interface {
+type QueueService interface {
 	EnqueueActivationEmail(userEmail, userName, token string) error
 	EnqueueDBBackup() error
 	EnqueueExchangeRatesUpdate() error
 }
 
-type ServiceInstance struct {
+type QueueServiceInstance struct {
 	asynqClient *asynq.Client
 }
 
-func NewService(asynqClient *asynq.Client) Service {
-	return &ServiceInstance{
-		asynqClient: asynqClient,
-	}
+var (
+	queueServiceInstance *QueueServiceInstance
+	queueOnce            sync.Once
+)
+
+func NewQueueService(asynqClient *asynq.Client) QueueService {
+	queueOnce.Do(func() {
+		log.Debug("Creating Queue service instance")
+		queueServiceInstance = &QueueServiceInstance{
+			asynqClient: asynqClient,
+		}
+	})
+
+	return queueServiceInstance
 }
 
-func (qs *ServiceInstance) EnqueueActivationEmail(userEmail, userName, token string) error {
+func (qs *QueueServiceInstance) EnqueueActivationEmail(userEmail, userName, token string) error {
 	payload := ActivationEmailPayload{
 		UserEmail: userEmail,
 		UserName:  userName,
@@ -52,7 +63,7 @@ func (qs *ServiceInstance) EnqueueActivationEmail(userEmail, userName, token str
 	return nil
 }
 
-func (qs *ServiceInstance) EnqueueDBBackup() error {
+func (qs *QueueServiceInstance) EnqueueDBBackup() error {
 	_, err := qs.asynqClient.Enqueue(asynq.NewTask(constants.TaskDBBackupDaily, nil), asynq.Queue("default"))
 	if err != nil {
 		log.Errorf("Error queuing DB backup task: %v", err)
@@ -61,7 +72,7 @@ func (qs *ServiceInstance) EnqueueDBBackup() error {
 	return nil
 }
 
-func (qs *ServiceInstance) EnqueueExchangeRatesUpdate() error {
+func (qs *QueueServiceInstance) EnqueueExchangeRatesUpdate() error {
 	_, err := qs.asynqClient.Enqueue(asynq.NewTask(constants.TaskExchangeRatesDaily, nil), asynq.Queue("default"))
 	if err != nil {
 		log.Errorf("Error queuing exchange rates update task: %v", err)

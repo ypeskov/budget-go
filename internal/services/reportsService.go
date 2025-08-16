@@ -3,12 +3,14 @@ package services
 import (
 	"sort"
 	"strings"
+	"sync"
 	"time"
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/repositories/reports"
 	"ypeskov/budget-go/internal/utils"
 
 	"github.com/shopspring/decimal"
+	log "github.com/sirupsen/logrus"
 )
 
 type ReportsService interface {
@@ -24,11 +26,21 @@ type ReportsServiceInstance struct {
 	exchangeRatesService ExchangeRatesService
 }
 
+var (
+	reportsInstance *ReportsServiceInstance
+	reportsOnce     sync.Once
+)
+
 func NewReportsService(reportsRepo *reports.ReportsRepository, exchangeRatesService ExchangeRatesService) ReportsService {
-	return &ReportsServiceInstance{
-		reportsRepo:          reportsRepo,
-		exchangeRatesService: exchangeRatesService,
-	}
+	reportsOnce.Do(func() {
+		log.Debug("Creating ReportsService instance")
+		reportsInstance = &ReportsServiceInstance{
+			reportsRepo:          reportsRepo,
+			exchangeRatesService: exchangeRatesService,
+		}
+	})
+
+	return reportsInstance
 }
 
 func (s *ReportsServiceInstance) GetCashFlow(userID int, input dto.CashFlowReportInputDTO) (*dto.CashFlowReportOutputDTO, error) {
