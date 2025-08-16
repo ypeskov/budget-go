@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -11,7 +12,6 @@ import (
 	"ypeskov/budget-go/internal/utils"
 
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/idtoken"
 
 	"github.com/labstack/echo/v4"
@@ -21,10 +21,6 @@ import (
 	"ypeskov/budget-go/internal/services"
 )
 
-type UserLogin struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
 
 type JWTCustomClaims struct {
 	Id    int    `json:"id"`
@@ -60,21 +56,33 @@ func RegisterAuthRoutes(g *echo.Group, cfgGlobal *config.Config, manager *servic
 func LoginUser(c echo.Context) error {
 	log.Debugf("LoginUser request started: %s %s", c.Request().Method, c.Request().URL)
 
-	u := new(UserLogin)
-	if err := c.Bind(u); err != nil {
-		log.Error(err)
+	loginDTO := new(dto.UserLoginDTO)
+	if err := c.Bind(loginDTO); err != nil {
+		log.Error("Error binding login data: ", err)
 		return c.String(http.StatusBadRequest, "Bad request")
 	}
 
-	user, err := sm.UserService.GetUserByEmail(u.Email)
+	user, err := sm.UserService.LoginUser(loginDTO)
 	if err != nil {
-		log.Error("Error getting user by email: ", err)
-		return c.String(http.StatusUnauthorized, "Unauthorized")
-	}
-
-	if !comparePassword(user.PasswordHash, u.Password) {
-		log.Error("Passwords do not match")
-		return c.String(http.StatusUnauthorized, "Unauthorized")
+		// Handle different error types appropriately
+		var userNotFoundError *services.UserNotFoundError
+		var invalidCredentialsError *services.InvalidCredentialsError
+		var userNotActivatedError *services.UserNotActivatedError
+		var userDeletedError *services.UserDeletedError
+		switch {
+		case errors.As(err, &userNotFoundError), errors.As(err, &invalidCredentialsError):
+			log.Error("Login failed: ", err)
+			return c.String(http.StatusUnauthorized, "Unauthorized")
+		case errors.As(err, &userNotActivatedError):
+			log.Error("User not activated: ", err)
+			return c.String(http.StatusUnauthorized, "User not activated")
+		case errors.As(err, &userDeletedError):
+			log.Error("User is deleted: ", err)
+			return c.String(http.StatusUnauthorized, "User account is disabled")
+		default:
+			log.Error("Login error: ", err)
+			return c.String(http.StatusInternalServerError, "Internal server error")
+		}
 	}
 
 	signedToken, err := utils.GenerateAccessToken(user, cfg)
@@ -83,7 +91,7 @@ func LoginUser(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
-	log.Debug("LoginUser request completed - POST /auth/login")
+	log.Debug("LoginUser request completed: %s %s", c.Request().Method, c.Request().URL)
 	return c.JSON(http.StatusOK, map[string]string{
 		"accessToken": signedToken,
 		"tokenType":   "Bearer",
@@ -124,7 +132,7 @@ func RegisterUser(c echo.Context) error {
 		LastName:  createdUser.LastName,
 	}
 
-	log.Debug("RegisterUser request completed - POST /auth/register")
+	log.Debug("RegisterUser request completed: %s %s", c.Request().Method, c.Request().URL)
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"user":    response,
 		"message": "User registered successfully. Please check your email to activate your account.",
@@ -288,7 +296,3 @@ func OAuth(c echo.Context) error {
 	})
 }
 
-func comparePassword(hashedPassword, password string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-	return err == nil
-}

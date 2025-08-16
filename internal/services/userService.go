@@ -18,6 +18,7 @@ type UserService interface {
 	RegisterUser(userDTO *dto.UserRegisterRequestDTO,
 		currenciesService CurrenciesService,
 		activationTokenService ActivationTokenService) (*models.User, error)
+	LoginUser(loginDTO *dto.UserLoginDTO) (*models.User, error)
 	LoginOrRegisterOAuth(email, firstName, lastName string) (*models.User, error)
 	ActivateUser(userID int) error
 }
@@ -182,6 +183,39 @@ func (us *UserServiceInstance) LoginOrRegisterOAuth(email, firstName, lastName s
 	return existingUser, nil
 }
 
+func (us *UserServiceInstance) LoginUser(loginDTO *dto.UserLoginDTO) (*models.User, error) {
+	log.Debug("LoginUser service called")
+
+	// Get user by email
+	user, err := us.userRepo.GetUserByEmail(loginDTO.Email)
+	if err != nil {
+		log.Error("Error getting user by email: ", err)
+		return nil, &UserNotFoundError{Email: loginDTO.Email}
+	}
+
+	// Check if user is deleted
+	if user.IsDeleted {
+		log.Error("User is deleted: ", loginDTO.Email)
+		return nil, &UserDeletedError{Email: loginDTO.Email}
+	}
+
+	// Check if user is activated
+	if !user.IsActive {
+		log.Error("User is not activated: ", loginDTO.Email)
+		return nil, &UserNotActivatedError{Email: loginDTO.Email}
+	}
+
+	// Compare password
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(loginDTO.Password))
+	if err != nil {
+		log.Error("Passwords do not match for user: ", loginDTO.Email)
+		return nil, &InvalidCredentialsError{Email: loginDTO.Email}
+	}
+
+	log.Debug("User login successful: ", loginDTO.Email)
+	return user, nil
+}
+
 func (us *UserServiceInstance) ActivateUser(userID int) error {
 	log.Debug("ActivateUser service called for user ID: ", userID)
 
@@ -202,4 +236,28 @@ type UserAlreadyExistsError struct {
 
 func (e *UserAlreadyExistsError) Error() string {
 	return "User already exists: " + e.Email
+}
+
+type UserNotFoundError struct {
+	Email string
+}
+
+func (e *UserNotFoundError) Error() string {
+	return "User not found: " + e.Email
+}
+
+type UserDeletedError struct {
+	Email string
+}
+
+func (e *UserDeletedError) Error() string {
+	return "User is deleted: " + e.Email
+}
+
+type InvalidCredentialsError struct {
+	Email string
+}
+
+func (e *InvalidCredentialsError) Error() string {
+	return "Invalid credentials for user: " + e.Email
 }
