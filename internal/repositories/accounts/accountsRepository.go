@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"ypeskov/budget-go/internal/dto"
-	customErrors "ypeskov/budget-go/internal/errors"
+	appErrors "ypeskov/budget-go/internal/errors"
 	"ypeskov/budget-go/internal/models"
 
 	"github.com/jmoiron/sqlx"
@@ -174,7 +174,7 @@ RETURNING id, user_id, name, balance, account_type_id, currency_id, initial_bala
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			log.Errorf("No account found with the provided ID: %v", account.ID)
-			return models.Account{}, customErrors.ErrNoAccountFound
+			return models.Account{}, appErrors.ErrNoAccountFound
 		}
 		log.Error("Error updating account: ", err)
 		return models.Account{}, err
@@ -203,7 +203,7 @@ func (a *RepositoryInstance) UpdateAccountBalance(accountId int, newBalance deci
 	}
 
 	if rowsAffected == 0 {
-		return customErrors.ErrNoAccountFound
+		return appErrors.ErrNoAccountFound
 	}
 
 	return nil
@@ -217,7 +217,7 @@ func (a *RepositoryInstance) GetAccountBalance(accountId int) (decimal.Decimal, 
 	err := db.Get(&balance, getBalanceQuery, accountId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return decimal.Zero, customErrors.ErrNoAccountFound
+			return decimal.Zero, appErrors.ErrNoAccountFound
 		}
 		log.Error("Error getting account balance: ", err)
 		return decimal.Zero, err

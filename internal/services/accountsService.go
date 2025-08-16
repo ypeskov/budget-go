@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 	"ypeskov/budget-go/internal/dto"
-	customErrors "ypeskov/budget-go/internal/errors"
+	appErrors "ypeskov/budget-go/internal/errors"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/accounts"
 
@@ -214,9 +214,9 @@ func (a *AccountsServiceInstance) UpdateAccount(account models.Account) (dto.Acc
 
 	updatedAccount, err := a.accountsRepo.UpdateAccount(account)
 	if err != nil {
-		if errors.Is(err, customErrors.ErrNoAccountFound) {
+		if errors.Is(err, appErrors.ErrNoAccountFound) {
 			log.Errorf("No account found with the provided ID: %v", account.ID)
-			return dto.AccountDTO{}, customErrors.ErrNoAccountFound
+			return dto.AccountDTO{}, appErrors.ErrNoAccountFound
 		}
 		return dto.AccountDTO{}, err
 	}

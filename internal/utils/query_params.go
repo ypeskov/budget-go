@@ -1,11 +1,10 @@
 package utils
 
 import (
-	"errors"
 	"strconv"
 	"strings"
 	"time"
-	"ypeskov/budget-go/internal/routes/routeErrors"
+	appErrors "ypeskov/budget-go/internal/errors"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
@@ -27,35 +26,35 @@ type TransactionFilters struct {
 func ParseTransactionFilters(c echo.Context) (*TransactionFilters, error) {
 	perPage, err := getPerPage(c)
 	if err != nil {
-		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
+		return nil, &appErrors.InvalidRequestError{Message: err.Error()}
 	}
 	page, err := getPage(c)
 	if err != nil {
-		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
+		return nil, &appErrors.InvalidRequestError{Message: err.Error()}
 	}
 	currencies, err := getCurrencies(c)
 	if err != nil {
-		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
+		return nil, &appErrors.InvalidRequestError{Message: err.Error()}
 	}
 	fromDate, err := getFromDate(c)
 	if err != nil {
-		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
+		return nil, &appErrors.InvalidRequestError{Message: err.Error()}
 	}
 	toDate, err := getToDate(c)
 	if err != nil {
-		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
+		return nil, &appErrors.InvalidRequestError{Message: err.Error()}
 	}
 	accountIds, err := getAccountIds(c)
 	if err != nil {
-		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
+		return nil, &appErrors.InvalidRequestError{Message: err.Error()}
 	}
 	transactionTypes, err := getTransactionTypes(c)
 	if err != nil {
-		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
+		return nil, &appErrors.InvalidRequestError{Message: err.Error()}
 	}
 	categoryIds, err := getCategoryIds(c)
 	if err != nil {
-		return nil, &routeErrors.InvalidRequestError{Message: err.Error()}
+		return nil, &appErrors.InvalidRequestError{Message: err.Error()}
 	}
 
 	return &TransactionFilters{
@@ -76,7 +75,7 @@ func getPerPage(c echo.Context) (int, error) {
 		return 0, err
 	}
 	if perPage < 1 {
-		return 0, errors.New("per_page must be greater than 0")
+		return 0, appErrors.ErrInvalidPerPage
 	}
 	return perPage, nil
 }
@@ -117,7 +116,7 @@ func GetQueryParamAsInt(c echo.Context, paramName string, defaultValue int) (int
 	}
 	val, err := strconv.Atoi(paramStr)
 	if err != nil {
-		return 0, errors.New("invalid value for " + paramName)
+		return 0, &appErrors.InvalidParamError{ParamName: paramName, Value: paramStr}
 	}
 	return val, nil
 }
@@ -159,7 +158,7 @@ func GetQueryParamAsTime(c echo.Context, paramName string) (time.Time, error) {
 	}
 	parsedTime, err := time.Parse(time.DateOnly, paramStr)
 	if err != nil {
-		return time.Time{}, errors.New("invalid value for " + paramName)
+		return time.Time{}, &appErrors.InvalidDateError{ParamName: paramName, Value: paramStr}
 	}
 	return parsedTime, nil
 }

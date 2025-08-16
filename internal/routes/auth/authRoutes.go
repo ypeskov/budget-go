@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"ypeskov/budget-go/internal/dto"
+	appErrors "ypeskov/budget-go/internal/errors"
 	"ypeskov/budget-go/internal/middleware"
+	"ypeskov/budget-go/internal/services"
 	"ypeskov/budget-go/internal/utils"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -18,9 +20,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"ypeskov/budget-go/internal/config"
-	"ypeskov/budget-go/internal/services"
 )
-
 
 type JWTCustomClaims struct {
 	Id    int    `json:"id"`
@@ -35,7 +35,6 @@ type ProfileDTO struct {
 	Settings     map[string]string `json:"settings"`
 	BaseCurrency string            `json:"baseCurrency"`
 }
-
 
 var (
 	cfg *config.Config
@@ -64,23 +63,23 @@ func LoginUser(c echo.Context) error {
 
 	user, err := sm.UserService.LoginUser(loginDTO)
 	if err != nil {
-		// Handle different error types appropriately
-		var userNotFoundError *services.UserNotFoundError
-		var invalidCredentialsError *services.InvalidCredentialsError
-		var userNotActivatedError *services.UserNotActivatedError
-		var userDeletedError *services.UserDeletedError
 		switch {
-		case errors.As(err, &userNotFoundError), errors.As(err, &invalidCredentialsError):
-			log.Error("Login failed: ", err)
+		// group common "unauthorized" errors
+		case errors.As(err, new(*appErrors.UserNotFoundError)),
+			errors.As(err, new(*appErrors.InvalidCredentialsError)):
+			log.Warn("Login failed: ", err)
 			return c.String(http.StatusUnauthorized, "Unauthorized")
-		case errors.As(err, &userNotActivatedError):
-			log.Error("User not activated: ", err)
+
+		case errors.As(err, new(*appErrors.UserNotActivatedError)):
+			log.Warn("User not activated: ", err)
 			return c.String(http.StatusUnauthorized, "User not activated")
-		case errors.As(err, &userDeletedError):
-			log.Error("User is deleted: ", err)
+
+		case errors.As(err, new(*appErrors.UserDeletedError)):
+			log.Warn("User is deleted: ", err)
 			return c.String(http.StatusUnauthorized, "User account is disabled")
+
 		default:
-			log.Error("Login error: ", err)
+			log.Error("Unexpected login error: ", err)
 			return c.String(http.StatusInternalServerError, "Internal server error")
 		}
 	}
@@ -275,7 +274,7 @@ func OAuth(c echo.Context) error {
 
 	user, err := sm.UserService.LoginOrRegisterOAuth(email, givenName, familyName)
 	if err != nil {
-		if _, ok := err.(*services.UserNotActivatedError); ok {
+		if _, ok := err.(*appErrors.UserNotActivatedError); ok {
 			log.Errorf("Error while logging in user: [%s]: %v", email, err)
 			return c.JSON(http.StatusUnauthorized, map[string]string{"detail": "User not activated"})
 		}
@@ -295,4 +294,3 @@ func OAuth(c echo.Context) error {
 		TokenType:   "Bearer",
 	})
 }
-

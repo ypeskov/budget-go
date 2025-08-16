@@ -1,11 +1,11 @@
 package middleware
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 	"time"
 	"ypeskov/budget-go/internal/config"
+	appErrors "ypeskov/budget-go/internal/errors"
 	"ypeskov/budget-go/internal/services"
 	"ypeskov/budget-go/internal/utils"
 
@@ -17,18 +17,18 @@ import (
 // GetUserFromToken parses and validates the JWT token, returning claims if valid.
 func GetUserFromToken(authToken string, cfg *config.Config) (jwt.MapClaims, error) {
 	if authToken == "" {
-		return nil, errors.New("missing auth-token")
+		return nil, appErrors.ErrMissingAuthToken
 	}
 
 	// Parse the token
 	token, err := jwt.Parse(authToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("unexpected signing method")
+			return nil, appErrors.ErrUnexpectedSigningMethod
 		}
 		return []byte(cfg.SecretKey), nil
 	})
 	if err != nil {
-		return nil, errors.New("invalid or expired token")
+		return nil, appErrors.ErrInvalidToken
 	}
 
 	// Validate token and extract claims
@@ -36,13 +36,13 @@ func GetUserFromToken(authToken string, cfg *config.Config) (jwt.MapClaims, erro
 		// Check expiration
 		if exp, ok := claims["exp"].(float64); ok {
 			if time.Now().After(time.Unix(int64(exp), 0)) {
-				return nil, errors.New("token has expired")
+				return nil, appErrors.ErrTokenExpired
 			}
 		}
 		return claims, nil
 	}
 
-	return nil, errors.New("invalid token")
+	return nil, appErrors.ErrInvalidToken
 }
 
 // AuthMiddleware validates the JWT token, retrieves the user, and sets both claims and user in context.

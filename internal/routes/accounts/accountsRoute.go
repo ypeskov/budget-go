@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"ypeskov/budget-go/internal/config"
-	customErrors "ypeskov/budget-go/internal/errors"
+	appErrors "ypeskov/budget-go/internal/errors"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/services"
 
@@ -158,7 +158,7 @@ func UpdateAccount(c echo.Context) error {
 
 	updatedAccount, err := sm.AccountsService.UpdateAccount(account)
 	if err != nil {
-		if errors.Is(err, customErrors.ErrNoAccountFound) {
+		if errors.Is(err, appErrors.ErrNoAccountFound) {
 			log.Errorf("No account found with the provided ID: %v", account.ID)
 			return c.String(http.StatusNotFound, "not found")
 		}
