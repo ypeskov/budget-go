@@ -213,6 +213,7 @@ type TransactionDetailDTO struct {
 	NewBalance          decimal.Decimal         `json:"newBalance"`
 	Category            CategoryDetailDTO       `json:"category"`
 	LinkedTransactionID *int                    `json:"linkedTransactionId"`
+	LinkedTransaction   *TransactionDetailDTO   `json:"linkedTransaction,omitempty"`
 }
 
 func (t *TransactionDetailDTO) MarshalJSON() ([]byte, error) {
@@ -292,9 +293,10 @@ type AccountTypeDetailDTO struct {
 
 type TransactionDetailRaw struct {
 	models.Transaction
-	User        models.User          `db:"users"`
-	Account     models.Account       `db:"accounts"`
-	Currency    models.Currency      `db:"currencies"`
-	AccountType models.AccountType   `db:"account_types"`
-	Category    *models.UserCategory `db:"user_categories"`
+	User              models.User                  `db:"users"`
+	Account           models.Account               `db:"accounts"`
+	Currency          models.Currency              `db:"currencies"`
+	AccountType       models.AccountType           `db:"account_types"`
+	Category          *models.UserCategory         `db:"user_categories"`
+	LinkedTransaction *models.NullableTransaction  `db:"linked_transactions"`
 }

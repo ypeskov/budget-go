@@ -65,13 +65,31 @@ SELECT
 	user_categories.user_id AS "user_categories.user_id",
 	user_categories.is_deleted AS "user_categories.is_deleted", 
 	user_categories.created_at AS "user_categories.created_at", 
-	user_categories.updated_at AS "user_categories.updated_at"
+	user_categories.updated_at AS "user_categories.updated_at",
+
+	linked_transactions.id AS "linked_transactions.id",
+	linked_transactions.user_id AS "linked_transactions.user_id",
+	linked_transactions.account_id AS "linked_transactions.account_id",
+	linked_transactions.category_id AS "linked_transactions.category_id",
+	linked_transactions.amount AS "linked_transactions.amount",
+	linked_transactions.new_balance AS "linked_transactions.new_balance",
+	linked_transactions.label AS "linked_transactions.label",
+	linked_transactions.notes AS "linked_transactions.notes",
+	linked_transactions.date_time AS "linked_transactions.date_time",
+	linked_transactions.is_income AS "linked_transactions.is_income",
+	linked_transactions.is_transfer AS "linked_transactions.is_transfer",
+	linked_transactions.linked_transaction_id AS "linked_transactions.linked_transaction_id",
+	linked_transactions.base_currency_amount AS "linked_transactions.base_currency_amount",
+	linked_transactions.is_deleted AS "linked_transactions.is_deleted",
+	linked_transactions.created_at AS "linked_transactions.created_at",
+	linked_transactions.updated_at AS "linked_transactions.updated_at"
 FROM transactions 
 LEFT JOIN users ON transactions.user_id = users.id
 LEFT JOIN accounts ON transactions.account_id = accounts.id
 LEFT JOIN currencies ON accounts.currency_id = currencies.id
 LEFT JOIN account_types ON accounts.account_type_id = account_types.id
 LEFT JOIN user_categories ON transactions.category_id = user_categories.id
+LEFT JOIN transactions AS linked_transactions ON transactions.linked_transaction_id = linked_transactions.id
 
 WHERE transactions.id = :transaction_id AND transactions.user_id = :user_id
 `
@@ -87,6 +105,7 @@ SET account_id = :account_id,
     date_time = :date_time,
     is_income = :is_income,
     is_transfer = :is_transfer,
+    linked_transaction_id = :linked_transaction_id,
     updated_at = :updated_at
 WHERE id = :id
 `

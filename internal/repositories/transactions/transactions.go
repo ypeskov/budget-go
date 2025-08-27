@@ -177,17 +177,18 @@ func (r *RepositoryInstance) GetTransactionDetail(transactionId int, userId int)
 
 func (r *RepositoryInstance) UpdateTransaction(transaction models.Transaction) error {
 	params := map[string]interface{}{
-		"id":          *transaction.ID,
-		"account_id":  transaction.AccountID,
-		"category_id": transaction.CategoryID,
-		"amount":      transaction.Amount,
-		"new_balance": transaction.NewBalance,
-		"label":       transaction.Label,
-		"notes":       transaction.Notes,
-		"date_time":   transaction.DateTime,
-		"is_income":   transaction.IsIncome,
-		"is_transfer": transaction.IsTransfer,
-		"updated_at":  transaction.UpdatedAt,
+		"id":                    *transaction.ID,
+		"account_id":            transaction.AccountID,
+		"category_id":           transaction.CategoryID,
+		"amount":                transaction.Amount,
+		"new_balance":           transaction.NewBalance,
+		"label":                 transaction.Label,
+		"notes":                 transaction.Notes,
+		"date_time":             transaction.DateTime,
+		"is_income":             transaction.IsIncome,
+		"is_transfer":           transaction.IsTransfer,
+		"linked_transaction_id": transaction.LinkedTransactionID,
+		"updated_at":            transaction.UpdatedAt,
 	}
 
 	_, err := r.db.NamedExec(updateTransactionQuery, params)

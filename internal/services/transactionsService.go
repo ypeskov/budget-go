@@ -419,6 +419,12 @@ func convertRawToTransactionDetail(raw *dto.TransactionDetailRaw, baseCurrencyCo
 		}
 	}
 
+	// Handle linked transaction
+	var linkedTransaction *dto.TransactionDetailDTO
+	if raw.LinkedTransaction != nil && raw.LinkedTransaction.ID != nil {
+		linkedTransaction = convertLinkedTransactionToDetail(raw.LinkedTransaction, baseCurrencyCode)
+	}
+
 	return &dto.TransactionDetailDTO{
 		ID:              *raw.ID,
 		AccountID:       raw.AccountID,
@@ -468,6 +474,59 @@ func convertRawToTransactionDetail(raw *dto.TransactionDetailRaw, baseCurrencyCo
 		NewBalance:          newBalance,
 		Category:            categoryDetail,
 		LinkedTransactionID: raw.LinkedTransactionID,
+		LinkedTransaction:   linkedTransaction,
+	}
+}
+
+func convertLinkedTransactionToDetail(linkedTx *models.NullableTransaction, baseCurrencyCode string) *dto.TransactionDetailDTO {
+	var notes string
+	if linkedTx.Notes != nil {
+		notes = *linkedTx.Notes
+	}
+
+	var newBalance decimal.Decimal
+	if linkedTx.NewBalance != nil {
+		newBalance = *linkedTx.NewBalance
+	} else {
+		newBalance = decimal.Zero
+	}
+
+	var baseCurrencyAmount decimal.Decimal
+	if linkedTx.BaseCurrencyAmount != nil {
+		baseCurrencyAmount = *linkedTx.BaseCurrencyAmount
+	} else {
+		baseCurrencyAmount = decimal.Zero
+	}
+
+	var amount decimal.Decimal
+	if linkedTx.Amount != nil {
+		amount = *linkedTx.Amount
+	} else {
+		amount = decimal.Zero
+	}
+
+	var label string
+	if linkedTx.Label != nil {
+		label = *linkedTx.Label
+	}
+
+	return &dto.TransactionDetailDTO{
+		ID:                  getIntValue(linkedTx.ID),
+		AccountID:           getIntValue(linkedTx.AccountID),
+		CategoryID:          linkedTx.CategoryID,
+		Amount:              amount,
+		Label:               label,
+		Notes:               notes,
+		DateTime:            linkedTx.DateTime,
+		IsTransfer:          getBoolValue(linkedTx.IsTransfer),
+		IsIncome:            getBoolValue(linkedTx.IsIncome),
+		UserID:              getIntValue(linkedTx.UserID),
+		BaseCurrencyAmount:  baseCurrencyAmount,
+		BaseCurrencyCode:    baseCurrencyCode,
+		NewBalance:          newBalance,
+		LinkedTransactionID: linkedTx.LinkedTransactionID,
+		// Note: We don't include nested linked transactions to avoid infinite recursion
+		LinkedTransaction: nil,
 	}
 }
 
