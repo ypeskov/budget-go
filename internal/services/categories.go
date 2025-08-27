@@ -11,6 +11,32 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Helper functions for safely dereferencing pointers
+func getIntValue(ptr *int) int {
+	if ptr == nil {
+		return 0
+	}
+	return *ptr
+}
+
+func getStringValue(ptr *string) string {
+	if ptr == nil {
+		return ""
+	}
+	return *ptr
+}
+
+func getBoolValue(ptr *bool) bool {
+	if ptr == nil {
+		return false
+	}
+	return *ptr
+}
+
+func getBoolPointer(value bool) *bool {
+	return &value
+}
+
 type CategoriesService interface {
 	GetUserCategories(userId int) ([]models.UserCategory, error)
 	GetUserCategoriesGrouped(userId int) (map[string][]models.GroupedCategory, error)
@@ -59,7 +85,10 @@ func (c *CategoryServiceInstance) GetUserCategories(userId int) ([]models.UserCa
 
 	// Sort parents by name (case-insensitive)
 	sort.Slice(parents, func(i, j int) bool {
-		return strings.ToLower(parents[i].Name) < strings.ToLower(parents[j].Name)
+			if parents[i].Name == nil || parents[j].Name == nil {
+			return false
+		}
+		return strings.ToLower(*parents[i].Name) < strings.ToLower(*parents[j].Name)
 	})
 
 	ordered := make([]models.UserCategory, 0, len(userCategories))
@@ -69,15 +98,23 @@ func (c *CategoryServiceInstance) GetUserCategories(userId int) ([]models.UserCa
 		ordered = append(ordered, parent)
 
 		// Add its children right after, sorted by name and prefixed with parent name
-		if children, ok := childrenByParentID[parent.ID]; ok {
+		if parent.ID != nil {
+		if children, ok := childrenByParentID[*parent.ID]; ok {
 			sort.Slice(children, func(i, j int) bool {
-				return strings.ToLower(children[i].Name) < strings.ToLower(children[j].Name)
+					if children[i].Name == nil || children[j].Name == nil {
+				return false
+			}
+			return strings.ToLower(*children[i].Name) < strings.ToLower(*children[j].Name)
 			})
 			for _, child := range children {
-				child.Name = fmt.Sprintf("%s >> %s", parent.Name, child.Name)
+					if parent.Name != nil && child.Name != nil {
+				childName := fmt.Sprintf("%s >> %s", *parent.Name, *child.Name)
+				child.Name = &childName
+			}
 				ordered = append(ordered, child)
 			}
-			delete(childrenByParentID, parent.ID)
+				delete(childrenByParentID, *parent.ID)
+		}
 		}
 	}
 
@@ -96,7 +133,10 @@ func (c *CategoryServiceInstance) GetUserCategories(userId int) ([]models.UserCa
 				aj = strings.ToLower(*remaining[j].ParentName)
 			}
 			if ai == aj {
-				return strings.ToLower(remaining[i].Name) < strings.ToLower(remaining[j].Name)
+					if remaining[i].Name == nil || remaining[j].Name == nil {
+				return false
+			}
+			return strings.ToLower(*remaining[i].Name) < strings.ToLower(*remaining[j].Name)
 			}
 			return ai < aj
 		})
@@ -105,7 +145,10 @@ func (c *CategoryServiceInstance) GetUserCategories(userId int) ([]models.UserCa
 			if child.ParentName != nil {
 				parentName = *child.ParentName
 			}
-			child.Name = fmt.Sprintf("%s >> %s", parentName, child.Name)
+				if child.Name != nil {
+				childName := fmt.Sprintf("%s >> %s", parentName, *child.Name)
+				child.Name = &childName
+			}
 			ordered = append(ordered, child)
 		}
 	}
@@ -127,16 +170,16 @@ func (c *CategoryServiceInstance) GetUserCategoriesGrouped(userId int) (map[stri
 	// First, collect all categories and separate them
 	for _, category := range userCategories {
 		groupedCategory := models.GroupedCategory{
-			ID:       category.ID,
-			Name:     category.Name,
+			ID:       getIntValue(category.ID),
+			Name:     getStringValue(category.Name),
 			ParentID: category.ParentID,
-			IsIncome: category.IsIncome,
+			IsIncome: getBoolValue(category.IsIncome),
 			Children: make([]models.GroupedCategory, 0),
 		}
 
 		if category.ParentID == nil {
 			// This is a parent category
-			if category.IsIncome {
+			if getBoolValue(category.IsIncome) {
 				incomeParents = append(incomeParents, groupedCategory)
 			} else {
 				expenseParents = append(expenseParents, groupedCategory)
@@ -194,11 +237,11 @@ func (c *CategoryServiceInstance) CreateCategory(name string, isIncome bool, par
 	}
 
 	category := models.UserCategory{
-		Name:      name,
+		Name:      &name,
 		ParentID:  parentID,
-		IsIncome:  isIncome,
-		UserID:    userID,
-		IsDeleted: false,
+		IsIncome:  &isIncome,
+		UserID:    &userID,
+		IsDeleted: getBoolPointer(false),
 	}
 
 	return c.categoriesRepo.CreateCategory(category)

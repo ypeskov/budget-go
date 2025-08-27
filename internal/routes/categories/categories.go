@@ -39,15 +39,15 @@ func GetCategories(c echo.Context) error {
 	var categories []dto.CategoryDTO
 	for i := range userCategories {
 		category := dto.CategoryDTO{
-			ID:         &userCategories[i].ID,
-			Name:       &userCategories[i].Name,
+			ID:         userCategories[i].ID,
+			Name:       userCategories[i].Name,
 			ParentID:   userCategories[i].ParentID,
 			ParentName: userCategories[i].ParentName,
-			IsIncome:   &userCategories[i].IsIncome,
-			UserID:     &userCategories[i].UserID,
-			IsDeleted:  &userCategories[i].IsDeleted,
-			CreatedAt:  &userCategories[i].CreatedAt,
-			UpdatedAt:  &userCategories[i].UpdatedAt,
+			IsIncome:   userCategories[i].IsIncome,
+			UserID:     userCategories[i].UserID,
+			IsDeleted:  userCategories[i].IsDeleted,
+			CreatedAt:  userCategories[i].CreatedAt,
+			UpdatedAt:  userCategories[i].UpdatedAt,
 		}
 		categories = append(categories, category)
 	}
@@ -105,15 +105,15 @@ func CreateCategory(c echo.Context) error {
 
 	// Convert to DTO format for response
 	categoryDTO := dto.CategoryDTO{
-		ID:         &createdCategory.ID,
-		Name:       &createdCategory.Name,
+		ID:         createdCategory.ID,
+		Name:       createdCategory.Name,
 		ParentID:   createdCategory.ParentID,
 		ParentName: createdCategory.ParentName,
-		IsIncome:   &createdCategory.IsIncome,
-		UserID:     &createdCategory.UserID,
-		IsDeleted:  &createdCategory.IsDeleted,
-		CreatedAt:  &createdCategory.CreatedAt,
-		UpdatedAt:  &createdCategory.UpdatedAt,
+		IsIncome:   createdCategory.IsIncome,
+		UserID:     createdCategory.UserID,
+		IsDeleted:  createdCategory.IsDeleted,
+		CreatedAt:  createdCategory.CreatedAt,
+		UpdatedAt:  createdCategory.UpdatedAt,
 	}
 
 	log.Debug("CreateCategory request completed - POST /categories")

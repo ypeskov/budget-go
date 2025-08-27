@@ -151,6 +151,7 @@ func scanTransactions(rows *sqlx.Rows) ([]dto.TransactionWithAccount, error) {
 }
 
 func (r *RepositoryInstance) GetTransactionDetail(transactionId int, userId int) (*dto.TransactionDetailRaw, error) {
+	log.Debug("Fetching transaction detail for transaction ID: ", transactionId, " and user ID: ", userId)
 	params := map[string]interface{}{
 		"transaction_id": transactionId,
 		"user_id":        userId,

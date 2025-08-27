@@ -58,14 +58,14 @@ SELECT
 	account_types.id AS "account_types.id", account_types.type_name AS "account_types.type_name", 
 	account_types.is_credit AS "account_types.is_credit", 
 
-	COALESCE(user_categories.id, NULL) AS "user_categories.id",
-	COALESCE(user_categories.name, '') AS "user_categories.name", 
-	COALESCE(user_categories.parent_id, NULL) AS "user_categories.parent_id",
-	COALESCE(user_categories.is_income, FALSE) AS "user_categories.is_income",
-	COALESCE(user_categories.user_id, NULL) AS "user_categories.user_id",
-	COALESCE(user_categories.is_deleted, FALSE) AS "user_categories.is_deleted", 
-	COALESCE(user_categories.created_at, NULL) AS "user_categories.created_at", 
-	COALESCE(user_categories.updated_at, NULL) AS "user_categories.updated_at"
+	user_categories.id AS "user_categories.id",
+	user_categories.name AS "user_categories.name", 
+	user_categories.parent_id AS "user_categories.parent_id",
+	user_categories.is_income AS "user_categories.is_income",
+	user_categories.user_id AS "user_categories.user_id",
+	user_categories.is_deleted AS "user_categories.is_deleted", 
+	user_categories.created_at AS "user_categories.created_at", 
+	user_categories.updated_at AS "user_categories.updated_at"
 FROM transactions 
 LEFT JOIN users ON transactions.user_id = users.id
 LEFT JOIN accounts ON transactions.account_id = accounts.id

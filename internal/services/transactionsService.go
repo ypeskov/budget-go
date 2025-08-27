@@ -408,13 +408,13 @@ func convertRawToTransactionDetail(raw *dto.TransactionDetailRaw, baseCurrencyCo
 	var categoryDetail dto.CategoryDetailDTO
 	if raw.Category != nil {
 		categoryDetail = dto.CategoryDetailDTO{
-			Name:      raw.Category.Name,
+			Name:      getStringValue(raw.Category.Name),
 			ParentID:  raw.Category.ParentID,
-			IsIncome:  raw.Category.IsIncome,
-			ID:        raw.Category.ID,
-			UserID:    raw.Category.UserID,
-			CreatedAt: raw.Category.CreatedAt,
-			UpdatedAt: raw.Category.UpdatedAt,
+			IsIncome:  getBoolValue(raw.Category.IsIncome),
+			ID:        getIntValue(raw.Category.ID),
+			UserID:    getIntValue(raw.Category.UserID),
+			CreatedAt: getStringValue(raw.Category.CreatedAt),
+			UpdatedAt: getStringValue(raw.Category.UpdatedAt),
 			Children:  []dto.CategoryDetailDTO{},
 		}
 	}
