@@ -1,3 +1,3 @@
-api: 1.0.35
-worker: 1.0.35
-scheduler: 1.0.35
+api: 1.0.36
+worker: 1.0.36
+scheduler: 1.0.36
