@@ -8,8 +8,7 @@ import (
 	"ypeskov/budget-go/internal/models"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 )
 
 type Repository interface {
@@ -95,12 +94,12 @@ func buildFilters(accountIds []int,
 	var filters []string
 
 	if len(accountIds) > 0 {
-		params["account_ids"] = pq.Array(accountIds)
+		params["account_ids"] = accountIds
 		filters = append(filters, "transactions.account_id = ANY(:account_ids)")
 	}
 
 	if len(categoryIds) > 0 {
-		params["category_ids"] = pq.Array(categoryIds)
+		params["category_ids"] = categoryIds
 		filters = append(filters, "transactions.category_id = ANY(:category_ids)")
 	}
 
@@ -151,7 +150,7 @@ func scanTransactions(rows *sqlx.Rows) ([]dto.TransactionWithAccount, error) {
 }
 
 func (r *RepositoryInstance) GetTransactionDetail(transactionId int, userId int) (*dto.TransactionDetailRaw, error) {
-	log.Debug("Fetching transaction detail for transaction ID: ", transactionId, " and user ID: ", userId)
+	logger.Debug("Fetching transaction detail for transaction ID: ", transactionId, " and user ID: ", userId)
 	params := map[string]interface{}{
 		"transaction_id": transactionId,
 		"user_id":        userId,
@@ -253,13 +252,13 @@ func (r *RepositoryInstance) GetExpenseTransactionsForBudget(userId int, categor
 	// Filter by category IDs
 	if len(categoryIds) > 0 {
 		filters = append(filters, "category_id = ANY(:category_ids)")
-		params["category_ids"] = pq.Array(categoryIds)
+		params["category_ids"] = categoryIds
 	}
 
 	// Filter by specific transaction IDs if provided
 	if len(transactionIds) > 0 {
 		filters = append(filters, "id = ANY(:transaction_ids)")
-		params["transaction_ids"] = pq.Array(transactionIds)
+		params["transaction_ids"] = transactionIds
 	}
 
 	if len(filters) > 0 {
@@ -287,6 +286,6 @@ func (r *RepositoryInstance) GetExpenseTransactionsForBudget(userId int, categor
 }
 
 func logAndReturnError(err error, message string) error {
-	log.Error(message, err)
+	logger.Error(message, err)
 	return err
 }

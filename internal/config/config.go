@@ -5,7 +5,7 @@ import (
 
 	"github.com/caarlos0/env/v10"
 	"github.com/joho/godotenv"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 )
 
 type Config struct {
@@ -64,11 +64,11 @@ type Config struct {
 func New() *Config {
 	cfg := &Config{}
 	if err := godotenv.Load(".env"); err != nil {
-		log.Warn("No .env file found")
+		logger.Warn("No .env file found")
 	}
 
 	if err := env.Parse(cfg); err != nil {
-		log.Warn("Failed to parse env")
+		logger.Warn("Failed to parse env")
 	}
 
 	// Auto-detect container if not explicitly set

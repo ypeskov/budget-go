@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/activationTokens"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type ActivationTokenService interface {
@@ -30,7 +29,7 @@ var (
 
 func NewActivationTokenService(tokenRepo activationTokens.RepositoryInterface, emailService EmailService) ActivationTokenService {
 	activationTokenOnce.Do(func() {
-		log.Debug("Creating ActivationTokenService instance")
+		logger.Debug("Creating ActivationTokenService instance")
 		activationTokenInstance = &ActivationTokenServiceInstance{
 			tokenRepo:    tokenRepo,
 			emailService: emailService,
@@ -41,12 +40,12 @@ func NewActivationTokenService(tokenRepo activationTokens.RepositoryInterface, e
 }
 
 func (a *ActivationTokenServiceInstance) CreateActivationToken(userID int) (*models.ActivationToken, error) {
-	log.Debug("Creating activation token for user ID: ", userID)
+	logger.Debug("Creating activation token for user ID", "userID", userID)
 
 	// Generate a secure random token
 	tokenStr, err := generateSecureToken()
 	if err != nil {
-		log.Error("Error generating secure token: ", err)
+		logger.Error("Error generating secure token", "error", err)
 		return nil, err
 	}
 
@@ -61,7 +60,7 @@ func (a *ActivationTokenServiceInstance) CreateActivationToken(userID int) (*mod
 
 	createdToken, err := a.tokenRepo.CreateActivationToken(token)
 	if err != nil {
-		log.Error("Error creating activation token: ", err)
+		logger.Error("Error creating activation token", "error", err)
 		return nil, err
 	}
 
@@ -69,18 +68,18 @@ func (a *ActivationTokenServiceInstance) CreateActivationToken(userID int) (*mod
 }
 
 func (a *ActivationTokenServiceInstance) ValidateAndUseToken(tokenStr string) (*models.ActivationToken, error) {
-	log.Debug("Validating activation token")
+	logger.Debug("Validating activation token")
 
 	token, err := a.tokenRepo.GetActivationTokenByToken(tokenStr)
 	if err != nil {
-		log.Error("Error getting activation token: ", err)
+		logger.Error("Error getting activation token", "error", err)
 		return nil, fmt.Errorf("invalid or expired token")
 	}
 
 	// Delete token after use to prevent reuse
 	err = a.tokenRepo.DeleteToken(token.ID)
 	if err != nil {
-		log.Error("Error deleting used token: ", err)
+		logger.Error("Error deleting used token", "error", err)
 		return nil, err
 	}
 
@@ -88,11 +87,11 @@ func (a *ActivationTokenServiceInstance) ValidateAndUseToken(tokenStr string) (*
 }
 
 func (a *ActivationTokenServiceInstance) SendActivationEmail(user *models.User, token string) error {
-	log.Debug("Sending activation email to user: ", user.Email)
+	logger.Debug("Sending activation email to user", "email", user.Email)
 
 	err := a.emailService.SendActivationEmail(user.Email, user.FirstName, token)
 	if err != nil {
-		log.Error("Error sending activation email: ", err)
+		logger.Error("Error sending activation email", "error", err)
 		return err
 	}
 

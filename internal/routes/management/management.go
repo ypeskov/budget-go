@@ -7,7 +7,7 @@ import (
 	"ypeskov/budget-go/internal/services"
 
 	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 )
 
 
@@ -21,26 +21,26 @@ func RegisterManagementRoutes(g *echo.Group, cfg *config.Config, sm *services.Ma
 }
 
 func triggerBackup(c echo.Context, sm *services.Manager) error {
-	log.Debugf("triggerBackup request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("triggerBackup request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	err := sm.QueueService.EnqueueDBBackup()
 	if err != nil {
-		log.Errorf("failed to enqueue db backup task: %v", err)
+		logger.Error("failed to enqueue db backup task", "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to enqueue task"})
 	}
 
-	log.Debug("triggerBackup request completed - GET /management/backup")
+	logger.Debug("triggerBackup request completed")
 	return c.JSON(http.StatusAccepted, map[string]string{"message": "backup scheduled"})
 }
 
 func triggerUpdateExchangeRates(c echo.Context, sm *services.Manager) error {
-	log.Debugf("triggerUpdateExchangeRates request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("triggerUpdateExchangeRates request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	err := sm.QueueService.EnqueueExchangeRatesUpdate()
 	if err != nil {
-		log.Errorf("failed to enqueue exchange rates update task: %v", err)
+		logger.Error("failed to enqueue exchange rates update task", "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to enqueue task"})
 	}
-	log.Debug("triggerUpdateExchangeRates request completed - GET /management/update-exchange-rates")
+	logger.Debug("triggerUpdateExchangeRates request completed")
 	return c.JSON(http.StatusAccepted, map[string]string{"message": "exchange rates update scheduled"})
 }

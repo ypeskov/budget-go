@@ -7,9 +7,8 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	log "github.com/sirupsen/logrus"
-
 	"ypeskov/budget-go/internal/config"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/exchangeRates"
 )
@@ -45,7 +44,7 @@ var (
 
 func NewExchangeRatesService(exchangeRatesRepository exchangeRates.Repository, cfg *config.Config) ExchangeRatesService {
 	exchangeRatesOnce.Do(func() {
-		log.Debug("Creating ExchangeRatesService instance")
+		logger.Debug("Creating ExchangeRatesService instance")
 		exchangeRatesInstance = &ExchangeRatesServiceInstance{
 			exchangeRatesRepository: exchangeRatesRepository,
 			cache: &ExchangeRatesHistoryCache{
@@ -63,7 +62,7 @@ func NewExchangeRatesService(exchangeRatesRepository exchangeRates.Repository, c
 func (s *ExchangeRatesServiceInstance) fetchExchangeRates() ([]models.ExchangeRates, error) {
 	exchangeRates, err := s.exchangeRatesRepository.GetExchangeRates()
 	if err != nil {
-		log.Error("Error getting exchange rates: ", err)
+		logger.Error("Error getting exchange rates", "error", err)
 		return nil, err
 	}
 
@@ -72,7 +71,7 @@ func (s *ExchangeRatesServiceInstance) fetchExchangeRates() ([]models.ExchangeRa
 
 func (s *ExchangeRatesServiceInstance) GetExchangeRates() (map[string]map[string]decimal.Decimal, error) {
 	if s.isCacheExpired() {
-		log.Debug("Cache expired, fetching exchange rates")
+		logger.Debug("Cache expired, fetching exchange rates")
 		exchangeRates, err := s.fetchExchangeRates()
 		if err != nil {
 			return nil, err
@@ -98,12 +97,12 @@ func (s *ExchangeRatesServiceInstance) fillCache(exchangeRates []models.Exchange
 			case string:
 				decimalValue, err := decimal.NewFromString(v)
 				if err != nil {
-					log.Warnf("Invalid decimal string for key %s: %v", key, value)
+					logger.Warn("Invalid decimal string for key", "key", key, "value", value)
 					continue
 				}
 				convertedRates[key] = decimalValue
 			default:
-				log.Warnf("Unsupported type for key %s: %T", key, value)
+				logger.Warn("Unsupported type for key", "key", key, "type", fmt.Sprintf("%T", value))
 			}
 		}
 
@@ -131,7 +130,7 @@ func (s *ExchangeRatesServiceInstance) GetExchangeRateByDate(date time.Time) (ma
 	for key := range s.cache.data {
 		keyDate, err := time.Parse(time.DateOnly, key)
 		if err != nil {
-			log.Warnf("Invalid date format in cache key: %s", key)
+			logger.Warn("Invalid date format in cache key", "key", key)
 			continue
 		}
 		if !keyDate.After(date) {
@@ -146,7 +145,7 @@ func (s *ExchangeRatesServiceInstance) GetExchangeRateByDate(date time.Time) (ma
 	for _, key := range dateKeys {
 		keyDate, err := time.Parse(time.DateOnly, key)
 		if err != nil {
-			log.Warnf("Invalid date format in cache key: %s", key)
+			logger.Warn("Invalid date format in cache key", "key", key)
 			continue
 		}
 
@@ -156,7 +155,7 @@ func (s *ExchangeRatesServiceInstance) GetExchangeRateByDate(date time.Time) (ma
 	}
 
 	err := fmt.Errorf("no exchange rates found for any prior date starting from: %s", date.Format(time.DateOnly))
-	log.Error(err)
+	logger.Error("Error occurred", "error", err)
 	return nil, err
 }
 
@@ -188,7 +187,7 @@ func (s *ExchangeRatesServiceInstance) GetRateBetweenCurrencies(
 		// Converting from base currency to another currency
 		rateTo, ok := ratesOnDate[currencyTo]
 		if !ok {
-			log.Warnf("No exchange rate found for currency: %s", currencyTo)
+			logger.Warn("No exchange rate found for currency", "currency", currencyTo)
 			return decimal.Decimal{}, fmt.Errorf("no exchange rate found for currency: %s", currencyTo)
 		}
 		return rateTo, nil
@@ -196,7 +195,7 @@ func (s *ExchangeRatesServiceInstance) GetRateBetweenCurrencies(
 		// Converting from another currency to base currency
 		rateFrom, ok := ratesOnDate[currencyFrom]
 		if !ok {
-			log.Warnf("No exchange rate found for currency: %s", currencyFrom)
+			logger.Warn("No exchange rate found for currency", "currency", currencyFrom)
 			return decimal.Decimal{}, fmt.Errorf("no exchange rate found for currency: %s", currencyFrom)
 		}
 		return decimal.NewFromInt(1).Div(rateFrom), nil
@@ -204,13 +203,13 @@ func (s *ExchangeRatesServiceInstance) GetRateBetweenCurrencies(
 		// Converting between two non-base currencies
 		rateFrom, ok := ratesOnDate[currencyFrom]
 		if !ok {
-			log.Warnf("No exchange rate found for currency: %s", currencyFrom)
+			logger.Warn("No exchange rate found for currency", "currency", currencyFrom)
 			return decimal.Decimal{}, fmt.Errorf("no exchange rate found for currency: %s", currencyFrom)
 		}
 
 		rateTo, ok := ratesOnDate[currencyTo]
 		if !ok {
-			log.Warnf("No exchange rate found for currency: %s", currencyTo)
+			logger.Warn("No exchange rate found for currency", "currency", currencyTo)
 			return decimal.Decimal{}, fmt.Errorf("no exchange rate found for currency: %s", currencyTo)
 		}
 
@@ -229,7 +228,7 @@ func (s *ExchangeRatesServiceInstance) getDateKeyForRates(date time.Time) string
 	for key := range s.cache.data {
 		keyDate, err := time.Parse(time.DateOnly, key)
 		if err != nil {
-			log.Warnf("Invalid date format in cache key: %s", key)
+			logger.Warn("Invalid date format in cache key", "key", key)
 			continue
 		}
 		if !keyDate.After(date) {
@@ -254,7 +253,7 @@ func (s *ExchangeRatesServiceInstance) CalcAmountFromCurrency(
 ) (decimal.Decimal, error) {
 	// check if cache is empty or expired
 	if len(s.cache.data) == 0 || s.isCacheExpired() {
-		log.Debug("Cache is empty or expired, fetching exchange rates")
+		logger.Debug("Cache is empty or expired, fetching exchange rates")
 		_, err := s.GetExchangeRates()
 		if err != nil {
 			return decimal.Decimal{}, err
@@ -270,27 +269,27 @@ func (s *ExchangeRatesServiceInstance) CalcAmountFromCurrency(
 }
 
 func (s *ExchangeRatesServiceInstance) UpdateExchangeRates(date time.Time) (*models.ExchangeRates, error) {
-	log.Infof("Updating exchange rates for %s", date.Format("2006-01-02"))
+	logger.Info("Updating exchange rates for date", "date", date.Format("2006-01-02"))
 
 	// Get exchange rates from external API
 	dateStr := date.Format("2006-01-02")
 	ratesData, err := s.currencyBeaconService.GetCurrencyRates(dateStr)
 	if err != nil {
-		log.Errorf("Failed to fetch exchange rates from CurrencyBeacon: %v", err)
+		logger.Error("Failed to fetch exchange rates from CurrencyBeacon", "error", err)
 		return nil, err
 	}
 
 	// Delete existing rates for this date
 	err = s.exchangeRatesRepository.DeleteExchangeRatesByDate(dateStr)
 	if err != nil {
-		log.Errorf("Failed to delete existing exchange rates for %s: %v", dateStr, err)
+		logger.Error("Failed to delete existing exchange rates", "date", dateStr, "error", err)
 		return nil, err
 	}
 
 	// Parse the actual_date from API response
 	actualDate, err := time.Parse("2006-01-02", ratesData["actual_date"].(string))
 	if err != nil {
-		log.Errorf("Failed to parse actual_date from API response: %v", err)
+		logger.Error("Failed to parse actual_date from API response", "error", err)
 		return nil, err
 	}
 
@@ -308,7 +307,7 @@ func (s *ExchangeRatesServiceInstance) UpdateExchangeRates(date time.Time) (*mod
 	// Save to database
 	err = s.exchangeRatesRepository.SaveExchangeRates(excRates)
 	if err != nil {
-		log.Errorf("Failed to save exchange rates: %v", err)
+		logger.Error("Failed to save exchange rates", "error", err)
 		return nil, err
 	}
 
@@ -319,6 +318,6 @@ func (s *ExchangeRatesServiceInstance) UpdateExchangeRates(date time.Time) (*mod
 	s.cache.lastUpdate = time.Time{}
 	exchangeRatesMu.Unlock()
 
-	log.Infof("Exchange rates updated successfully for %s", date.Format("2006-01-02"))
+	logger.Info("Exchange rates updated successfully", "date", date.Format("2006-01-02"))
 	return excRates, nil
 }

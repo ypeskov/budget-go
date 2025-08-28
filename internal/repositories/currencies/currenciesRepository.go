@@ -1,9 +1,8 @@
 package currencies
 
 import (
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/models"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -29,7 +28,7 @@ func (r *RepositoryInstance) GetCurrencies() ([]models.Currency, error) {
 	var currencies []models.Currency
 	err := db.Select(&currencies, getCurrenciesQuery)
 	if err != nil {
-		log.Error("Failed to get currencies: ", err)
+		logger.Error("Failed to get currencies", "error", err)
 		return nil, err
 	}
 	return currencies, nil

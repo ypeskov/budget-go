@@ -9,8 +9,7 @@ import (
 	"time"
 
 	"ypeskov/budget-go/internal/config"
-
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 )
 
 type BackupService interface {
@@ -28,7 +27,7 @@ var (
 
 func NewBackupService(cfg *config.Config) BackupService {
 	backupOnce.Do(func() {
-		log.Debug("Creating BackupService instance")
+		logger.Debug("Creating BackupService instance")
 		backupInstance = &BackupServiceInstance{cfg: cfg}
 	})
 
@@ -48,7 +47,7 @@ func (s *BackupServiceInstance) CreatePostgresBackup() (*BackupResult, error) {
 	// Clean backup directory if running in container to prevent disk space issues
 	if s.cfg.RunningInContainer {
 		if err := s.cleanBackupDir(); err != nil {
-			log.Warnf("Failed to clean backup directory: %v", err)
+			logger.Warn("Failed to clean backup directory", "error", err)
 			// Don't fail the backup, just log the warning
 		}
 	}
@@ -75,15 +74,15 @@ func (s *BackupServiceInstance) CreatePostgresBackup() (*BackupResult, error) {
 	env = append(env, fmt.Sprintf("PGPASSWORD=%s", s.cfg.DbPassword))
 	cmd.Env = env
 
-	log.Infof("Creating database backup: %s", backupPath)
+	logger.Info("Creating database backup", "path", backupPath)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Errorf("Failed to create database backup: %s", string(output))
+		logger.Error("Failed to create database backup", "output", string(output))
 		return nil, fmt.Errorf("pg_dump failed: %w - output: %s", err, string(output))
 	}
 
-	log.Infof("Database backup successfully created: %s", backupPath)
+	logger.Info("Database backup successfully created", "path", backupPath)
 
 	return &BackupResult{
 		Filename: filename,
@@ -96,13 +95,13 @@ func (s *BackupServiceInstance) ensureBackupDir() error {
 		if err := os.MkdirAll(s.cfg.DBBackupDir, 0755); err != nil {
 			return err
 		}
-		log.Infof("Created backup directory: %s", s.cfg.DBBackupDir)
+		logger.Info("Created backup directory", "dir", s.cfg.DBBackupDir)
 	}
 	return nil
 }
 
 func (s *BackupServiceInstance) cleanBackupDir() error {
-	log.Infof("Cleaning backup directory: %s (running in container)", s.cfg.DBBackupDir)
+	logger.Info("Cleaning backup directory (running in container)", "dir", s.cfg.DBBackupDir)
 
 	// Read all files in backup directory
 	files, err := os.ReadDir(s.cfg.DBBackupDir)
@@ -115,14 +114,14 @@ func (s *BackupServiceInstance) cleanBackupDir() error {
 		if !file.IsDir() {
 			filePath := filepath.Join(s.cfg.DBBackupDir, file.Name())
 			if err := os.Remove(filePath); err != nil {
-				log.Warnf("Failed to delete backup file %s: %v", file.Name(), err)
+				logger.Warn("Failed to delete backup file", "file", file.Name(), "error", err)
 			} else {
 				deletedCount++
-				log.Debugf("Deleted old backup file: %s", file.Name())
+				logger.Debug("Deleted old backup file", "file", file.Name())
 			}
 		}
 	}
 
-	log.Infof("Cleaned %d old backup files from directory", deletedCount)
+	logger.Info("Cleaned old backup files from directory", "count", deletedCount)
 	return nil
 }

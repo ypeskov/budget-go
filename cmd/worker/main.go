@@ -7,29 +7,24 @@ import (
 	"ypeskov/budget-go/internal/constants"
 	"ypeskov/budget-go/internal/database"
 	"ypeskov/budget-go/internal/jobs"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/services"
 
 	"github.com/hibiken/asynq"
-	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 	cfg := config.New()
+	logger.Init(cfg.LogLevel)
+	
 	db, err := database.New(cfg)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err.Error())
 	}
-
-	lvlStr := strings.TrimSpace(strings.ToLower(cfg.LogLevel))
-	level, err := log.ParseLevel(lvlStr)
-	if err != nil {
-		log.Fatalf("Invalid log level in config: %s", cfg.LogLevel)
-	}
-	log.SetLevel(level)
 
 	sm, err := services.NewServicesManager(db, cfg)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err.Error())
 	}
 
 	srv := asynq.NewServer(asynq.RedisClientOpt{Addr: cfg.RedisAddr}, asynq.Config{

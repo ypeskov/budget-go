@@ -2,10 +2,9 @@ package services
 
 import (
 	"sync"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/userSettings"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type UserSettingsService interface {
@@ -25,7 +24,7 @@ var (
 
 func NewUserSettingsService(userSettingsRepo userSettings.Repository) UserSettingsService {
 	userSettingsOnce.Do(func() {
-		log.Debug("Creating UserSettingsService instance")
+		logger.Debug("Creating UserSettingsService instance")
 		userSettingsInstance = &UserSettingsServiceInstance{
 			userSettingsRepo: userSettingsRepo,
 		}
@@ -37,7 +36,7 @@ func NewUserSettingsService(userSettingsRepo userSettings.Repository) UserSettin
 func (u *UserSettingsServiceInstance) GetBaseCurrency(userId int) (models.Currency, error) {
 	baseCurrency, err := u.userSettingsRepo.GetBaseCurrency(userId)
 	if err != nil {
-		log.Error("Failed to get base currency: ", err)
+		logger.Error("Failed to get base currency", "error", err)
 		return models.Currency{}, err
 	}
 
@@ -47,7 +46,7 @@ func (u *UserSettingsServiceInstance) GetBaseCurrency(userId int) (models.Curren
 func (u *UserSettingsServiceInstance) UpdateUserSettings(userID int, settingsData map[string]interface{}) (*models.UserSettings, error) {
 	userSettings, err := u.userSettingsRepo.UpsertUserSettings(userID, settingsData)
 	if err != nil {
-		log.Error("Failed to update user settings: ", err)
+		logger.Error("Failed to update user settings", "error", err)
 		return nil, err
 	}
 
@@ -57,7 +56,7 @@ func (u *UserSettingsServiceInstance) UpdateUserSettings(userID int, settingsDat
 func (u *UserSettingsServiceInstance) GetUserSettings(userID int) (*models.UserSettings, error) {
 	userSettings, err := u.userSettingsRepo.GetUserSettings(userID)
 	if err != nil {
-		log.Error("Failed to get user settings: ", err)
+		logger.Error("Failed to get user settings", "error", err)
 		return nil, err
 	}
 

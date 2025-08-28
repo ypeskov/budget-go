@@ -6,12 +6,12 @@ import (
 	"time"
 	"ypeskov/budget-go/internal/config"
 	appErrors "ypeskov/budget-go/internal/errors"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/services"
 	"ypeskov/budget-go/internal/utils"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
 )
 
 // GetUserFromToken parses and validates the JWT token, returning claims if valid.
@@ -96,7 +96,7 @@ func AuthMiddleware(sm *services.Manager, cfg *config.Config) echo.MiddlewareFun
 			// Generate new access token and set it in response header
 			newToken, err := utils.GenerateAccessToken(user, cfg)
 			if err != nil {
-				log.Error("Failed to generate new access token: ", err)
+				logger.Error("Failed to generate new access token", "error", err)
 				// Don't fail the request, just continue without the new token
 			} else {
 				c.Response().Header()["new_access_token"] = []string{newToken}

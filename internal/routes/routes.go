@@ -2,6 +2,11 @@ package routes
 
 import (
 	"net/http"
+	"ypeskov/budget-go/internal/config"
+	"ypeskov/budget-go/internal/logger"
+	customMiddleware "ypeskov/budget-go/internal/middleware"
+	"ypeskov/budget-go/internal/routes/accounts"
+	"ypeskov/budget-go/internal/routes/auth"
 	"ypeskov/budget-go/internal/routes/budgets"
 	"ypeskov/budget-go/internal/routes/categories"
 	"ypeskov/budget-go/internal/routes/currencies"
@@ -13,12 +18,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	log "github.com/sirupsen/logrus"
-
-	"ypeskov/budget-go/internal/config"
-	customMiddleware "ypeskov/budget-go/internal/middleware"
-	"ypeskov/budget-go/internal/routes/accounts"
-	"ypeskov/budget-go/internal/routes/auth"
 )
 
 func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo.Echo {
@@ -76,7 +75,7 @@ func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo
 }
 
 func Health(c echo.Context) error {
-	log.Debug("Health request started - GET /health")
-	log.Debug("Health request completed - GET /health")
+	logger.Debug("Health request started - GET /health")
+	logger.Debug("Health request completed")
 	return c.String(http.StatusOK, "OK")
 }

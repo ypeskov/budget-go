@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
@@ -33,7 +33,7 @@ func RegisterTransactionsRoutes(g *echo.Group, manager *services.Manager) {
 }
 
 func GetTransactions(c echo.Context) error {
-	log.Debugf("GetTransactions request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetTransactions request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -67,12 +67,12 @@ func GetTransactions(c echo.Context) error {
 	}
 	transactionsDTO := services.ConvertTransactionsToResponseList(transactions, baseCurrency)
 
-	log.Debug("GetTransactions request completed - GET /transactions")
+	logger.Debug("GetTransactions request completed")
 	return c.JSON(http.StatusOK, transactionsDTO)
 }
 
 func GetTemplates(c echo.Context) error {
-	log.Debugf("GetTemplates request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetTemplates request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -84,12 +84,12 @@ func GetTemplates(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	log.Debug("GetTemplates request completed - GET /transactions/templates")
+	logger.Debug("GetTemplates request completed")
 	return c.JSON(http.StatusOK, templateDTOs)
 }
 
 func DeleteTemplates(c echo.Context) error {
-	log.Debugf("DeleteTemplates request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("DeleteTemplates request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -116,14 +116,14 @@ func DeleteTemplates(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	log.Debug("DeleteTemplates request completed - DELETE /transactions/templates")
+	logger.Debug("DeleteTemplates request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Templates deleted successfully",
 	})
 }
 
 func CreateTransaction(c echo.Context) error {
-	log.Debugf("CreateTransaction request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("CreateTransaction request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -154,14 +154,14 @@ func CreateTransaction(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	log.Debug("CreateTransaction request completed - POST /transactions")
+	logger.Debug("CreateTransaction request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Transaction created successfully",
 	})
 }
 
 func GetTransactionDetail(c echo.Context) error {
-	log.Debugf("GetTransactionDetail request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetTransactionDetail request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -187,12 +187,12 @@ func GetTransactionDetail(c echo.Context) error {
 		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "transaction", ID: transactionId}, http.StatusNotFound)
 	}
 
-	log.Debug("GetTransactionDetail request completed - GET /transactions/:id")
+	logger.Debug("GetTransactionDetail request completed")
 	return c.JSON(http.StatusOK, transactionDetail)
 }
 
 func UpdateTransaction(c echo.Context) error {
-	log.Debugf("UpdateTransaction request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("UpdateTransaction request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -226,14 +226,14 @@ func UpdateTransaction(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	log.Debug("UpdateTransaction request completed - PUT /transactions")
+	logger.Debug("UpdateTransaction request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Transaction updated successfully",
 	})
 }
 
 func DeleteTransaction(c echo.Context) error {
-	log.Debugf("DeleteTransaction request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("DeleteTransaction request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -266,7 +266,7 @@ func DeleteTransaction(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	log.Debug("DeleteTransaction request completed - DELETE /transactions/:id")
+	logger.Debug("DeleteTransaction request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Transaction deleted successfully",
 	})

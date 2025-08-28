@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 	"ypeskov/budget-go/internal/dto"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/transactions"
 
 	"github.com/shopspring/decimal"
-	log "github.com/sirupsen/logrus"
 )
 
 type TransactionsService interface {
@@ -44,7 +44,7 @@ var (
 
 func NewTransactionsService(transactionsRepository transactions.Repository, sManager *Manager) TransactionsService {
 	transactionsOnce.Do(func() {
-		log.Debug("Creating TransactionsService instance")
+		logger.Debug("Creating TransactionsService instance")
 		transactionsInstance = &TransactionsServiceInstance{
 			transactionsRepository: transactionsRepository,
 			sm:                     sManager,
@@ -64,7 +64,7 @@ func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int,
 	transactionTypes []string,
 	categoryIds []int,
 ) ([]dto.TransactionWithAccount, error) {
-	log.Debug("GetTransactionsWithAccounts Service")
+	logger.Debug("GetTransactionsWithAccounts Service")
 
 	transactions, err := s.transactionsRepository.GetTransactionsWithAccounts(userId,
 		perPage,
@@ -76,14 +76,14 @@ func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int,
 		categoryIds,
 	)
 	if err != nil {
-		log.Error("Error getting transactions: ", err)
+		logger.Error("Error getting transactions", "error", err)
 		return nil, err
 	}
 
 	var baseCurrency models.Currency
 	baseCurrency, err = s.sm.UserSettingsService.GetBaseCurrency(userId)
 	if err != nil {
-		log.Error("Error getting base currency: ", err)
+		logger.Error("Error getting base currency", "error", err)
 		return nil, err
 	}
 
@@ -95,7 +95,7 @@ func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int,
 			baseCurrency.Code,
 		)
 		if err != nil {
-			log.Error("Error calculating amount: ", err)
+			logger.Error("Error calculating amount", "error", err)
 			return nil, err
 		}
 
@@ -106,11 +106,11 @@ func (s *TransactionsServiceInstance) GetTransactionsWithAccounts(userId int,
 }
 
 func (s *TransactionsServiceInstance) GetTemplates(userId int) ([]dto.TemplateDTO, error) {
-	log.Debug("GetTemplates Service")
+	logger.Debug("GetTemplates Service")
 
 	templates, err := s.transactionsRepository.GetTemplates(userId)
 	if err != nil {
-		log.Error("Error getting templates: ", err)
+		logger.Error("Error getting templates", "error", err)
 		return nil, err
 	}
 
@@ -118,11 +118,11 @@ func (s *TransactionsServiceInstance) GetTemplates(userId int) ([]dto.TemplateDT
 }
 
 func (s *TransactionsServiceInstance) DeleteTemplates(templateIds []int, userId int) error {
-	log.Debug("DeleteTemplates Service")
+	logger.Debug("DeleteTemplates Service")
 
 	err := s.transactionsRepository.DeleteTemplates(templateIds, userId)
 	if err != nil {
-		log.Error("Error deleting templates: ", err)
+		logger.Error("Error deleting templates", "error", err)
 		return err
 	}
 
@@ -130,17 +130,17 @@ func (s *TransactionsServiceInstance) DeleteTemplates(templateIds []int, userId 
 }
 
 func (s *TransactionsServiceInstance) CreateTransaction(transaction models.Transaction, targetAccountID *int, targetAmount *decimal.Decimal) (*models.Transaction, error) {
-	log.Debug("CreateTransaction Service")
+	logger.Debug("CreateTransaction Service")
 
 	// Validate category ownership
 	if transaction.CategoryID != nil && *transaction.CategoryID > 0 {
 		isOwner, err := s.sm.CategoriesService.ValidateCategoryOwnership(*transaction.CategoryID, transaction.UserID)
 		if err != nil {
-			log.Error("Error validating category ownership: ", err)
+			logger.Error("Error validating category ownership", "error", err)
 			return nil, err
 		}
 		if !isOwner {
-			log.Error("User does not own category ID: ", *transaction.CategoryID)
+			logger.Error("User does not own category ID", "categoryID", *transaction.CategoryID)
 			return nil, fmt.Errorf("category not found or does not belong to user")
 		}
 	}
@@ -173,12 +173,12 @@ func (s *TransactionsServiceInstance) CreateTransaction(transaction models.Trans
 }
 
 func (s *TransactionsServiceInstance) createRegularTransaction(transaction models.Transaction) (*models.Transaction, error) {
-	log.Debug("Creating regular transaction")
+	logger.Debug("Creating regular transaction")
 
 	// Get current account balance
 	currentBalance, err := s.sm.AccountsService.GetAccountBalance(transaction.AccountID)
 	if err != nil {
-		log.Error("Error getting current account balance: ", err)
+		logger.Error("Error getting current account balance", "error", err)
 		return nil, err
 	}
 
@@ -192,17 +192,17 @@ func (s *TransactionsServiceInstance) createRegularTransaction(transaction model
 	// Update account balance
 	err = s.updateAccountBalanceByEffect(transaction.AccountID, effect)
 	if err != nil {
-		log.Error("Error updating account balance for new transaction: ", err)
+		logger.Error("Error updating account balance for new transaction", "error", err)
 		return nil, err
 	}
 
 	createdTransaction, err := s.transactionsRepository.CreateTransaction(transaction)
 	if err != nil {
-		log.Error("Error creating transaction: ", err)
+		logger.Error("Error creating transaction", "error", err)
 		// Rollback balance change if transaction creation failed
 		rollbackErr := s.updateAccountBalanceByEffect(transaction.AccountID, effect.Neg())
 		if rollbackErr != nil {
-			log.Error("Error rolling back account balance: ", rollbackErr)
+			logger.Error("Error rolling back account balance", "error", rollbackErr)
 		}
 		return nil, err
 	}
@@ -215,7 +215,7 @@ func (s *TransactionsServiceInstance) createRegularTransaction(transaction model
 		}
 		if len(pairs) > 0 {
 			if err := s.sm.BudgetsService.UpdateBudgetCollectedAmountsForCategories(transaction.UserID, pairs); err != nil {
-				log.Error("Error updating affected budgets after transaction creation: ", err)
+				logger.Error("Error updating affected budgets after transaction creation", "error", err)
 			}
 		}
 	}
@@ -224,7 +224,7 @@ func (s *TransactionsServiceInstance) createRegularTransaction(transaction model
 }
 
 func (s *TransactionsServiceInstance) createTransferTransaction(transaction models.Transaction, targetAccountID *int, targetAmount *decimal.Decimal) (*models.Transaction, error) {
-	log.Debug("Creating transfer transaction")
+	logger.Debug("Creating transfer transaction")
 
 	if targetAccountID == nil {
 		return nil, fmt.Errorf("target account ID is required for transfer transactions")
@@ -241,13 +241,13 @@ func (s *TransactionsServiceInstance) createTransferTransaction(transaction mode
 	// Get current balances for both accounts
 	sourceCurrentBalance, err := s.sm.AccountsService.GetAccountBalance(sourceTransaction.AccountID)
 	if err != nil {
-		log.Error("Error getting source account balance: ", err)
+		logger.Error("Error getting source account balance", "error", err)
 		return nil, err
 	}
 
 	targetCurrentBalance, err := s.sm.AccountsService.GetAccountBalance(*targetAccountID)
 	if err != nil {
-		log.Error("Error getting target account balance: ", err)
+		logger.Error("Error getting target account balance", "error", err)
 		return nil, err
 	}
 
@@ -264,18 +264,18 @@ func (s *TransactionsServiceInstance) createTransferTransaction(transaction mode
 	// Update source account balance
 	err = s.updateAccountBalanceByEffect(sourceTransaction.AccountID, sourceEffect)
 	if err != nil {
-		log.Error("Error updating source account balance: ", err)
+		logger.Error("Error updating source account balance", "error", err)
 		return nil, err
 	}
 
 	// Update target account balance
 	err = s.updateAccountBalanceByEffect(*targetAccountID, targetEffect)
 	if err != nil {
-		log.Error("Error updating target account balance: ", err)
+		logger.Error("Error updating target account balance", "error", err)
 		// Rollback source account change
 		rollbackErr := s.updateAccountBalanceByEffect(sourceTransaction.AccountID, sourceEffect.Neg())
 		if rollbackErr != nil {
-			log.Error("Error rolling back source account balance: ", rollbackErr)
+			logger.Error("Error rolling back source account balance", "error", rollbackErr)
 		}
 		return nil, err
 	}
@@ -283,12 +283,12 @@ func (s *TransactionsServiceInstance) createTransferTransaction(transaction mode
 	// Create source transaction in database
 	createdSourceTx, err := s.transactionsRepository.CreateTransaction(sourceTransaction)
 	if err != nil {
-		log.Error("Error creating source transaction: ", err)
+		logger.Error("Error creating source transaction", "error", err)
 		// Rollback both account balance changes
 		rollbackErr1 := s.updateAccountBalanceByEffect(sourceTransaction.AccountID, sourceEffect.Neg())
 		rollbackErr2 := s.updateAccountBalanceByEffect(*targetAccountID, targetEffect.Neg())
 		if rollbackErr1 != nil || rollbackErr2 != nil {
-			log.Error("Error rolling back account balances: ", rollbackErr1, rollbackErr2)
+			logger.Error("Error rolling back account balances", "error1", rollbackErr1, "error2", rollbackErr2)
 		}
 		return nil, err
 	}
@@ -313,13 +313,13 @@ func (s *TransactionsServiceInstance) createTransferTransaction(transaction mode
 	// Create target transaction in database
 	createdTargetTx, err := s.transactionsRepository.CreateTransaction(targetTransaction)
 	if err != nil {
-		log.Error("Error creating target transaction: ", err)
+		logger.Error("Error creating target transaction", "error", err)
 		// Try to delete the source transaction and rollback balances
 		deleteErr := s.transactionsRepository.DeleteTransaction(*createdSourceTx.ID, transaction.UserID)
 		rollbackErr1 := s.updateAccountBalanceByEffect(sourceTransaction.AccountID, sourceEffect.Neg())
 		rollbackErr2 := s.updateAccountBalanceByEffect(*targetAccountID, targetEffect.Neg())
 		if deleteErr != nil || rollbackErr1 != nil || rollbackErr2 != nil {
-			log.Error("Error cleaning up failed transfer: ", deleteErr, rollbackErr1, rollbackErr2)
+			logger.Error("Error cleaning up failed transfer", "deleteError", deleteErr, "rollbackError1", rollbackErr1, "rollbackError2", rollbackErr2)
 		}
 		return nil, err
 	}
@@ -329,7 +329,7 @@ func (s *TransactionsServiceInstance) createTransferTransaction(transaction mode
 		createdSourceTx.LinkedTransactionID = createdTargetTx.ID
 		updateErr := s.transactionsRepository.UpdateTransaction(*createdSourceTx)
 		if updateErr != nil {
-			log.Error("Error linking transactions: ", updateErr)
+			logger.Error("Error linking transactions", "error", updateErr)
 			// Continue anyway, as the transactions are created
 		}
 	}
@@ -338,11 +338,11 @@ func (s *TransactionsServiceInstance) createTransferTransaction(transaction mode
 }
 
 func (s *TransactionsServiceInstance) GetTransactionDetail(transactionId int, userId int) (*dto.TransactionDetailDTO, error) {
-	log.Debug("GetTransactionDetail Service")
+	logger.Debug("GetTransactionDetail Service")
 
 	transactionRaw, err := s.transactionsRepository.GetTransactionDetail(transactionId, userId)
 	if err != nil {
-		log.Error("Error getting transaction detail: ", err)
+		logger.Error("Error getting transaction detail", "error", err)
 		return nil, err
 	}
 
@@ -352,7 +352,7 @@ func (s *TransactionsServiceInstance) GetTransactionDetail(transactionId int, us
 
 	baseCurrency, err := s.sm.UserSettingsService.GetBaseCurrency(userId)
 	if err != nil {
-		log.Error("Error getting base currency: ", err)
+		logger.Error("Error getting base currency", "error", err)
 		return nil, err
 	}
 
@@ -367,7 +367,7 @@ func (s *TransactionsServiceInstance) GetTransactionDetail(transactionId int, us
 			baseCurrency.Code,
 		)
 		if err != nil {
-			log.Error("Error calculating base currency amount: ", err)
+			logger.Error("Error calculating base currency amount", "error", err)
 			baseCurrencyAmount = decimal.Zero
 		} else {
 			baseCurrencyAmount = amount
@@ -531,17 +531,17 @@ func convertLinkedTransactionToDetail(linkedTx *models.NullableTransaction, base
 }
 
 func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTransactionDTO, userId int) error {
-	log.Debug("UpdateTransaction Service")
+	logger.Debug("UpdateTransaction Service")
 
 	// Validate category ownership
 	if transactionDTO.CategoryID != nil && *transactionDTO.CategoryID > 0 {
 		isOwner, err := s.sm.CategoriesService.ValidateCategoryOwnership(*transactionDTO.CategoryID, userId)
 		if err != nil {
-			log.Error("Error validating category ownership: ", err)
+			logger.Error("Error validating category ownership", "error", err)
 			return err
 		}
 		if !isOwner {
-			log.Error("User does not own category ID: ", *transactionDTO.CategoryID)
+			logger.Error("User does not own category ID", "categoryID", *transactionDTO.CategoryID)
 			return fmt.Errorf("category not found or does not belong to user")
 		}
 	}
@@ -549,7 +549,7 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 	// Get the existing transaction to compare values
 	existingTransaction, err := s.transactionsRepository.GetTransactionDetail(transactionDTO.ID, userId)
 	if err != nil {
-		log.Error("Error getting existing transaction: ", err)
+		logger.Error("Error getting existing transaction", "error", err)
 		return err
 	}
 	if existingTransaction == nil {
@@ -575,14 +575,14 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 	// Handle account balance updates
 	err = s.handleAccountBalanceUpdates(existingTransaction, &transaction)
 	if err != nil {
-		log.Error("Error handling account balance updates: ", err)
+		logger.Error("Error handling account balance updates", "error", err)
 		return err
 	}
 
 	// Calculate and set the new balance for the updated transaction
 	currentBalance, err := s.sm.AccountsService.GetAccountBalance(transaction.AccountID)
 	if err != nil {
-		log.Error("Error getting current balance for updated transaction: ", err)
+		logger.Error("Error getting current balance for updated transaction", "error", err)
 		return err
 	}
 	transaction.NewBalance = &currentBalance
@@ -590,7 +590,7 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 	// Call repository for update
 	err = s.transactionsRepository.UpdateTransaction(transaction)
 	if err != nil {
-		log.Error("Error updating transaction: ", err)
+		logger.Error("Error updating transaction", "error", err)
 		return err
 	}
 
@@ -598,7 +598,7 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 	if existingTransaction.IsTransfer && transaction.IsTransfer && existingTransaction.LinkedTransactionID != nil {
 		err = s.updateLinkedTransferTransaction(existingTransaction, &transaction, transactionDTO.TargetAmount)
 		if err != nil {
-			log.Error("Error updating linked transfer transaction: ", err)
+			logger.Error("Error updating linked transfer transaction", "error", err)
 			return err
 		}
 	}
@@ -614,7 +614,7 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 	}
 	if len(pairs) > 0 {
 		if err := s.sm.BudgetsService.UpdateBudgetCollectedAmountsForCategories(userId, pairs); err != nil {
-			log.Error("Error updating affected budgets after transaction update: ", err)
+			logger.Error("Error updating affected budgets after transaction update", "error", err)
 		}
 	}
 
@@ -622,12 +622,12 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 }
 
 func (s *TransactionsServiceInstance) DeleteTransaction(transactionId int, userId int) error {
-	log.Debug("DeleteTransaction Service")
+	logger.Debug("DeleteTransaction Service")
 
 	// Get the existing transaction to handle balance updates
 	existingTransaction, err := s.transactionsRepository.GetTransactionDetail(transactionId, userId)
 	if err != nil {
-		log.Error("Error getting existing transaction: ", err)
+		logger.Error("Error getting existing transaction", "error", err)
 		return err
 	}
 	if existingTransaction == nil {
@@ -637,13 +637,13 @@ func (s *TransactionsServiceInstance) DeleteTransaction(transactionId int, userI
 	// Handle account balance updates before deletion
 	err = s.handleAccountBalanceOnDelete(existingTransaction)
 	if err != nil {
-		log.Error("Error handling account balance on delete: ", err)
+		logger.Error("Error handling account balance on delete", "error", err)
 		return err
 	}
 
 	err = s.transactionsRepository.DeleteTransaction(transactionId, userId)
 	if err != nil {
-		log.Error("Error deleting transaction: ", err)
+		logger.Error("Error deleting transaction", "error", err)
 		return err
 	}
 
@@ -651,7 +651,7 @@ func (s *TransactionsServiceInstance) DeleteTransaction(transactionId int, userI
 	if !existingTransaction.IsIncome && !existingTransaction.IsTransfer && existingTransaction.CategoryID != nil && existingTransaction.DateTime != nil {
 		pairs := []AffectedCategoryDate{{CategoryID: *existingTransaction.CategoryID, Date: *existingTransaction.DateTime}}
 		if err := s.sm.BudgetsService.UpdateBudgetCollectedAmountsForCategories(userId, pairs); err != nil {
-			log.Error("Error updating affected budgets after transaction deletion: ", err)
+			logger.Error("Error updating affected budgets after transaction deletion", "error", err)
 		}
 	}
 

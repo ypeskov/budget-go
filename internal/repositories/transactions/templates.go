@@ -1,14 +1,12 @@
 package transactions
 
 import (
-	"github.com/lib/pq"
-	log "github.com/sirupsen/logrus"
-
 	"ypeskov/budget-go/internal/dto"
+	"ypeskov/budget-go/internal/logger"
 )
 
 func (r *RepositoryInstance) GetTemplates(userId int) ([]dto.TemplateDTO, error) {
-	log.Debug("GetTemplates Repository")
+	logger.Debug("GetTemplates Repository")
 	query := `
 		SELECT 
 			tt.id,
@@ -23,7 +21,7 @@ func (r *RepositoryInstance) GetTemplates(userId int) ([]dto.TemplateDTO, error)
 
 	rows, err := r.db.Queryx(query, userId)
 	if err != nil {
-		log.Error("Error fetching templates: ", err)
+		logger.Error("Error fetching templates", "error", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -39,7 +37,7 @@ func (r *RepositoryInstance) GetTemplates(userId int) ([]dto.TemplateDTO, error)
 	}
 
 	if err := rows.Err(); err != nil {
-		log.Error("Error iterating over templates rows: ", err)
+		logger.Error("Error iterating over templates rows", "error", err)
 		return nil, err
 	}
 
@@ -47,14 +45,14 @@ func (r *RepositoryInstance) GetTemplates(userId int) ([]dto.TemplateDTO, error)
 }
 
 func (r *RepositoryInstance) DeleteTemplates(templateIds []int, userId int) error {
-	log.Debug("DeleteTemplates Repository")
+	logger.Debug("DeleteTemplates Repository")
 	query := `
 		DELETE FROM transaction_templates WHERE id = ANY($1) AND user_id = $2
 	`
 
-	_, err := r.db.Exec(query, pq.Array(templateIds), userId)
+	_, err := r.db.Exec(query, templateIds, userId)
 	if err != nil {
-		log.Error("Error deleting templates: ", err)
+		logger.Error("Error deleting templates", "error", err)
 		return err
 	}
 

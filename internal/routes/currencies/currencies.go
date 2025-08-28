@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
 
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/services"
 )
@@ -21,7 +21,7 @@ func RegisterCurrenciesRoutes(g *echo.Group, manager *services.Manager) {
 }
 
 func GetCurrencies(c echo.Context) error {
-	log.Debugf("GetCurrencies request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetCurrencies request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	currencies, err := sm.CurrenciesService.GetCurrencies()
 	if err != nil {
@@ -33,6 +33,6 @@ func GetCurrencies(c echo.Context) error {
 		currenciesResponse = append(currenciesResponse, currency)
 	}
 
-	log.Debug("GetCurrencies request completed - GET /currencies")
+	logger.Debug("GetCurrencies request completed")
 	return c.JSON(http.StatusOK, currenciesResponse)
 }

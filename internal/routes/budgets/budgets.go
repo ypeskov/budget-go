@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
@@ -30,7 +30,7 @@ func RegisterBudgetsRoutes(g *echo.Group, manager *services.Manager) {
 }
 
 func CreateBudget(c echo.Context) error {
-	log.Debugf("CreateBudget request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("CreateBudget request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -47,12 +47,12 @@ func CreateBudget(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	log.Debug("CreateBudget request completed - POST /budgets/add")
+	logger.Debug("CreateBudget request completed")
 	return c.JSON(http.StatusOK, budget)
 }
 
 func UpdateBudget(c echo.Context) error {
-	log.Debugf("UpdateBudget request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("UpdateBudget request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -85,12 +85,12 @@ func UpdateBudget(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	log.Debug("UpdateBudget request completed - PUT /budgets/:id")
+	logger.Debug("UpdateBudget request completed")
 	return c.JSON(http.StatusOK, budget)
 }
 
 func GetBudgets(c echo.Context) error {
-	log.Debugf("GetBudgets request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetBudgets request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -112,12 +112,12 @@ func GetBudgets(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	log.Debug("GetBudgets request completed - GET /budgets")
+	logger.Debug("GetBudgets request completed")
 	return c.JSON(http.StatusOK, budgets)
 }
 
 func DeleteBudget(c echo.Context) error {
-	log.Debugf("DeleteBudget request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("DeleteBudget request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -142,14 +142,14 @@ func DeleteBudget(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	log.Debug("DeleteBudget request completed - DELETE /budgets/:id")
+	logger.Debug("DeleteBudget request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Budget deleted successfully",
 	})
 }
 
 func ArchiveBudget(c echo.Context) error {
-	log.Debugf("ArchiveBudget request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("ArchiveBudget request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -174,14 +174,14 @@ func ArchiveBudget(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	log.Debug("ArchiveBudget request completed - PUT /budgets/:id/archive")
+	logger.Debug("ArchiveBudget request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Budget archived successfully",
 	})
 }
 
 func DailyProcessing(c echo.Context) error {
-	log.Debugf("DailyProcessing request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("DailyProcessing request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -198,7 +198,7 @@ func DailyProcessing(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	log.Debug("DailyProcessing request completed - GET /budgets/daily-processing")
+	logger.Debug("DailyProcessing request completed")
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"message":           "Daily processing completed",
 		"archivedBudgetIds": archivedBudgetIDs,

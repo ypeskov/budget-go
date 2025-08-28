@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
@@ -24,7 +24,7 @@ func RegisterCategoriesRoutes(g *echo.Group, manager *services.Manager) {
 }
 
 func GetCategories(c echo.Context) error {
-	log.Debugf("GetCategories request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetCategories request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -52,12 +52,12 @@ func GetCategories(c echo.Context) error {
 		categories = append(categories, category)
 	}
 
-	log.Debug("GetCategories request completed - GET /categories")
+	logger.Debug("GetCategories request completed")
 	return c.JSON(200, categories)
 }
 
 func GetGroupedCategories(c echo.Context) error {
-	log.Debugf("GetGroupedCategories request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetGroupedCategories request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -69,12 +69,12 @@ func GetGroupedCategories(c echo.Context) error {
 		return c.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	log.Debug("GetGroupedCategories request completed - GET /categories/grouped")
+	logger.Debug("GetGroupedCategories request completed")
 	return c.JSON(200, groupedCategories)
 }
 
 func CreateCategory(c echo.Context) error {
-	log.Debugf("CreateCategory request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("CreateCategory request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -83,7 +83,7 @@ func CreateCategory(c echo.Context) error {
 
 	var createDTO dto.CreateCategoryDTO
 	if err := c.Bind(&createDTO); err != nil {
-		log.Error("Failed to bind create category DTO: ", err)
+		logger.Error("Failed to bind create category DTO: ", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
 	}
 
@@ -99,7 +99,7 @@ func CreateCategory(c echo.Context) error {
 		user.ID,
 	)
 	if err != nil {
-		log.Error("Failed to create category: ", err)
+		logger.Error("Failed to create category: ", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to create category")
 	}
 
@@ -116,6 +116,6 @@ func CreateCategory(c echo.Context) error {
 		UpdatedAt:  createdCategory.UpdatedAt,
 	}
 
-	log.Debug("CreateCategory request completed - POST /categories")
+	logger.Debug("CreateCategory request completed")
 	return c.JSON(http.StatusCreated, categoryDTO)
 }

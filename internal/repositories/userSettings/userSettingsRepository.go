@@ -5,7 +5,7 @@ import (
 	"ypeskov/budget-go/internal/models"
 
 	"github.com/jmoiron/sqlx"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 )
 
 type Repository interface {
@@ -44,7 +44,7 @@ WHERE users.id = $1;`
 func (r *RepositoryInstance) UpsertUserSettings(userID int, settingsData map[string]interface{}) (*models.UserSettings, error) {
 	settingsJSON, err := json.Marshal(settingsData)
 	if err != nil {
-		log.Error("Failed to marshal settings data: ", err)
+		logger.Error("Failed to marshal settings data: ", err)
 		return nil, err
 	}
 
@@ -81,7 +81,7 @@ func (r *RepositoryInstance) UpsertUserSettings(userID int, settingsData map[str
 			&userSettings.UpdatedAt,
 		)
 		if err != nil {
-			log.Error("Failed to insert user settings: ", err)
+			logger.Error("Failed to insert user settings: ", err)
 			return nil, err
 		}
 	}
@@ -89,7 +89,7 @@ func (r *RepositoryInstance) UpsertUserSettings(userID int, settingsData map[str
 	// Parse the settings JSON string back into map
 	err = json.Unmarshal([]byte(settingsStr), &userSettings.Settings)
 	if err != nil {
-		log.Error("Failed to unmarshal settings: ", err)
+		logger.Error("Failed to unmarshal settings: ", err)
 		return nil, err
 	}
 
@@ -119,7 +119,7 @@ func (r *RepositoryInstance) GetUserSettings(userID int) (*models.UserSettings, 
 	// Parse the settings JSON string back into map
 	err = json.Unmarshal([]byte(settingsStr), &userSettings.Settings)
 	if err != nil {
-		log.Error("Failed to unmarshal settings: ", err)
+		logger.Error("Failed to unmarshal settings: ", err)
 		return nil, err
 	}
 

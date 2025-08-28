@@ -6,7 +6,7 @@ import (
 	"regexp"
 
 	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 
 	"ypeskov/budget-go/internal/models"
 )
@@ -24,14 +24,13 @@ func LogAndReturnError(c echo.Context, err error, httpStatus int) error {
 	}
 
 	// Log with detailed information
-	log.WithFields(log.Fields{
-		"method":     method,
-		"path":       path,
-		"userId":     userId,
-		"httpStatus": httpStatus,
-		"error":      err.Error(),
-		"errorType":  fmt.Sprintf("%T", err),
-	}).Error("Request failed")
+	logger.Error("Request failed",
+		"method", method,
+		"path", path,
+		"userId", userId,
+		"httpStatus", httpStatus,
+		"error", err.Error(),
+		"errorType", fmt.Sprintf("%T", err))
 
 	// Return informative error to client
 	errorMessage := "Internal server error"

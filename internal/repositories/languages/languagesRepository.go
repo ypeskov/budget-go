@@ -1,9 +1,8 @@
 package languages
 
 import (
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/models"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -27,7 +26,7 @@ func (r *RepositoryInstance) GetLanguages() ([]models.Language, error) {
 	var languages []models.Language
 	err := db.Select(&languages, getLanguagesQuery)
 	if err != nil {
-		log.Error("Failed to get languages from database: ", err)
+		logger.Error("Failed to get languages from database", "error", err)
 		return nil, err
 	}
 

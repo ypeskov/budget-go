@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 	"ypeskov/budget-go/internal/dto"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/repositories/reports"
 	"ypeskov/budget-go/internal/utils"
 
 	"github.com/shopspring/decimal"
-	log "github.com/sirupsen/logrus"
 )
 
 type ReportsService interface {
@@ -33,7 +33,7 @@ var (
 
 func NewReportsService(reportsRepo *reports.ReportsRepository, exchangeRatesService ExchangeRatesService) ReportsService {
 	reportsOnce.Do(func() {
-		log.Debug("Creating ReportsService instance")
+		logger.Debug("Creating ReportsService instance")
 		reportsInstance = &ReportsServiceInstance{
 			reportsRepo:          reportsRepo,
 			exchangeRatesService: exchangeRatesService,

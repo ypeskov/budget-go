@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
@@ -24,7 +24,7 @@ func RegisterSettingsRoutes(g *echo.Group, manager *services.Manager) {
 }
 
 func GetBaseCurrency(c echo.Context) error {
-	log.Debugf("GetBaseCurrency request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetBaseCurrency request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -33,29 +33,29 @@ func GetBaseCurrency(c echo.Context) error {
 
 	baseCurrency, err := sm.UserSettingsService.GetBaseCurrency(user.ID)
 	if err != nil {
-		log.Error("Failed to get base currency: ", err)
+		logger.Error("Failed to get base currency: ", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get base currency")
 	}
 
-	log.Debug("GetBaseCurrency request completed - GET /settings/base-currency")
+	logger.Debug("GetBaseCurrency request completed")
 	return c.JSON(http.StatusOK, baseCurrency)
 }
 
 func GetLanguages(c echo.Context) error {
-	log.Debugf("GetLanguages request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetLanguages request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	languages, err := sm.LanguagesService.GetLanguages()
 	if err != nil {
-		log.Error("Failed to get languages: ", err)
+		logger.Error("Failed to get languages: ", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get languages")
 	}
 
-	log.Debug("GetLanguages request completed - GET /settings/languages")
+	logger.Debug("GetLanguages request completed")
 	return c.JSON(http.StatusOK, languages)
 }
 
 func UpdateSettings(c echo.Context) error {
-	log.Debugf("UpdateSettings request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("UpdateSettings request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	user, ok := c.Get("authenticated_user").(*models.User)
 	if !ok || user == nil {
@@ -64,7 +64,7 @@ func UpdateSettings(c echo.Context) error {
 
 	var settingsDTO dto.UpdateSettingsDTO
 	if err := c.Bind(&settingsDTO); err != nil {
-		log.Error("Failed to bind settings DTO: ", err)
+		logger.Error("Failed to bind settings DTO: ", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
 	}
 
@@ -80,10 +80,10 @@ func UpdateSettings(c echo.Context) error {
 
 	userSettings, err := sm.UserSettingsService.UpdateUserSettings(user.ID, settingsData)
 	if err != nil {
-		log.Error("Failed to update user settings: ", err)
+		logger.Error("Failed to update user settings: ", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to update settings")
 	}
 
-	log.Debug("UpdateSettings request completed - POST /settings")
+	logger.Debug("UpdateSettings request completed")
 	return c.JSON(http.StatusOK, userSettings)
 }
