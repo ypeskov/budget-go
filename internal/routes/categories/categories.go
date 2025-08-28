@@ -52,7 +52,7 @@ func GetCategories(c echo.Context) error {
 		categories = append(categories, category)
 	}
 
-	logger.Debug("GetCategories request completed - GET /categories")
+	logger.Debug("GetCategories request completed")
 	return c.JSON(200, categories)
 }
 
@@ -69,7 +69,7 @@ func GetGroupedCategories(c echo.Context) error {
 		return c.JSON(500, map[string]string{"error": err.Error()})
 	}
 
-	logger.Debug("GetGroupedCategories request completed - GET /categories/grouped")
+	logger.Debug("GetGroupedCategories request completed")
 	return c.JSON(200, groupedCategories)
 }
 
@@ -116,6 +116,6 @@ func CreateCategory(c echo.Context) error {
 		UpdatedAt:  createdCategory.UpdatedAt,
 	}
 
-	logger.Debug("CreateCategory request completed - POST /categories")
+	logger.Debug("CreateCategory request completed")
 	return c.JSON(http.StatusCreated, categoryDTO)
 }

@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -95,7 +94,7 @@ func LoginUser(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
-	logger.Debug("LoginUser request completed", "method", c.Request().Method, "url", c.Request().URL)
+	logger.Info("LoginUser request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"accessToken": signedToken,
 		"tokenType":   "Bearer",
@@ -136,7 +135,7 @@ func RegisterUser(c echo.Context) error {
 		LastName:  createdUser.LastName,
 	}
 
-	logger.Debug("RegisterUser request completed", "method", c.Request().Method, "url", c.Request().URL)
+	logger.Debug("RegisterUser request completed")
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"user":    response,
 		"message": "User registered successfully. Please check your email to activate your account.",
@@ -167,7 +166,7 @@ func ActivateUser(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
-	logger.Debug("ActivateUser request completed - GET /auth/activate/:token")
+	logger.Debug("ActivateUser request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Account activated successfully",
 	})
@@ -206,7 +205,6 @@ func Profile(c echo.Context) error {
 		logger.Error("Error getting user by email", "error", err)
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
-	fmt.Printf("user %+v\n", user)
 
 	// Get user's actual base currency
 	baseCurrency, err := sm.UserSettingsService.GetBaseCurrency(user.ID)
@@ -232,7 +230,7 @@ func Profile(c echo.Context) error {
 		}
 	}
 
-	logger.Debug("Profile request completed - GET /auth/profile")
+	logger.Debug("Profile request completed")
 	return c.JSON(http.StatusOK, ProfileDTO{
 		ID:           user.ID,
 		FirstName:    user.FirstName,
@@ -293,7 +291,7 @@ func OAuth(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"detail": "Internal server error. See logs for details"})
 	}
 
-	logger.Debug("OAuth request completed - POST /auth/oauth")
+	logger.Debug("OAuth request completed")
 	return c.JSON(http.StatusOK, dto.Token{
 		AccessToken: signedToken,
 		TokenType:   "Bearer",

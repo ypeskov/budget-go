@@ -29,7 +29,7 @@ func triggerBackup(c echo.Context, sm *services.Manager) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to enqueue task"})
 	}
 
-	logger.Debug("triggerBackup request completed - GET /management/backup")
+	logger.Debug("triggerBackup request completed")
 	return c.JSON(http.StatusAccepted, map[string]string{"message": "backup scheduled"})
 }
 
@@ -41,6 +41,6 @@ func triggerUpdateExchangeRates(c echo.Context, sm *services.Manager) error {
 		logger.Error("failed to enqueue exchange rates update task", "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to enqueue task"})
 	}
-	logger.Debug("triggerUpdateExchangeRates request completed - GET /management/update-exchange-rates")
+	logger.Debug("triggerUpdateExchangeRates request completed")
 	return c.JSON(http.StatusAccepted, map[string]string{"message": "exchange rates update scheduled"})
 }

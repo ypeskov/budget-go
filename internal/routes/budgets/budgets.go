@@ -47,7 +47,7 @@ func CreateBudget(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	logger.Debug("CreateBudget request completed - POST /budgets/add")
+	logger.Debug("CreateBudget request completed")
 	return c.JSON(http.StatusOK, budget)
 }
 
@@ -85,7 +85,7 @@ func UpdateBudget(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	logger.Debug("UpdateBudget request completed - PUT /budgets/:id")
+	logger.Debug("UpdateBudget request completed")
 	return c.JSON(http.StatusOK, budget)
 }
 
@@ -112,7 +112,7 @@ func GetBudgets(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	logger.Debug("GetBudgets request completed - GET /budgets")
+	logger.Debug("GetBudgets request completed")
 	return c.JSON(http.StatusOK, budgets)
 }
 
@@ -142,7 +142,7 @@ func DeleteBudget(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	logger.Debug("DeleteBudget request completed - DELETE /budgets/:id")
+	logger.Debug("DeleteBudget request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Budget deleted successfully",
 	})
@@ -174,7 +174,7 @@ func ArchiveBudget(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	logger.Debug("ArchiveBudget request completed - PUT /budgets/:id/archive")
+	logger.Debug("ArchiveBudget request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Budget archived successfully",
 	})
@@ -198,7 +198,7 @@ func DailyProcessing(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	logger.Debug("DailyProcessing request completed - GET /budgets/daily-processing")
+	logger.Debug("DailyProcessing request completed")
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"message":           "Daily processing completed",
 		"archivedBudgetIds": archivedBudgetIDs,

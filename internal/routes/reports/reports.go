@@ -58,7 +58,7 @@ func GetCashFlow(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
 	}
 
-	logger.Debug("GetCashFlow request completed - POST /reports/cashflow")
+	logger.Debug("GetCashFlow request completed")
 	return c.JSON(http.StatusOK, result)
 }
 
@@ -81,7 +81,7 @@ func GetBalanceReport(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
 	}
 
-	logger.Debug("GetBalanceReport request completed - POST /reports/balance")
+	logger.Debug("GetBalanceReport request completed")
 	return c.JSON(http.StatusOK, result)
 }
 
@@ -104,7 +104,7 @@ func GetNonHiddenBalance(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
 	}
 
-	logger.Debug("GetNonHiddenBalance request completed - POST /reports/balance/non-hidden")
+	logger.Debug("GetNonHiddenBalance request completed")
 	return c.JSON(http.StatusOK, result)
 }
 
@@ -128,7 +128,7 @@ func GetExpensesByCategories(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
 	}
 
-	logger.Debug("GetExpensesByCategories request completed - POST /reports/expenses-by-categories")
+	logger.Debug("GetExpensesByCategories request completed")
 	return c.JSON(http.StatusOK, result)
 }
 
@@ -173,7 +173,7 @@ func GetDiagram(c echo.Context) error {
 	}
 
 	// Return the image in the expected format: { "image": "data:image/png;base64,..." }
-	logger.Debug("GetDiagram request completed - GET /reports/diagram/:diagram_type/:start_date/:end_date")
+	logger.Debug("GetDiagram request completed")
 	return c.JSON(http.StatusOK, chartImage)
 }
 
@@ -203,7 +203,7 @@ func GetExpensesData(c echo.Context) error {
 	// Sort desc
 	sort.Slice(aggregated, func(i, j int) bool { return aggregated[i].Amount > aggregated[j].Amount })
 
-	logger.Debug("GetExpensesData request completed - POST /reports/expenses-data")
+	logger.Debug("GetExpensesData request completed")
 	return c.JSON(http.StatusOK, aggregated)
 }
 

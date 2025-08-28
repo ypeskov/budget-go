@@ -37,7 +37,7 @@ func GetBaseCurrency(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get base currency")
 	}
 
-	logger.Debug("GetBaseCurrency request completed - GET /settings/base-currency")
+	logger.Debug("GetBaseCurrency request completed")
 	return c.JSON(http.StatusOK, baseCurrency)
 }
 
@@ -50,7 +50,7 @@ func GetLanguages(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get languages")
 	}
 
-	logger.Debug("GetLanguages request completed - GET /settings/languages")
+	logger.Debug("GetLanguages request completed")
 	return c.JSON(http.StatusOK, languages)
 }
 
@@ -84,6 +84,6 @@ func UpdateSettings(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to update settings")
 	}
 
-	logger.Debug("UpdateSettings request completed - POST /settings")
+	logger.Debug("UpdateSettings request completed")
 	return c.JSON(http.StatusOK, userSettings)
 }

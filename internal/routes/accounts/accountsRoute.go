@@ -68,7 +68,7 @@ func GetAccounts(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
-	logger.Debug("GetAccounts request completed - GET /accounts")
+	logger.Debug("GetAccounts request completed")
 	return c.JSON(http.StatusOK, userAccounts)
 }
 
@@ -85,7 +85,7 @@ func GetAccountsTypes(c echo.Context) error {
 		accountTypesDTO = append(accountTypesDTO, accountType)
 	}
 
-	logger.Debug("GetAccountsTypes request completed - GET /accounts/types")
+	logger.Debug("GetAccountsTypes request completed")
 	return c.JSON(http.StatusOK, accountTypesDTO)
 }
 
@@ -103,7 +103,7 @@ func GetAccountById(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
 	}
 
-	logger.Debug("GetAccountById request completed - GET /accounts/:id")
+	logger.Debug("GetAccountById request completed")
 	return c.JSON(http.StatusOK, account)
 }
 
@@ -129,7 +129,7 @@ func CreateAccount(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
-	logger.Debug("CreateAccount request completed - POST /accounts")
+	logger.Debug("CreateAccount request completed")
 	return c.JSON(http.StatusOK, createdAccount)
 }
 
@@ -167,7 +167,7 @@ func UpdateAccount(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
-	logger.Debug("UpdateAccount request completed - PUT /accounts/:id")
+	logger.Debug("UpdateAccount request completed")
 	return c.JSON(http.StatusOK, updatedAccount)
 }
 

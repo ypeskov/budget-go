@@ -67,7 +67,7 @@ func GetTransactions(c echo.Context) error {
 	}
 	transactionsDTO := services.ConvertTransactionsToResponseList(transactions, baseCurrency)
 
-	logger.Debug("GetTransactions request completed - GET /transactions")
+	logger.Debug("GetTransactions request completed")
 	return c.JSON(http.StatusOK, transactionsDTO)
 }
 
@@ -84,7 +84,7 @@ func GetTemplates(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	logger.Debug("GetTemplates request completed - GET /transactions/templates")
+	logger.Debug("GetTemplates request completed")
 	return c.JSON(http.StatusOK, templateDTOs)
 }
 
@@ -116,7 +116,7 @@ func DeleteTemplates(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	logger.Debug("DeleteTemplates request completed - DELETE /transactions/templates")
+	logger.Debug("DeleteTemplates request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Templates deleted successfully",
 	})
@@ -154,7 +154,7 @@ func CreateTransaction(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	logger.Debug("CreateTransaction request completed - POST /transactions")
+	logger.Debug("CreateTransaction request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Transaction created successfully",
 	})
@@ -187,7 +187,7 @@ func GetTransactionDetail(c echo.Context) error {
 		return utils.LogAndReturnError(c, &routeErrors.NotFoundError{Resource: "transaction", ID: transactionId}, http.StatusNotFound)
 	}
 
-	logger.Debug("GetTransactionDetail request completed - GET /transactions/:id")
+	logger.Debug("GetTransactionDetail request completed")
 	return c.JSON(http.StatusOK, transactionDetail)
 }
 
@@ -226,7 +226,7 @@ func UpdateTransaction(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	logger.Debug("UpdateTransaction request completed - PUT /transactions")
+	logger.Debug("UpdateTransaction request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Transaction updated successfully",
 	})
@@ -266,7 +266,7 @@ func DeleteTransaction(c echo.Context) error {
 		return utils.LogAndReturnError(c, err, http.StatusInternalServerError)
 	}
 
-	logger.Debug("DeleteTransaction request completed - DELETE /transactions/:id")
+	logger.Debug("DeleteTransaction request completed")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Transaction deleted successfully",
 	})

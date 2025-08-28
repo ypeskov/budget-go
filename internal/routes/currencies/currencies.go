@@ -33,6 +33,6 @@ func GetCurrencies(c echo.Context) error {
 		currenciesResponse = append(currenciesResponse, currency)
 	}
 
-	logger.Debug("GetCurrencies request completed - GET /currencies")
+	logger.Debug("GetCurrencies request completed")
 	return c.JSON(http.StatusOK, currenciesResponse)
 }

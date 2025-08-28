@@ -76,6 +76,6 @@ func RegisterRoutes(cfg *config.Config, servicesManager *services.Manager) *echo
 
 func Health(c echo.Context) error {
 	logger.Debug("Health request started - GET /health")
-	logger.Debug("Health request completed - GET /health")
+	logger.Debug("Health request completed")
 	return c.String(http.StatusOK, "OK")
 }
