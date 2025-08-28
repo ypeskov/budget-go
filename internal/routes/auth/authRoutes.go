@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"strings"
 
+	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/dto"
 	appErrors "ypeskov/budget-go/internal/errors"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/middleware"
 	"ypeskov/budget-go/internal/services"
 	"ypeskov/budget-go/internal/utils"
@@ -17,9 +19,6 @@ import (
 	"google.golang.org/api/idtoken"
 
 	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
-
-	"ypeskov/budget-go/internal/config"
 )
 
 type JWTCustomClaims struct {
@@ -53,11 +52,11 @@ func RegisterAuthRoutes(g *echo.Group, cfgGlobal *config.Config, manager *servic
 }
 
 func LoginUser(c echo.Context) error {
-	log.Debugf("LoginUser request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("LoginUser request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	loginDTO := new(dto.UserLoginDTO)
 	if err := c.Bind(loginDTO); err != nil {
-		log.Error("Error binding login data: ", err)
+		logger.Error("Error binding login data", "error", err)
 		return c.String(http.StatusBadRequest, "Bad request")
 	}
 
@@ -67,36 +66,36 @@ func LoginUser(c echo.Context) error {
 		// group common "unauthorized" errors
 		case errors.As(err, new(*appErrors.UserNotFoundError)),
 			errors.As(err, new(*appErrors.InvalidCredentialsError)):
-			log.Warn("Login failed: ", err)
+			logger.Warn("Login failed", "error", err)
 			return c.JSON(http.StatusUnauthorized, map[string]string{
 				"detail": "Invalid email or password",
 			})
 
 		case errors.As(err, new(*appErrors.UserNotActivatedError)):
-			log.Warn("User not activated: ", err)
+			logger.Warn("User not activated", "error", err)
 			return c.JSON(http.StatusUnauthorized, map[string]string{
 				"detail": "User not activated",
 			})
 
 		case errors.As(err, new(*appErrors.UserDeletedError)):
-			log.Warn("User is deleted: ", err)
+			logger.Warn("User is deleted", "error", err)
 			return c.JSON(http.StatusUnauthorized, map[string]string{
 				"detail": "User account is deleted",
 			})
 
 		default:
-			log.Error("Unexpected login error: ", err)
+			logger.Error("Unexpected login error", "error", err)
 			return c.JSON(http.StatusInternalServerError, "Internal server error")
 		}
 	}
 
 	signedToken, err := utils.GenerateAccessToken(user, cfg)
 	if err != nil {
-		log.Error("Error generating token: ", err)
+		logger.Error("Error generating token", "error", err)
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
-	log.Debug("LoginUser request completed: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("LoginUser request completed", "method", c.Request().Method, "url", c.Request().URL)
 	return c.JSON(http.StatusOK, map[string]string{
 		"accessToken": signedToken,
 		"tokenType":   "Bearer",
@@ -104,17 +103,17 @@ func LoginUser(c echo.Context) error {
 }
 
 func RegisterUser(c echo.Context) error {
-	log.Debugf("RegisterUser request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("RegisterUser request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	u := new(dto.UserRegisterRequestDTO)
 	if err := c.Bind(u); err != nil {
-		log.Error("Error binding registration data: ", err)
+		logger.Error("Error binding registration data", "error", err)
 		return c.String(http.StatusBadRequest, "Bad request")
 	}
 
 	// Basic validation
 	if u.Email == "" || u.Password == "" || u.FirstName == "" || u.LastName == "" {
-		log.Error("Missing required registration fields")
+		logger.Error("Missing required registration fields")
 		return c.String(http.StatusBadRequest, "All fields are required")
 	}
 
@@ -122,10 +121,10 @@ func RegisterUser(c echo.Context) error {
 	createdUser, err := sm.UserService.RegisterUser(u, sm.CurrenciesService, sm.ActivationTokenService)
 	if err != nil {
 		if strings.Contains(err.Error(), "User already exists") {
-			log.Error("User already exists with email: ", u.Email)
+			logger.Error("User already exists with email", "email", u.Email)
 			return c.String(http.StatusConflict, "User already exists")
 		}
-		log.Error("Error registering user: ", err)
+		logger.Error("Error registering user", "error", err)
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
@@ -137,7 +136,7 @@ func RegisterUser(c echo.Context) error {
 		LastName:  createdUser.LastName,
 	}
 
-	log.Debug("RegisterUser request completed: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("RegisterUser request completed", "method", c.Request().Method, "url", c.Request().URL)
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"user":    response,
 		"message": "User registered successfully. Please check your email to activate your account.",
@@ -145,37 +144,37 @@ func RegisterUser(c echo.Context) error {
 }
 
 func ActivateUser(c echo.Context) error {
-	log.Debugf("ActivateUser request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("ActivateUser request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	// Extract token from URL parameter
 	token := c.Param("token")
 	if token == "" {
-		log.Error("Missing activation token in URL")
+		logger.Error("Missing activation token in URL")
 		return c.String(http.StatusBadRequest, "Activation token is required")
 	}
 
 	// Validate and use the activation token
 	activationToken, err := sm.ActivationTokenService.ValidateAndUseToken(token)
 	if err != nil {
-		log.Error("Error validating activation token: ", err)
+		logger.Error("Error validating activation token", "error", err)
 		return c.String(http.StatusBadRequest, "Invalid or expired activation token")
 	}
 
 	// Activate the user
 	err = sm.UserService.ActivateUser(activationToken.UserID)
 	if err != nil {
-		log.Error("Error activating user: ", err)
+		logger.Error("Error activating user", "error", err)
 		return c.String(http.StatusInternalServerError, "Internal server error")
 	}
 
-	log.Debug("ActivateUser request completed - GET /auth/activate/:token")
+	logger.Debug("ActivateUser request completed - GET /auth/activate/:token")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Account activated successfully",
 	})
 }
 
 func Profile(c echo.Context) error {
-	log.Debugf("Profile request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("Profile request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	cfg := c.Get("config").(*config.Config)
 
@@ -192,19 +191,19 @@ func Profile(c echo.Context) error {
 
 	claims, err := middleware.GetUserFromToken(token, cfg)
 	if err != nil || claims == nil {
-		log.Error("Failed to cast user to jwt.MapClaims")
+		logger.Error("Failed to cast user to jwt.MapClaims")
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or missing user")
 	}
 
 	email, emailOk := claims["email"].(string)
 	if !emailOk {
-		log.Error("Email not found in claims")
+		logger.Error("Email not found in claims")
 		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid user data")
 	}
 
 	user, err := sm.UserService.GetUserByEmail(email)
 	if err != nil {
-		log.Error("Error getting user by email: ", err)
+		logger.Error("Error getting user by email", "error", err)
 		return c.String(http.StatusUnauthorized, "Unauthorized")
 	}
 	fmt.Printf("user %+v\n", user)
@@ -212,7 +211,7 @@ func Profile(c echo.Context) error {
 	// Get user's actual base currency
 	baseCurrency, err := sm.UserSettingsService.GetBaseCurrency(user.ID)
 	if err != nil {
-		log.Error("Error getting user base currency: ", err)
+		logger.Error("Error getting user base currency", "error", err)
 		// Fallback to USD if we can't get the base currency
 		baseCurrency.Code = "USD"
 	}
@@ -221,7 +220,7 @@ func Profile(c echo.Context) error {
 	settings := map[string]string{}
 	userSettings, err := sm.UserSettingsService.GetUserSettings(user.ID)
 	if err != nil {
-		log.Error("Error getting user settings: ", err)
+		logger.Error("Error getting user settings", "error", err)
 		// Fallback to default language if we can't get settings
 		settings["language"] = "en"
 	} else {
@@ -233,7 +232,7 @@ func Profile(c echo.Context) error {
 		}
 	}
 
-	log.Debug("Profile request completed - GET /auth/profile")
+	logger.Debug("Profile request completed - GET /auth/profile")
 	return c.JSON(http.StatusOK, ProfileDTO{
 		ID:           user.ID,
 		FirstName:    user.FirstName,
@@ -245,30 +244,30 @@ func Profile(c echo.Context) error {
 }
 
 func OAuth(c echo.Context) error {
-	log.Debugf("OAuth request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("OAuth request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	oauthToken := new(dto.OAuthToken)
 	if err := c.Bind(oauthToken); err != nil {
-		log.Error("Bad request: ", err)
+		logger.Error("Bad request", "error", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"detail": "Bad request"})
 	}
 
 	ctx := context.Background()
 	payload, err := idtoken.Validate(ctx, oauthToken.Credential, cfg.GoogleClientID)
 	if err != nil {
-		log.Error("Error verifying Google JWT: ", err)
+		logger.Error("Error verifying Google JWT", "error", err)
 		return c.JSON(http.StatusUnauthorized, map[string]string{"detail": "Invalid token"})
 	}
 
 	email, emailOk := payload.Claims["email"].(string)
 	if !emailOk || email == "" {
-		log.Error("No email provided in token")
+		logger.Error("No email provided in token")
 		return c.JSON(http.StatusUnprocessableEntity, map[string]string{"detail": "No email provided"})
 	}
 
 	emailVerified, emailVerifiedOk := payload.Claims["email_verified"].(bool)
 	if !emailVerifiedOk || !emailVerified {
-		log.Errorf("Error while logging in user: [%s]: Email not verified", email)
+		logger.Error("Error while logging in user: Email not verified", "email", email)
 		return c.JSON(http.StatusUnauthorized, map[string]string{"detail": "Email not verified"})
 	}
 
@@ -281,20 +280,20 @@ func OAuth(c echo.Context) error {
 	user, err := sm.UserService.LoginOrRegisterOAuth(email, givenName, familyName)
 	if err != nil {
 		if _, ok := err.(*appErrors.UserNotActivatedError); ok {
-			log.Errorf("Error while logging in user: [%s]: %v", email, err)
+			logger.Error("Error while logging in user", "email", email, "error", err)
 			return c.JSON(http.StatusUnauthorized, map[string]string{"detail": "User not activated"})
 		}
-		log.Errorf("Error while logging in user: [%s]: %v", email, err)
+		logger.Error("Error while logging in user", "email", email, "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"detail": "Internal server error. See logs for details"})
 	}
 
 	signedToken, err := utils.GenerateAccessToken(user, cfg)
 	if err != nil {
-		log.Error("Error generating access token: ", err)
+		logger.Error("Error generating access token", "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"detail": "Internal server error. See logs for details"})
 	}
 
-	log.Debug("OAuth request completed - POST /auth/oauth")
+	logger.Debug("OAuth request completed - POST /auth/oauth")
 	return c.JSON(http.StatusOK, dto.Token{
 		AccessToken: signedToken,
 		TokenType:   "Bearer",

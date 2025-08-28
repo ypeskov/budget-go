@@ -9,10 +9,10 @@ import (
 	"sync"
 
 	"ypeskov/budget-go/internal/dto"
+	"ypeskov/budget-go/internal/logger"
 
 	"github.com/wcharczuk/go-chart/v2"
 	"github.com/wcharczuk/go-chart/v2/drawing"
-	log "github.com/sirupsen/logrus"
 )
 
 // pieSliceLabel represents a label and amount for a pie slice with a color
@@ -47,7 +47,7 @@ var (
 
 func NewChartService() ChartService {
 	chartOnce.Do(func() {
-		log.Debug("Creating ChartService instance")
+		logger.Debug("Creating ChartService instance")
 		chartInstance = &ChartServiceInstance{}
 	})
 

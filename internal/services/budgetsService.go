@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 	"ypeskov/budget-go/internal/dto"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/models"
 	budgetRepo "ypeskov/budget-go/internal/repositories/budgets"
 
 	"github.com/shopspring/decimal"
-	log "github.com/sirupsen/logrus"
 )
 
 type BudgetsService interface {
@@ -43,7 +43,7 @@ var (
 
 func NewBudgetsService(budgetsRepository budgetRepo.Repository, sManager *Manager) BudgetsService {
 	budgetsOnce.Do(func() {
-		log.Debug("Creating BudgetsService instance")
+		logger.Debug("Creating BudgetsService instance")
 		budgetsInstance = &BudgetsServiceInstance{
 			budgetsRepository: budgetsRepository,
 			sm:                sManager,
@@ -54,7 +54,7 @@ func NewBudgetsService(budgetsRepository budgetRepo.Repository, sManager *Manage
 }
 
 func (s *BudgetsServiceInstance) CreateBudget(budgetDTO dto.CreateBudgetDTO, userID int) (*models.Budget, error) {
-	log.Debug("CreateBudget Service")
+	logger.Debug("CreateBudget Service")
 
 	// Validate period
 	if !models.ValidatePeriod(budgetDTO.Period) {
@@ -64,7 +64,7 @@ func (s *BudgetsServiceInstance) CreateBudget(budgetDTO dto.CreateBudgetDTO, use
 	// Validate and filter categories
 	validCategories, err := s.budgetsRepository.GetUserCategoriesForBudget(userID, budgetDTO.Categories)
 	if err != nil {
-		log.Error("Error validating categories: ", err)
+		logger.Error("Error validating categories", "error", err)
 		return nil, err
 	}
 
@@ -96,14 +96,14 @@ func (s *BudgetsServiceInstance) CreateBudget(budgetDTO dto.CreateBudgetDTO, use
 
 	createdBudget, err := s.budgetsRepository.CreateBudget(budget)
 	if err != nil {
-		log.Error("Error creating budget: ", err)
+		logger.Error("Error creating budget", "error", err)
 		return nil, err
 	}
 
 	// Fill budget with existing transactions
 	err = s.fillBudgetWithExistingTransactions(*createdBudget.ID, userID)
 	if err != nil {
-		log.Error("Error filling budget with existing transactions: ", err)
+		logger.Error("Error filling budget with existing transactions", "error", err)
 		// Don't fail the creation, just log the error
 	}
 
@@ -111,7 +111,7 @@ func (s *BudgetsServiceInstance) CreateBudget(budgetDTO dto.CreateBudgetDTO, use
 }
 
 func (s *BudgetsServiceInstance) UpdateBudget(budgetDTO dto.UpdateBudgetDTO, userID int) (*models.Budget, error) {
-	log.Debug("UpdateBudget Service")
+	logger.Debug("UpdateBudget Service")
 
 	// Validate period
 	if !models.ValidatePeriod(budgetDTO.Period) {
@@ -121,14 +121,14 @@ func (s *BudgetsServiceInstance) UpdateBudget(budgetDTO dto.UpdateBudgetDTO, use
 	// Get existing budget to verify ownership
 	existingBudget, err := s.budgetsRepository.GetBudgetByID(budgetDTO.ID, userID)
 	if err != nil {
-		log.Error("Error getting existing budget: ", err)
+		logger.Error("Error getting existing budget", "error", err)
 		return nil, fmt.Errorf("budget not found")
 	}
 
 	// Validate and filter categories
 	validCategories, err := s.budgetsRepository.GetUserCategoriesForBudget(userID, budgetDTO.Categories)
 	if err != nil {
-		log.Error("Error validating categories: ", err)
+		logger.Error("Error validating categories", "error", err)
 		return nil, err
 	}
 
@@ -161,25 +161,25 @@ func (s *BudgetsServiceInstance) UpdateBudget(budgetDTO dto.UpdateBudgetDTO, use
 
 	err = s.budgetsRepository.UpdateBudget(budget)
 	if err != nil {
-		log.Error("Error updating budget: ", err)
+		logger.Error("Error updating budget", "error", err)
 		return nil, err
 	}
 
 	// Fill budget with existing transactions
 	err = s.fillBudgetWithExistingTransactions(*budget.ID, userID)
 	if err != nil {
-		log.Error("Error filling budget with existing transactions: ", err)
+		logger.Error("Error filling budget with existing transactions", "error", err)
 	}
 
 	return &budget, nil
 }
 
 func (s *BudgetsServiceInstance) GetUserBudgets(userID int, include string) ([]dto.BudgetResponseDTO, error) {
-	log.Debug("GetUserBudgets Service")
+	logger.Debug("GetUserBudgets Service")
 
 	budgetsWithCurrency, err := s.budgetsRepository.GetBudgetsWithCurrency(userID, include)
 	if err != nil {
-		log.Error("Error getting user budgets: ", err)
+		logger.Error("Error getting user budgets", "error", err)
 		return nil, err
 	}
 
@@ -215,11 +215,11 @@ func (s *BudgetsServiceInstance) GetUserBudgets(userID int, include string) ([]d
 }
 
 func (s *BudgetsServiceInstance) DeleteBudget(budgetID int, userID int) error {
-	log.Debug("DeleteBudget Service")
+	logger.Debug("DeleteBudget Service")
 
 	err := s.budgetsRepository.DeleteBudget(budgetID, userID)
 	if err != nil {
-		log.Error("Error deleting budget: ", err)
+		logger.Error("Error deleting budget", "error", err)
 		return err
 	}
 
@@ -227,11 +227,11 @@ func (s *BudgetsServiceInstance) DeleteBudget(budgetID int, userID int) error {
 }
 
 func (s *BudgetsServiceInstance) ArchiveBudget(budgetID int, userID int) error {
-	log.Debug("ArchiveBudget Service")
+	logger.Debug("ArchiveBudget Service")
 
 	err := s.budgetsRepository.ArchiveBudget(budgetID, userID)
 	if err != nil {
-		log.Error("Error archiving budget: ", err)
+		logger.Error("Error archiving budget", "error", err)
 		return err
 	}
 
@@ -239,11 +239,11 @@ func (s *BudgetsServiceInstance) ArchiveBudget(budgetID int, userID int) error {
 }
 
 func (s *BudgetsServiceInstance) ProcessOutdatedBudgets() ([]int, error) {
-	log.Debug("ProcessOutdatedBudgets Service")
+	logger.Debug("ProcessOutdatedBudgets Service")
 
 	outdatedBudgets, err := s.budgetsRepository.GetOutdatedBudgets()
 	if err != nil {
-		log.Error("Error getting outdated budgets: ", err)
+		logger.Error("Error getting outdated budgets", "error", err)
 		return nil, err
 	}
 
@@ -254,14 +254,14 @@ func (s *BudgetsServiceInstance) ProcessOutdatedBudgets() ([]int, error) {
 			// Create a copy for the next period
 			err = s.createCopyOfOutdatedBudget(budget)
 			if err != nil { // handle error but continue processing
-				log.Error("Error creating copy of outdated budget: ", err)
+				logger.Error("Error creating copy of outdated budget", "error", err)
 			}
 		}
 
 		// Archive the original budget
 		err = s.budgetsRepository.ArchiveBudget(*budget.ID, budget.UserID)
 		if err != nil {
-			log.Error("Error archiving outdated budget: ", err)
+			logger.Error("Error archiving outdated budget", "error", err)
 			continue
 		}
 
@@ -301,7 +301,7 @@ func (s *BudgetsServiceInstance) UpdateBudgetCollectedAmounts(userID int) error 
 				defer func() { <-semaphore }()
 
 				if err := s.fillBudgetWithExistingTransactionsOptimized(budgetID, userID, transactionCache, &cacheMutex); err != nil {
-					log.Errorf("Failed to update budget %d (%s) for user %d: %v", budgetID, budgetName, userID, err)
+					logger.Error("Failed to update budget", "budgetID", budgetID, "budgetName", budgetName, "userID", userID, "error", err)
 					errorChan <- fmt.Errorf("budget %d (%s): %w", budgetID, budgetName, err)
 				}
 			}(*budget.ID, budget.Name)
@@ -341,7 +341,7 @@ func (s *BudgetsServiceInstance) UpdateBudgetCollectedAmountsForCategories(userI
 		}
 		budgets, err := s.budgetsRepository.GetActiveBudgetsByCategoryAndDate(userID, p.CategoryID, p.Date)
 		if err != nil {
-			log.Errorf("failed to get active budgets for user=%d category=%d date=%s: %v", userID, p.CategoryID, p.Date.Format(time.DateOnly), err)
+			logger.Error("failed to get active budgets", "userID", userID, "categoryID", p.CategoryID, "date", p.Date.Format(time.DateOnly), "error", err)
 			continue
 		}
 		for _, b := range budgets {
@@ -374,7 +374,7 @@ func (s *BudgetsServiceInstance) UpdateBudgetCollectedAmountsForCategories(userI
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
 			if err := s.fillBudgetWithExistingTransactionsOptimized(id, userID, transactionCache, &cacheMutex); err != nil {
-				log.Errorf("failed to update budget %d for user %d: %v", id, userID, err)
+				logger.Error("failed to update budget", "budgetID", id, "userID", userID, "error", err)
 				firstErrOnce.Do(func() { firstErr = err })
 			}
 		}()
@@ -532,7 +532,7 @@ func (s *BudgetsServiceInstance) fillBudgetWithExistingTransactionsOptimized(bud
 }
 
 func (s *BudgetsServiceInstance) createCopyOfOutdatedBudget(budget models.Budget) error {
-	log.Debug("createCopyOfOutdatedBudget Service")
+	logger.Debug("createCopyOfOutdatedBudget Service")
 
 	endDate := *budget.EndDate
 	var newStartDate, newEndDate time.Time
@@ -577,7 +577,7 @@ func (s *BudgetsServiceInstance) createCopyOfOutdatedBudget(budget models.Budget
 
 	_, err := s.budgetsRepository.CreateBudget(newBudget)
 	if err != nil {
-		log.Error("Error creating copy of budget: ", err)
+		logger.Error("Error creating copy of budget", "error", err)
 		return err
 	}
 

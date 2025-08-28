@@ -4,11 +4,10 @@ import (
 	"sync"
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/errors"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/queue"
 	userRepo "ypeskov/budget-go/internal/repositories/user"
-
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -36,7 +35,7 @@ var (
 
 func NewUserService(userRepo userRepo.RepositoryInterface, queueService queue.QueueService) UserService {
 	userOnce.Do(func() {
-		log.Debug("Creating UserService instance")
+		logger.Debug("Creating UserService instance")
 		userInstance = &UserServiceInstance{
 			userRepo:     userRepo,
 			queueService: queueService,
@@ -47,10 +46,10 @@ func NewUserService(userRepo userRepo.RepositoryInterface, queueService queue.Qu
 }
 
 func (us *UserServiceInstance) GetAllUsers() ([]*models.User, error) {
-	log.Debug("GetAllUsers service called")
+	logger.Debug("GetAllUsers service called")
 	users, err := us.userRepo.GetAllUsers()
 	if err != nil {
-		log.Error("Error getting users: ", err)
+		logger.Error("Error getting users", "error", err)
 		return nil, err
 	}
 
@@ -58,10 +57,10 @@ func (us *UserServiceInstance) GetAllUsers() ([]*models.User, error) {
 }
 
 func (us *UserServiceInstance) GetUserByEmail(email string) (*models.User, error) {
-	log.Debug("GetUserByEmail service called")
+	logger.Debug("GetUserByEmail service called")
 	user, err := us.userRepo.GetUserByEmail(email)
 	if err != nil {
-		log.Error("Error getting user by email: ", err)
+		logger.Error("Error getting user by email", "error", err)
 		return nil, err
 	}
 
@@ -74,40 +73,40 @@ func (us *UserServiceInstance) GetUserByEmail(email string) (*models.User, error
 // This method is typically called after validating the user data.
 // It is not intended for direct use by clients of the service.
 func (us *UserServiceInstance) CreateUser(user *models.User) (*models.User, error) {
-	log.Debug("CreateUser service called")
+	logger.Debug("CreateUser service called")
 	createdUser, err := us.userRepo.CreateUser(user)
 	if err != nil {
-		log.Error("Error creating user: ", err)
+		logger.Error("Error creating user", "error", err)
 		return nil, err
 	}
 
-	log.Debug("Created user: ", createdUser)
+	logger.Debug("Created user", "user", createdUser)
 	return createdUser, nil
 }
 
 func (us *UserServiceInstance) RegisterUser(userDTO *dto.UserRegisterRequestDTO,
 	currenciesService CurrenciesService,
 	activationTokenService ActivationTokenService) (*models.User, error) {
-	log.Debug("RegisterUser service called")
+	logger.Debug("RegisterUser service called")
 
 	// Check if user already exists
 	existingUser, err := us.userRepo.GetUserByEmail(userDTO.Email)
 	if err == nil && existingUser != nil {
-		log.Error("User already exists with email: ", userDTO.Email)
+		logger.Error("User already exists with email", "email", userDTO.Email)
 		return nil, &errors.UserAlreadyExistsError{Email: userDTO.Email}
 	}
 
 	// Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(userDTO.Password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Error("Error hashing password: ", err)
+		logger.Error("Error hashing password", "error", err)
 		return nil, err
 	}
 
 	// Get default currency ID
 	defaultCurrency, err := currenciesService.GetCurrencyByCode(models.DefaultCurrency)
 	if err != nil {
-		log.Error("Error getting default currency: ", err)
+		logger.Error("Error getting default currency", "error", err)
 		// Fallback to currency ID 1 if default currency not found
 		defaultCurrency.ID = 1
 	}
@@ -125,14 +124,14 @@ func (us *UserServiceInstance) RegisterUser(userDTO *dto.UserRegisterRequestDTO,
 
 	createdUser, err := us.CreateUser(newUser)
 	if err != nil {
-		log.Error("Error creating user: ", err)
+		logger.Error("Error creating user", "error", err)
 		return nil, err
 	}
 
 	// Create activation token
 	activationToken, err := activationTokenService.CreateActivationToken(createdUser.ID)
 	if err != nil {
-		log.Error("Error creating activation token: ", err)
+		logger.Error("Error creating activation token", "error", err)
 		return nil, err
 	}
 
@@ -140,17 +139,17 @@ func (us *UserServiceInstance) RegisterUser(userDTO *dto.UserRegisterRequestDTO,
 	if us.queueService != nil {
 		err = us.queueService.EnqueueActivationEmail(createdUser.Email, createdUser.FirstName, activationToken.Token)
 		if err != nil {
-			log.Error("Error queuing activation email: ", err)
-			log.Warn("User registered but activation email failed to queue")
+			logger.Error("Error queuing activation email", "error", err)
+			logger.Warn("User registered but activation email failed to queue")
 		} else {
-			log.Info("Activation email queued successfully for user: ", createdUser.Email)
+			logger.Info("Activation email queued successfully for user", "email", createdUser.Email)
 		}
 	} else {
 		// Fallback to synchronous email sending if queue service is not available
 		err = activationTokenService.SendActivationEmail(createdUser, activationToken.Token)
 		if err != nil {
-			log.Error("Error sending activation email: ", err)
-			log.Warn("User registered but activation email failed to send")
+			logger.Error("Error sending activation email", "error", err)
+			logger.Warn("User registered but activation email failed to send")
 		}
 	}
 
@@ -158,11 +157,11 @@ func (us *UserServiceInstance) RegisterUser(userDTO *dto.UserRegisterRequestDTO,
 }
 
 func (us *UserServiceInstance) LoginOrRegisterOAuth(email, firstName, lastName string) (*models.User, error) {
-	log.Debug("LoginOrRegisterOAuth service called")
+	logger.Debug("LoginOrRegisterOAuth service called")
 
 	existingUser, err := us.userRepo.GetUserByEmail(email)
 	if err != nil {
-		log.Debug("User not found, creating new user")
+		logger.Debug("User not found, creating new user")
 		newUser := &models.User{
 			Email:          email,
 			FirstName:      firstName,
@@ -177,7 +176,7 @@ func (us *UserServiceInstance) LoginOrRegisterOAuth(email, firstName, lastName s
 	}
 
 	if !existingUser.IsActive {
-		log.Error("User not activated: ", email)
+		logger.Error("User not activated", "email", email)
 		return nil, &errors.UserNotActivatedError{Email: email}
 	}
 
@@ -185,40 +184,40 @@ func (us *UserServiceInstance) LoginOrRegisterOAuth(email, firstName, lastName s
 }
 
 func (us *UserServiceInstance) LoginUser(loginDTO *dto.UserLoginDTO) (*models.User, error) {
-	log.Debug("LoginUser service called")
+	logger.Debug("LoginUser service called")
 
 	// Get user by email
 	user, err := us.userRepo.GetUserByEmail(loginDTO.Email)
 	if err != nil {
-		log.Warn("Error getting user by email: ", err)
+		logger.Warn("Error getting user by email", "error", err)
 		return nil, &errors.UserNotFoundError{Email: loginDTO.Email}
 	}
 
 	// Check if user is deleted
 	if user.IsDeleted {
-		log.Warn("User is deleted: ", loginDTO.Email)
+		logger.Warn("User is deleted", "email", loginDTO.Email)
 		return nil, &errors.UserDeletedError{Email: loginDTO.Email}
 	}
 
 	// Check if user is activated
 	if !user.IsActive {
-		log.Warn("User is not activated: ", loginDTO.Email)
+		logger.Warn("User is not activated", "email", loginDTO.Email)
 		return nil, &errors.UserNotActivatedError{Email: loginDTO.Email}
 	}
 
 	// Compare password
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(loginDTO.Password))
 	if err != nil {
-		log.Warn("Passwords do not match for user: ", loginDTO.Email)
+		logger.Warn("Passwords do not match for user", "email", loginDTO.Email)
 		return nil, &errors.InvalidCredentialsError{Email: loginDTO.Email}
 	}
 
-	log.Debug("User login successful: ", loginDTO.Email)
+	logger.Debug("User login successful", "email", loginDTO.Email)
 	return user, nil
 }
 
 func (us *UserServiceInstance) ActivateUser(userID int) error {
-	log.Debug("ActivateUser service called for user ID: ", userID)
+	logger.Debug("ActivateUser service called for user ID", "userID", userID)
 
 	return us.userRepo.ActivateUser(userID)
 }

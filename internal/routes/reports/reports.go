@@ -11,7 +11,7 @@ import (
 	"ypeskov/budget-go/internal/services"
 
 	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 )
 
 var (
@@ -40,7 +40,7 @@ func getUserID(c echo.Context) (int, error) {
 }
 
 func GetCashFlow(c echo.Context) error {
-	log.Debugf("GetCashFlow request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetCashFlow request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	userID, err := getUserID(c)
 	if err != nil {
@@ -54,16 +54,16 @@ func GetCashFlow(c echo.Context) error {
 
 	result, err := sm.ReportsService.GetCashFlow(userID, input)
 	if err != nil {
-		log.Errorf("Error generating cash flow report for user %d: %v", userID, err)
+		logger.Error("Error generating cash flow report", "userID", userID, "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
 	}
 
-	log.Debug("GetCashFlow request completed - POST /reports/cashflow")
+	logger.Debug("GetCashFlow request completed - POST /reports/cashflow")
 	return c.JSON(http.StatusOK, result)
 }
 
 func GetBalanceReport(c echo.Context) error {
-	log.Debugf("GetBalanceReport request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetBalanceReport request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	userID, err := getUserID(c)
 	if err != nil {
@@ -77,16 +77,16 @@ func GetBalanceReport(c echo.Context) error {
 
 	result, err := sm.ReportsService.GetBalanceReport(userID, input)
 	if err != nil {
-		log.Errorf("Error generating balance report for user %d: %v", userID, err)
+		logger.Error("Error generating balance report", "userID", userID, "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
 	}
 
-	log.Debug("GetBalanceReport request completed - POST /reports/balance")
+	logger.Debug("GetBalanceReport request completed - POST /reports/balance")
 	return c.JSON(http.StatusOK, result)
 }
 
 func GetNonHiddenBalance(c echo.Context) error {
-	log.Debugf("GetNonHiddenBalance request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetNonHiddenBalance request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	userID, err := getUserID(c)
 	if err != nil {
@@ -100,16 +100,16 @@ func GetNonHiddenBalance(c echo.Context) error {
 
 	result, err := sm.ReportsService.GetNonHiddenBalanceReport(userID, input)
 	if err != nil {
-		log.Errorf("Error generating non-hidden balance report for user %d: %v", userID, err)
+		logger.Error("Error generating non-hidden balance report", "userID", userID, "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
 	}
 
-	log.Debug("GetNonHiddenBalance request completed - POST /reports/balance/non-hidden")
+	logger.Debug("GetNonHiddenBalance request completed - POST /reports/balance/non-hidden")
 	return c.JSON(http.StatusOK, result)
 }
 
 func GetExpensesByCategories(c echo.Context) error {
-	log.Debugf("GetExpensesByCategories request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetExpensesByCategories request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	userID, err := getUserID(c)
 	if err != nil {
@@ -118,22 +118,22 @@ func GetExpensesByCategories(c echo.Context) error {
 
 	var input dto.ExpensesReportInputDTO
 	if err := c.Bind(&input); err != nil {
-		log.Errorf("Error binding expenses report input for user %d: %v", userID, err)
+		logger.Error("Error binding expenses report input", "userID", userID, "error", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid input"})
 	}
 
 	result, err := sm.ReportsService.GetExpensesByCategories(userID, input)
 	if err != nil {
-		log.Errorf("Error generating expenses by categories report for user %d: %v", userID, err)
+		logger.Error("Error generating expenses by categories report", "userID", userID, "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating report"})
 	}
 
-	log.Debug("GetExpensesByCategories request completed - POST /reports/expenses-by-categories")
+	logger.Debug("GetExpensesByCategories request completed - POST /reports/expenses-by-categories")
 	return c.JSON(http.StatusOK, result)
 }
 
 func GetDiagram(c echo.Context) error {
-	log.Debugf("GetDiagram request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetDiagram request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	userID, err := getUserID(c)
 	if err != nil {
@@ -161,24 +161,24 @@ func GetDiagram(c echo.Context) error {
 	// Get expenses data for the given date range
 	data, err := sm.ReportsService.GetExpensesDiagramData(userID, startDate, endDate)
 	if err != nil {
-		log.Errorf("Error getting expenses data for diagram for user %d: %v", userID, err)
+		logger.Error("Error getting expenses data for diagram", "userID", userID, "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating diagram"})
 	}
 
 	// Generate pie chart image (as base64 data URL)
 	chartImage, err := sm.ChartService.GeneratePieChart(data, "")
 	if err != nil {
-		log.Errorf("Error generating pie chart for user %d: %v", userID, err)
+		logger.Error("Error generating pie chart", "userID", userID, "error", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error generating diagram image"})
 	}
 
 	// Return the image in the expected format: { "image": "data:image/png;base64,..." }
-	log.Debug("GetDiagram request completed - GET /reports/diagram/:diagram_type/:start_date/:end_date")
+	logger.Debug("GetDiagram request completed - GET /reports/diagram/:diagram_type/:start_date/:end_date")
 	return c.JSON(http.StatusOK, chartImage)
 }
 
 func GetExpensesData(c echo.Context) error {
-	log.Debugf("GetExpensesData request started: %s %s", c.Request().Method, c.Request().URL)
+	logger.Debug("GetExpensesData request started", "method", c.Request().Method, "url", c.Request().URL)
 
 	userID, err := getUserID(c)
 	if err != nil {
@@ -203,7 +203,7 @@ func GetExpensesData(c echo.Context) error {
 	// Sort desc
 	sort.Slice(aggregated, func(i, j int) bool { return aggregated[i].Amount > aggregated[j].Amount })
 
-	log.Debug("GetExpensesData request completed - POST /reports/expenses-data")
+	logger.Debug("GetExpensesData request completed - POST /reports/expenses-data")
 	return c.JSON(http.StatusOK, aggregated)
 }
 

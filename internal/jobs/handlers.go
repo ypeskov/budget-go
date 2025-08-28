@@ -9,7 +9,7 @@ import (
 	"ypeskov/budget-go/internal/services"
 
 	"github.com/hibiken/asynq"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 )
 
 type Handlers struct{ SM *services.Manager }
@@ -25,7 +25,7 @@ func (h *Handlers) HandleEmailSend(ctx context.Context, t *asynq.Task) error {
 }
 
 func (h *Handlers) HandleExchangeRatesDaily(ctx context.Context, t *asynq.Task) error {
-	log.Info("Exchange rates update task started")
+	logger.Info("Exchange rates update task started")
 
 	// Update exchange rates for today
 	today := time.Now()
@@ -45,12 +45,12 @@ func (h *Handlers) HandleExchangeRatesDaily(ctx context.Context, t *asynq.Task) 
 		return err
 	}
 
-	log.Info("Exchange rates update task completed successfully")
+	logger.Info("Exchange rates update task completed successfully")
 	return nil
 }
 
 func (h *Handlers) HandleDBBackupDaily(ctx context.Context, t *asynq.Task) error {
-	log.Info("Starting database backup task")
+	logger.Info("Starting database backup task")
 
 	backupResult, err := h.SM.BackupService.CreatePostgresBackup()
 	if err != nil {
@@ -66,19 +66,19 @@ func (h *Handlers) HandleDBBackupDaily(ctx context.Context, t *asynq.Task) error
 		return err
 	}
 
-	log.Info("Database backup task completed successfully")
+	logger.Info("Database backup task completed successfully")
 	return nil
 }
 
 func (h *Handlers) HandleBudgetsDailyProcessing(ctx context.Context, t *asynq.Task) error {
-	log.Info("Starting budgets daily processing task")
+	logger.Info("Starting budgets daily processing task")
 	_, err := h.SM.BudgetsService.ProcessOutdatedBudgets()
 	if err != nil {
 		log.Errorf("Budgets daily processing failed: %v", err)
 		return err
 	}
 
-	log.Info("Budgets daily processing task completed successfully")
+	logger.Info("Budgets daily processing task completed successfully")
 	return nil
 }
 

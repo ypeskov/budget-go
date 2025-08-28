@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	"ypeskov/budget-go/internal/config"
+	"ypeskov/budget-go/internal/logger"
 )
 
 type CurrencyBeaconService interface {
@@ -32,7 +32,7 @@ var (
 
 func NewCurrencyBeaconService(cfg *config.Config) CurrencyBeaconService {
 	currencyBeaconOnce.Do(func() {
-		log.Debug("Creating CurrencyBeaconService instance")
+		logger.Debug("Creating CurrencyBeaconService instance")
 		currencyBeaconInstance = &CurrencyBeaconServiceInstance{config: cfg}
 	})
 
@@ -50,24 +50,24 @@ func (c *CurrencyBeaconServiceInstance) GetCurrencyRates(date string) (map[strin
 		c.config.CurrencyBeaconAPIKey,
 		date)
 
-	log.Infof("Fetching exchange rates from CurrencyBeacon for date: %s", date)
+	logger.Info("Fetching exchange rates from CurrencyBeacon for date", "date", date)
 
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Errorf("Failed to make request to CurrencyBeacon: %v", err)
+		logger.Error("Failed to make request to CurrencyBeacon", "error", err)
 		return nil, fmt.Errorf("failed to fetch exchange rates: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		log.Errorf("CurrencyBeacon API error: status %d, body: %s", resp.StatusCode, string(body))
+		logger.Error("CurrencyBeacon API error", "status", resp.StatusCode, "body", string(body))
 		return nil, fmt.Errorf("API request failed with status %d", resp.StatusCode)
 	}
 
 	var response CurrencyBeaconResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		log.Errorf("Failed to decode CurrencyBeacon response: %v", err)
+		logger.Error("Failed to decode CurrencyBeacon response", "error", err)
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
@@ -78,8 +78,7 @@ func (c *CurrencyBeaconServiceInstance) GetCurrencyRates(date string) (map[strin
 		"service_name":       "CurrencyBeacon",
 	}
 
-	log.Infof("Successfully fetched exchange rates for %s (base: %s, %d rates)",
-		response.Date, response.Base, len(response.Rates))
+	logger.Info("Successfully fetched exchange rates", "date", date, "base", response.Base, "rateCount", len(response.Rates))
 
 	return result, nil
 }

@@ -6,7 +6,7 @@ import (
 	"ypeskov/budget-go/internal/constants"
 
 	"github.com/hibiken/asynq"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 )
 
 type ActivationEmailPayload struct {
@@ -32,7 +32,7 @@ var (
 
 func NewQueueService(asynqClient *asynq.Client) QueueService {
 	queueOnce.Do(func() {
-		log.Debug("Creating Queue service instance")
+		logger.Debug("Creating Queue service instance")
 		queueServiceInstance = &QueueServiceInstance{
 			asynqClient: asynqClient,
 		}
@@ -50,13 +50,13 @@ func (qs *QueueServiceInstance) EnqueueActivationEmail(userEmail, userName, toke
 
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		log.Errorf("Error marshaling activation email payload: %v", err)
+		logger.Error("Error marshaling activation email payload", "error", err)
 		return err
 	}
 
 	_, err = qs.asynqClient.Enqueue(asynq.NewTask(constants.TaskSendActivationEmail, payloadBytes), asynq.Queue("emails"))
 	if err != nil {
-		log.Errorf("Error queuing activation email task: %v", err)
+		logger.Error("Error queuing activation email task", "error", err)
 		return err
 	}
 
@@ -66,7 +66,7 @@ func (qs *QueueServiceInstance) EnqueueActivationEmail(userEmail, userName, toke
 func (qs *QueueServiceInstance) EnqueueDBBackup() error {
 	_, err := qs.asynqClient.Enqueue(asynq.NewTask(constants.TaskDBBackupDaily, nil), asynq.Queue("default"))
 	if err != nil {
-		log.Errorf("Error queuing DB backup task: %v", err)
+		logger.Error("Error queuing DB backup task", "error", err)
 		return err
 	}
 	return nil
@@ -75,7 +75,7 @@ func (qs *QueueServiceInstance) EnqueueDBBackup() error {
 func (qs *QueueServiceInstance) EnqueueExchangeRatesUpdate() error {
 	_, err := qs.asynqClient.Enqueue(asynq.NewTask(constants.TaskExchangeRatesDaily, nil), asynq.Queue("default"))
 	if err != nil {
-		log.Errorf("Error queuing exchange rates update task: %v", err)
+		logger.Error("Error queuing exchange rates update task", "error", err)
 		return err
 	}
 	return nil

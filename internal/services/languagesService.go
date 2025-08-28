@@ -2,10 +2,9 @@ package services
 
 import (
 	"sync"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/languages"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type LanguagesService interface {
@@ -23,7 +22,7 @@ var (
 
 func NewLanguagesService(languagesRepo languages.Repository) LanguagesService {
 	languagesOnce.Do(func() {
-		log.Debug("Creating LanguagesService instance")
+		logger.Debug("Creating LanguagesService instance")
 		languagesInstance = &LanguagesServiceInstance{
 			languagesRepo: languagesRepo,
 		}

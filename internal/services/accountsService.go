@@ -7,11 +7,11 @@ import (
 	"time"
 	"ypeskov/budget-go/internal/dto"
 	appErrors "ypeskov/budget-go/internal/errors"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/accounts"
 
 	"github.com/shopspring/decimal"
-	log "github.com/sirupsen/logrus"
 )
 
 type AccountsService interface {
@@ -40,7 +40,7 @@ var (
 
 func NewAccountsService(accountsRepository accounts.Repository, sManager *Manager) AccountsService {
 	accountsOnce.Do(func() {
-		log.Debug("Creating AccountsService instance")
+		logger.Debug("Creating AccountsService instance")
 		accountsInstance = &AccountsServiceInstance{
 			accountsRepo: accountsRepository,
 			sm:           sManager,
@@ -199,7 +199,7 @@ func buildAccountDTO(account models.Account) (dto.AccountDTO, error) {
 }
 
 func (a *AccountsServiceInstance) UpdateAccount(account models.Account) (dto.AccountDTO, error) {
-	log.Debug("UpdateAccount Service")
+	logger.Debug("UpdateAccount Service")
 	account.UpdatedAt = time.Now()
 
 	if account.InitialBalance == nil {
@@ -215,7 +215,7 @@ func (a *AccountsServiceInstance) UpdateAccount(account models.Account) (dto.Acc
 	updatedAccount, err := a.accountsRepo.UpdateAccount(account)
 	if err != nil {
 		if errors.Is(err, appErrors.ErrNoAccountFound) {
-			log.Errorf("No account found with the provided ID: %v", account.ID)
+			logger.Error("No account found with the provided ID", "accountID", account.ID)
 			return dto.AccountDTO{}, appErrors.ErrNoAccountFound
 		}
 		return dto.AccountDTO{}, err
@@ -230,11 +230,11 @@ func (a *AccountsServiceInstance) UpdateAccount(account models.Account) (dto.Acc
 }
 
 func (a *AccountsServiceInstance) UpdateAccountBalance(accountId int, newBalance decimal.Decimal) error {
-	log.Debugf("UpdateAccountBalance Service: account %d, new balance %v", accountId, newBalance)
+	logger.Debug("UpdateAccountBalance Service", "accountId", accountId, "newBalance", newBalance)
 	return a.accountsRepo.UpdateAccountBalance(accountId, newBalance)
 }
 
 func (a *AccountsServiceInstance) GetAccountBalance(accountId int) (decimal.Decimal, error) {
-	log.Debugf("GetAccountBalance Service: account %d", accountId)
+	logger.Debug("GetAccountBalance Service", "accountId", accountId)
 	return a.accountsRepo.GetAccountBalance(accountId)
 }

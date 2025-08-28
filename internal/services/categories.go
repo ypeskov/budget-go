@@ -5,10 +5,9 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/models"
 	"ypeskov/budget-go/internal/repositories/categories"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // Helper functions for safely dereferencing pointers
@@ -55,7 +54,7 @@ var (
 
 func NewCategoriesService(repository categories.Repository) CategoriesService {
 	categoriesOnce.Do(func() {
-		log.Debug("Creating CategoriesService instance")
+		logger.Debug("Creating CategoriesService instance")
 		categoriesInstance = &CategoryServiceInstance{
 			categoriesRepo: repository,
 		}

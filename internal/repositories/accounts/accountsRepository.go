@@ -10,7 +10,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/shopspring/decimal"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 )
 
 type Repository interface {
@@ -38,7 +38,7 @@ func (a *RepositoryInstance) GetUserAccounts(
 	includeDeleted bool,
 	archivedOnly bool) ([]dto.AccountDTO, error) {
 
-	log.Debug("GetUserAccounts repository")
+	logger.Debug("GetUserAccounts repository")
 	var getAccountsQuery = `
 SELECT 
     a.id, a.user_id, a.name, a.balance, a.credit_limit, a.opening_date, a.comment,
@@ -100,7 +100,7 @@ func (a *RepositoryInstance) GetAccountById(id int) (models.Account, error) {
 	var account models.Account
 	err := db.Get(&account, getAccountByIdQuery, id)
 	if err != nil {
-		log.Error("Error getting account by id: ", err)
+		logger.Error("Error getting account by id: ", err)
 		return models.Account{}, err
 	}
 
@@ -141,7 +141,7 @@ RETURNING id, user_id, name, balance, account_type_id, currency_id, initial_bala
 }
 
 func (a *RepositoryInstance) UpdateAccount(account models.Account) (models.Account, error) {
-	log.Debug("UpdateAccount Repository")
+	logger.Debug("UpdateAccount Repository")
 	const updateAccountQuery = `
 UPDATE accounts
 SET user_id = $1, name = $2, balance = $3, account_type_id = $4, currency_id = $5, 
@@ -173,10 +173,10 @@ RETURNING id, user_id, name, balance, account_type_id, currency_id, initial_bala
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.Errorf("No account found with the provided ID: %v", account.ID)
+			logger.Error("No account found with the provided ID", "accountID", account.ID)
 			return models.Account{}, appErrors.ErrNoAccountFound
 		}
-		log.Error("Error updating account: ", err)
+		logger.Error("Error updating account: ", err)
 		return models.Account{}, err
 	}
 
@@ -184,7 +184,7 @@ RETURNING id, user_id, name, balance, account_type_id, currency_id, initial_bala
 }
 
 func (a *RepositoryInstance) UpdateAccountBalance(accountId int, newBalance decimal.Decimal) error {
-	log.Debugf("UpdateAccountBalance Repository: account %d, new balance %v", accountId, newBalance)
+	logger.Debug("UpdateAccountBalance Repository", "account", accountId, "newBalance", newBalance)
 	const updateBalanceQuery = `
 		UPDATE accounts 
 		SET balance = $1, updated_at = NOW() 
@@ -193,7 +193,7 @@ func (a *RepositoryInstance) UpdateAccountBalance(accountId int, newBalance deci
 
 	result, err := db.Exec(updateBalanceQuery, newBalance, accountId)
 	if err != nil {
-		log.Error("Error updating account balance: ", err)
+		logger.Error("Error updating account balance: ", err)
 		return err
 	}
 
@@ -210,7 +210,7 @@ func (a *RepositoryInstance) UpdateAccountBalance(accountId int, newBalance deci
 }
 
 func (a *RepositoryInstance) GetAccountBalance(accountId int) (decimal.Decimal, error) {
-	log.Debugf("GetAccountBalance Repository: account %d", accountId)
+	logger.Debug("GetAccountBalance Repository", "account", accountId)
 	const getBalanceQuery = `SELECT balance FROM accounts WHERE id = $1`
 
 	var balance decimal.Decimal
@@ -219,7 +219,7 @@ func (a *RepositoryInstance) GetAccountBalance(accountId int) (decimal.Decimal, 
 		if errors.Is(err, sql.ErrNoRows) {
 			return decimal.Zero, appErrors.ErrNoAccountFound
 		}
-		log.Error("Error getting account balance: ", err)
+		logger.Error("Error getting account balance: ", err)
 		return decimal.Zero, err
 	}
 

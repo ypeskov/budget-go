@@ -7,8 +7,7 @@ import (
 	"html/template"
 	"sync"
 	"ypeskov/budget-go/internal/config"
-
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 )
 
 //go:embed templates/email/*.html
@@ -33,7 +32,7 @@ var (
 func NewEmailTemplateRenderer(cfg *config.Config) (EmailTemplateRenderer, error) {
 	var err error
 	emailTemplateOnce.Do(func() {
-		log.Debug("Creating EmailTemplateRenderer instance")
+		logger.Debug("Creating EmailTemplateRenderer instance")
 		templates, parseErr := template.ParseFS(emailTemplates, "templates/email/*.html")
 		if parseErr != nil {
 			err = fmt.Errorf("failed to parse email templates: %w", parseErr)
@@ -96,14 +95,14 @@ func (r *EmailTemplateRendererInstance) renderTemplate(templateName string, data
 	// Parse base template and the specific template
 	tmpl, err := template.New("email").ParseFS(emailTemplates, "templates/email/base.html", "templates/email/"+templateName)
 	if err != nil {
-		log.Errorf("Failed to parse templates for %s: %v", templateName, err)
+		logger.Error("Failed to parse templates", "templateName", templateName, "error", err)
 		return "", fmt.Errorf("failed to parse templates for %s: %w", templateName, err)
 	}
 
 	var buf bytes.Buffer
 	err = tmpl.ExecuteTemplate(&buf, templateName, data)
 	if err != nil {
-		log.Errorf("Failed to execute template %s: %v", templateName, err)
+		logger.Error("Failed to execute template", "templateName", templateName, "error", err)
 		return "", fmt.Errorf("failed to execute template %s: %w", templateName, err)
 	}
 	return buf.String(), nil

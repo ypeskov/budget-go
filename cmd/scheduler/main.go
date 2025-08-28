@@ -7,24 +7,18 @@ import (
 
 	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/constants"
+	"ypeskov/budget-go/internal/logger"
 
 	"github.com/hibiken/asynq"
-	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 	cfg := config.New()
-
-	lvlStr := strings.TrimSpace(strings.ToLower(cfg.LogLevel))
-	level, err := log.ParseLevel(lvlStr)
-	if err != nil {
-		log.Fatalf("Invalid log level in config: %s", cfg.LogLevel)
-	}
-	log.SetLevel(level)
+	logger.Init(cfg.LogLevel)
 
 	loc, err := time.LoadLocation(cfg.Timezone)
 	if err != nil {
-		log.Fatalf("failed to load timezone %s: %v", cfg.Timezone, err)
+		logger.Fatal("failed to load timezone", "timezone", cfg.Timezone, "error", err)
 	}
 
 	sch := asynq.NewScheduler(asynq.RedisClientOpt{Addr: cfg.RedisAddr}, &asynq.SchedulerOpts{Location: loc})
@@ -35,24 +29,24 @@ func main() {
 	bud := fmt.Sprintf("%d %d * * *", cfg.BudgetsProcMinute, cfg.BudgetsProcHour)
 
 	if _, err := sch.Register(ex, asynq.NewTask(constants.TaskExchangeRatesDaily, nil)); err != nil {
-		log.Fatal(err)
+		logger.Fatal(err.Error())
 	} else {
-		log.Infof("Scheduled task '%s' to run at cron '%s'", constants.TaskExchangeRatesDaily, ex)
+		logger.Info("Scheduled task to run at cron", "task", constants.TaskExchangeRatesDaily, "cron", ex)
 	}
 
 	if _, err := sch.Register(db, asynq.NewTask(constants.TaskDBBackupDaily, nil)); err != nil {
-		log.Fatal(err)
+		logger.Fatal(err.Error())
 	} else {
-		log.Infof("Scheduled task '%s' to run at cron '%s'", constants.TaskDBBackupDaily, db)
+		logger.Info("Scheduled task to run at cron", "task", constants.TaskDBBackupDaily, "cron", db)
 	}
 
 	if _, err := sch.Register(bud, asynq.NewTask(constants.TaskBudgetsDailyProcessing, nil)); err != nil {
-		log.Fatal(err)
+		logger.Fatal(err.Error())
 	} else {
-		log.Infof("Scheduled task '%s' to run at cron '%s'", constants.TaskBudgetsDailyProcessing, bud)
+		logger.Info("Scheduled task to run at cron", "task", constants.TaskBudgetsDailyProcessing, "cron", bud)
 	}
 
 	if err := sch.Run(); err != nil {
-		log.Fatal(err)
+		logger.Fatal(err.Error())
 	}
 }

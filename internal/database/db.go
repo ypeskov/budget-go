@@ -3,7 +3,7 @@ package database
 import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
-	log "github.com/sirupsen/logrus"
+	"ypeskov/budget-go/internal/logger"
 
 	"ypeskov/budget-go/internal/config"
 )
@@ -17,7 +17,7 @@ type Database struct {
 
 func New(cfg *config.Config) (*Database, error) {
 	if DbInstance != nil {
-		log.Info("Returning existing database instance")
+		logger.Info("Returning existing database instance")
 		return DbInstance, nil
 	}
 
@@ -40,7 +40,7 @@ func New(cfg *config.Config) (*Database, error) {
 		return nil, err
 	}
 
-	log.Infof("Connected to database %s", cfg.DbName)
+	logger.Info("Connected to database", "database", cfg.DbName)
 
 	DbInstance = &Database{Db: db, }
 	return DbInstance, nil

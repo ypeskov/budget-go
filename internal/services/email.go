@@ -14,9 +14,8 @@ import (
 	"time"
 
 	"ypeskov/budget-go/internal/config"
+	"ypeskov/budget-go/internal/logger"
 	"ypeskov/budget-go/internal/models"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type EmailService interface {
@@ -38,7 +37,7 @@ var (
 func NewEmailService(cfg *config.Config) (EmailService, error) {
 	var err error
 	emailOnce.Do(func() {
-		log.Debug("Creating EmailServiceInstance instance")
+		logger.Debug("Creating EmailServiceInstance instance")
 		templateRenderer, renderErr := NewEmailTemplateRenderer(cfg)
 		if renderErr != nil {
 			err = fmt.Errorf("failed to initialize email template renderer: %w", renderErr)
@@ -66,13 +65,13 @@ type EmailData struct {
 
 func (s *EmailServiceInstance) SendBackupNotification(backupResult *BackupResult) error {
 	if s.cfg.AdminEmailsRaw == "" {
-		log.Error("No admin emails configured for backup notification")
+		logger.Error("No admin emails configured for backup notification")
 		return fmt.Errorf("no admin emails configured for notifications")
 	}
 
 	recipients := s.parseAdminEmails()
 	if len(recipients) == 0 {
-		log.Error("No valid admin emails found")
+		logger.Error("No valid admin emails found")
 		return fmt.Errorf("no valid admin emails found")
 	}
 
@@ -85,7 +84,7 @@ func (s *EmailServiceInstance) SendBackupNotification(backupResult *BackupResult
 		AppName:   s.cfg.AppName,
 	})
 	if err != nil {
-		log.Errorf("Failed to render backup email template: %v", err)
+		logger.Error("Failed to render backup email template", "error", err)
 		return fmt.Errorf("failed to render backup email template: %w", err)
 	}
 
@@ -101,13 +100,13 @@ func (s *EmailServiceInstance) SendBackupNotification(backupResult *BackupResult
 
 func (s *EmailServiceInstance) SendExchangeRatesUpdateNotification(exchangeRates *models.ExchangeRates) error {
 	if s.cfg.AdminEmailsRaw == "" {
-		log.Error("No admin emails configured for exchange rates notification")
+		logger.Error("No admin emails configured for exchange rates notification")
 		return fmt.Errorf("no admin emails configured for notifications")
 	}
 
 	recipients := s.parseAdminEmails()
 	if len(recipients) == 0 {
-		log.Error("No valid admin emails found")
+		logger.Error("No valid admin emails found")
 		return fmt.Errorf("no valid admin emails found")
 	}
 
@@ -122,7 +121,7 @@ func (s *EmailServiceInstance) SendExchangeRatesUpdateNotification(exchangeRates
 		AppName:      s.cfg.AppName,
 	})
 	if err != nil {
-		log.Errorf("Failed to render exchange rates email template: %v", err)
+		logger.Error("Failed to render exchange rates email template", "error", err)
 		return fmt.Errorf("failed to render exchange rates email template: %w", err)
 	}
 
@@ -155,15 +154,15 @@ func (s *EmailServiceInstance) parseAdminEmails() []string {
 
 func (s *EmailServiceInstance) sendEmail(emailData *EmailData) error {
 	if s.cfg.SMTPHost == "" || s.cfg.SMTPUser == "" {
-		log.Error("SMTP not configured, would send email:", emailData.Subject)
-		log.Error("Email body:", emailData.Body)
+		logger.Error("SMTP not configured, would send email", "subject", emailData.Subject)
+		logger.Error("Email body", "body", emailData.Body)
 		return fmt.Errorf("SMTP not configured")
 	}
 
 	// Extract from address once (optimization)
 	fromAddr, err := s.extractEmailAddress()
 	if err != nil {
-		log.Errorf("Failed to extract from email address: %v", err)
+		logger.Error("Failed to extract from email address", "error", err)
 		return fmt.Errorf("failed to extract from email address: %w", err)
 	}
 
@@ -173,7 +172,7 @@ func (s *EmailServiceInstance) sendEmail(emailData *EmailData) error {
 	// Build base email content once (optimization)
 	baseEmailContent, err := s.buildBaseEmailContent(emailData)
 	if err != nil {
-		log.Errorf("Failed to build base email content: %v", err)
+		logger.Error("Failed to build base email content", "error", err)
 		return fmt.Errorf("failed to build base email content: %w", err)
 	}
 
@@ -184,11 +183,11 @@ func (s *EmailServiceInstance) sendEmail(emailData *EmailData) error {
 
 		err = smtp.SendMail(addr, auth, fromAddr, []string{recipient}, []byte(msg))
 		if err != nil {
-			log.Errorf("Failed to send email to %s: %v", recipient, err)
+			logger.Error("Failed to send email", "recipient", recipient, "error", err)
 			return fmt.Errorf("failed to send email to %s: %w", recipient, err)
 		}
 
-		log.Infof("Email '%s' sent to: %s", emailData.Subject, recipient)
+		logger.Info("Email sent", "subject", emailData.Subject, "recipient", recipient)
 	}
 
 	return nil
@@ -298,13 +297,13 @@ func (s *EmailServiceInstance) extractEmailAddress() (string, error) {
 }
 
 func (s *EmailServiceInstance) SendActivationEmail(toEmail, firstName, activationToken string) error {
-	log.Debug("Sending activation email to: ", toEmail)
+	logger.Debug("Sending activation email to", "email", toEmail)
 
 	activationLink := fmt.Sprintf("%s/activate/%s", s.cfg.FrontendURL, activationToken)
 	
 	// For development, just log the activation link instead of sending actual email
 	if s.cfg.SendUserEmails == false {
-		log.Infof("ACTIVATION EMAIL: Hi %s, please activate your account: %s", firstName, activationLink)
+		logger.Info("ACTIVATION EMAIL", "firstName", firstName, "activationLink", activationLink)
 		return nil
 	}
 
@@ -317,7 +316,7 @@ func (s *EmailServiceInstance) SendActivationEmail(toEmail, firstName, activatio
 		AppName:        s.cfg.AppName,
 	})
 	if err != nil {
-		log.Errorf("Failed to render activation email template: %v", err)
+		logger.Error("Failed to render activation email template", "error", err)
 		return fmt.Errorf("failed to render activation email template: %w", err)
 	}
 
