@@ -1,8 +1,6 @@
 package main
 
 import (
-	"strings"
-
 	"ypeskov/budget-go/internal/config"
 	"ypeskov/budget-go/internal/constants"
 	"ypeskov/budget-go/internal/database"
@@ -42,6 +40,6 @@ func main() {
 
 	// Run blocks and processes jobs until the process receives a shutdown signal
 	if err := srv.Run(mux); err != nil {
-		log.Fatal(err)
+		logger.Fatal("Failed to run worker server", "error", err)
 	}
 }

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---------- builder stage ----------
-FROM golang:1.23 AS builder
+FROM golang:1.25 AS builder
 WORKDIR /src
 
 # Enable Go build and module caches for faster incremental builds
