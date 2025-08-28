@@ -13,7 +13,6 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/labstack/gommon v0.4.2
-	github.com/lib/pq v1.10.9
 	github.com/shopspring/decimal v1.4.0
 	golang.org/x/crypto v0.41.0
 	google.golang.org/api v0.248.0

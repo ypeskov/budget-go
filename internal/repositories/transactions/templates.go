@@ -1,7 +1,6 @@
 package transactions
 
 import (
-	"github.com/lib/pq"
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/logger"
 )
@@ -51,7 +50,7 @@ func (r *RepositoryInstance) DeleteTemplates(templateIds []int, userId int) erro
 		DELETE FROM transaction_templates WHERE id = ANY($1) AND user_id = $2
 	`
 
-	_, err := r.db.Exec(query, pq.Array(templateIds), userId)
+	_, err := r.db.Exec(query, templateIds, userId)
 	if err != nil {
 		logger.Error("Error deleting templates", "error", err)
 		return err

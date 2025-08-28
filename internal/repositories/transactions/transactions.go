@@ -8,7 +8,6 @@ import (
 	"ypeskov/budget-go/internal/models"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
 	"ypeskov/budget-go/internal/logger"
 )
 
@@ -95,12 +94,12 @@ func buildFilters(accountIds []int,
 	var filters []string
 
 	if len(accountIds) > 0 {
-		params["account_ids"] = pq.Array(accountIds)
+		params["account_ids"] = accountIds
 		filters = append(filters, "transactions.account_id = ANY(:account_ids)")
 	}
 
 	if len(categoryIds) > 0 {
-		params["category_ids"] = pq.Array(categoryIds)
+		params["category_ids"] = categoryIds
 		filters = append(filters, "transactions.category_id = ANY(:category_ids)")
 	}
 
@@ -253,13 +252,13 @@ func (r *RepositoryInstance) GetExpenseTransactionsForBudget(userId int, categor
 	// Filter by category IDs
 	if len(categoryIds) > 0 {
 		filters = append(filters, "category_id = ANY(:category_ids)")
-		params["category_ids"] = pq.Array(categoryIds)
+		params["category_ids"] = categoryIds
 	}
 
 	// Filter by specific transaction IDs if provided
 	if len(transactionIds) > 0 {
 		filters = append(filters, "id = ANY(:transaction_ids)")
-		params["transaction_ids"] = pq.Array(transactionIds)
+		params["transaction_ids"] = transactionIds
 	}
 
 	if len(filters) > 0 {
