@@ -1,8 +1,8 @@
 package database
 
 import (
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 
 	"ypeskov/budget-go/internal/config"
@@ -12,7 +12,7 @@ var DbInstance *Database
 
 type Database struct {
 	Db    *sqlx.DB
-	DbUrl string
+	//DbURL string
 }
 
 func New(cfg *config.Config) (*Database, error) {
@@ -21,23 +21,32 @@ func New(cfg *config.Config) (*Database, error) {
 		return DbInstance, nil
 	}
 
-	DbInstance = &Database{
-		DbUrl: "host=" + cfg.DbHost + " port=" + cfg.DbPort + " user=" + cfg.DbUser + " password=" +
-			cfg.DbPassword + " dbname=" + cfg.DbName + " sslmode=disable",
-	}
+	// Build keyword DSN understood by pgx stdlib.
+	// NOTE: keep sslmode configurable if needed.
+	dsn := "host=" + cfg.DbHost +
+		" port=" + cfg.DbPort +
+		" user=" + cfg.DbUser +
+		" password=" + cfg.DbPassword +
+		" dbname=" + cfg.DbName +
+		" sslmode=disable"
 
-	db, err := sqlx.Connect("postgres", DbInstance.DbUrl)
+	db, err := sqlx.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("Connected to database %s\n", cfg.DbName)
 
-	DbInstance.Db = db
+	// It's a good idea to Ping here to fail fast.
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
 
+	log.Infof("Connected to database %s", cfg.DbName)
+
+	DbInstance = &Database{Db: db, }
 	return DbInstance, nil
 }
 
-// Close gracefully closes the database connection if initialized
+// Close gracefully closes the database connection if initialized.
 func Close() error {
 	if DbInstance != nil && DbInstance.Db != nil {
 		return DbInstance.Db.Close()
