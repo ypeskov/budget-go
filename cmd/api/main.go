@@ -20,7 +20,7 @@ func main() {
 	// Initialize logger
 	logger.Init(cfg.LogLevel)
 
-	logger.Debug("Starting server on port", "port", cfg.Port)
+	logger.Info("Starting server on port", "port", cfg.Port)
 
 	serverInstance := server.New(cfg)
 
