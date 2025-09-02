@@ -818,6 +818,17 @@ func (s *TransactionsServiceInstance) updateLinkedTransferTransaction(existingTx
 		linkedAmount = *targetAmount // Use target amount if specified
 	}
 
+	// sync dates of both transactions
+	if updatedSourceTx.DateTime != nil {
+		linkedTx.DateTime = updatedSourceTx.DateTime
+	}
+
+	// sync labels of both transactions
+	linkedTx.Label = updatedSourceTx.Label
+
+	// sync notes of both transactions
+	linkedTx.Notes = updatedSourceTx.Notes
+
 	// Get current balance for the linked account (already updated by handleAccountBalanceUpdates)
 	linkedCurrentBalance, err := s.sm.AccountsService.GetAccountBalance(linkedTx.AccountID)
 	if err != nil {
