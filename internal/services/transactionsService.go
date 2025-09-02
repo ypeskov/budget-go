@@ -183,7 +183,7 @@ func (s *TransactionsServiceInstance) createRegularTransaction(transaction model
 	}
 
 	// Calculate transaction effect and new balance
-	effect := s.calculateTransactionEffect(transaction.AccountID, transaction.Amount, transaction.IsIncome, transaction.IsTransfer, false)
+	effect := s.calculateTransactionEffect(transaction.Amount, transaction.IsIncome, transaction.IsTransfer, false)
 	newBalance := currentBalance.Add(effect)
 
 	// Set the new balance in the transaction record
@@ -223,7 +223,9 @@ func (s *TransactionsServiceInstance) createRegularTransaction(transaction model
 	return createdTransaction, nil
 }
 
-func (s *TransactionsServiceInstance) createTransferTransaction(transaction models.Transaction, targetAccountID *int, targetAmount *decimal.Decimal) (*models.Transaction, error) {
+func (s *TransactionsServiceInstance) createTransferTransaction(transaction models.Transaction,
+	targetAccountID *int,
+	targetAmount *decimal.Decimal) (*models.Transaction, error) {
 	logger.Debug("Creating transfer transaction")
 
 	if targetAccountID == nil {
@@ -231,7 +233,7 @@ func (s *TransactionsServiceInstance) createTransferTransaction(transaction mode
 	}
 
 	if targetAmount == nil {
-		targetAmount = &transaction.Amount // Use same amount if not specified
+		return nil, fmt.Errorf("target amount is required for transfer transactions")
 	}
 
 	// Create source transaction (money going out)
@@ -252,8 +254,8 @@ func (s *TransactionsServiceInstance) createTransferTransaction(transaction mode
 	}
 
 	// Calculate effects and new balances
-	sourceEffect := s.calculateTransactionEffect(sourceTransaction.AccountID, sourceTransaction.Amount, sourceTransaction.IsIncome, sourceTransaction.IsTransfer, false)
-	targetEffect := s.calculateTransactionEffect(*targetAccountID, *targetAmount, true, true, true) // Transfer in is always income for target
+	sourceEffect := s.calculateTransactionEffect(sourceTransaction.Amount, sourceTransaction.IsIncome, sourceTransaction.IsTransfer, false)
+	targetEffect := s.calculateTransactionEffect(*targetAmount, true, true, true) // Transfer in is always income for target
 
 	sourceNewBalance := sourceCurrentBalance.Add(sourceEffect)
 	targetNewBalance := targetCurrentBalance.Add(targetEffect)
@@ -570,10 +572,15 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 		UpdatedAt:  &now,
 	}
 
+	// Preserve linked transaction ID if it exists
+	if existingTransaction.LinkedTransactionID != nil {
+		transaction.LinkedTransactionID = existingTransaction.LinkedTransactionID
+	}
+
 	transaction.Notes = transactionDTO.Notes
 
-	// Handle account balance updates
-	err = s.handleAccountBalanceUpdates(existingTransaction, &transaction)
+	// Handle account balance updates (including target account changes for transfers)
+	err = s.handleAccountBalanceUpdates(existingTransaction, &transaction, transactionDTO.TargetAccountID)
 	if err != nil {
 		logger.Error("Error handling account balance updates", "error", err)
 		return err
@@ -596,7 +603,7 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 
 	// Handle transfer transactions - update the linked transaction
 	if existingTransaction.IsTransfer && transaction.IsTransfer && existingTransaction.LinkedTransactionID != nil {
-		err = s.updateLinkedTransferTransaction(existingTransaction, &transaction, transactionDTO.TargetAmount)
+		err = s.updateLinkedTransferTransaction(existingTransaction, &transaction, transactionDTO.TargetAmount, transactionDTO.TargetAccountID)
 		if err != nil {
 			logger.Error("Error updating linked transfer transaction", "error", err)
 			return err
@@ -659,10 +666,10 @@ func (s *TransactionsServiceInstance) DeleteTransaction(transactionId int, userI
 }
 
 // handleAccountBalanceUpdates handles balance changes when a transaction is updated
-func (s *TransactionsServiceInstance) handleAccountBalanceUpdates(oldTx *dto.TransactionDetailRaw, newTx *models.Transaction) error {
+func (s *TransactionsServiceInstance) handleAccountBalanceUpdates(oldTx *dto.TransactionDetailRaw, newTx *models.Transaction, newTargetAccountID *int) error {
 	// Calculate the balance effect changes
-	oldEffect := s.calculateTransactionEffect(oldTx.AccountID, oldTx.Amount, oldTx.IsIncome, oldTx.IsTransfer, false)
-	newEffect := s.calculateTransactionEffect(newTx.AccountID, newTx.Amount, newTx.IsIncome, newTx.IsTransfer, false)
+	oldEffect := s.calculateTransactionEffect(oldTx.Amount, oldTx.IsIncome, oldTx.IsTransfer, false)
+	newEffect := s.calculateTransactionEffect(newTx.Amount, newTx.IsIncome, newTx.IsTransfer, false)
 
 	// Handle account changes
 	if oldTx.AccountID != newTx.AccountID {
@@ -684,7 +691,7 @@ func (s *TransactionsServiceInstance) handleAccountBalanceUpdates(oldTx *dto.Tra
 			// Handle old transfer's linked account
 			linkedTx, err := s.transactionsRepository.GetTransactionDetail(*oldTx.LinkedTransactionID, oldTx.UserID)
 			if err == nil && linkedTx != nil {
-				linkedEffect := s.calculateTransactionEffect(linkedTx.AccountID, linkedTx.Amount, linkedTx.IsIncome, linkedTx.IsTransfer, true)
+				linkedEffect := s.calculateTransactionEffect(linkedTx.Amount, linkedTx.IsIncome, linkedTx.IsTransfer, true)
 				err = s.updateAccountBalanceByEffect(linkedTx.AccountID, linkedEffect.Neg())
 				if err != nil {
 					return err
@@ -696,7 +703,7 @@ func (s *TransactionsServiceInstance) handleAccountBalanceUpdates(oldTx *dto.Tra
 			// Handle new transfer's linked account
 			linkedTx, err := s.transactionsRepository.GetTransactionDetail(*newTx.LinkedTransactionID, newTx.UserID)
 			if err == nil && linkedTx != nil {
-				linkedEffect := s.calculateTransactionEffect(linkedTx.AccountID, newTx.Amount, !newTx.IsIncome, newTx.IsTransfer, true)
+				linkedEffect := s.calculateTransactionEffect(newTx.Amount, !newTx.IsIncome, newTx.IsTransfer, true)
 				err = s.updateAccountBalanceByEffect(linkedTx.AccountID, linkedEffect)
 				if err != nil {
 					return err
@@ -717,14 +724,34 @@ func (s *TransactionsServiceInstance) handleAccountBalanceUpdates(oldTx *dto.Tra
 		if oldTx.IsTransfer && newTx.IsTransfer && oldTx.LinkedTransactionID != nil {
 			linkedTx, err := s.transactionsRepository.GetTransactionDetail(*oldTx.LinkedTransactionID, oldTx.UserID)
 			if err == nil && linkedTx != nil {
-				oldLinkedEffect := s.calculateTransactionEffect(linkedTx.AccountID, oldTx.Amount, !oldTx.IsIncome, linkedTx.IsTransfer, true)
-				newLinkedEffect := s.calculateTransactionEffect(linkedTx.AccountID, newTx.Amount, !newTx.IsIncome, linkedTx.IsTransfer, true)
-				linkedDifference := newLinkedEffect.Sub(oldLinkedEffect)
-
-				if !linkedDifference.IsZero() {
-					err = s.updateAccountBalanceByEffect(linkedTx.AccountID, linkedDifference)
+				// Handle target account change for transfers
+				if newTargetAccountID != nil && linkedTx.AccountID != *newTargetAccountID {
+					// Target account changed - move balance from old to new target account
+					oldLinkedEffect := s.calculateTransactionEffect(linkedTx.Amount, linkedTx.IsIncome, linkedTx.IsTransfer, true)
+					newLinkedEffect := s.calculateTransactionEffect(newTx.Amount, !newTx.IsIncome, newTx.IsTransfer, true)
+					
+					// Reverse effect from old target account
+					err = s.updateAccountBalanceByEffect(linkedTx.AccountID, oldLinkedEffect.Neg())
 					if err != nil {
 						return err
+					}
+					
+					// Apply effect to new target account
+					err = s.updateAccountBalanceByEffect(*newTargetAccountID, newLinkedEffect)
+					if err != nil {
+						return err
+					}
+				} else {
+					// Same target account, just handle amount changes
+					oldLinkedEffect := s.calculateTransactionEffect(oldTx.Amount, !oldTx.IsIncome, linkedTx.IsTransfer, true)
+					newLinkedEffect := s.calculateTransactionEffect(newTx.Amount, !newTx.IsIncome, linkedTx.IsTransfer, true)
+					linkedDifference := newLinkedEffect.Sub(oldLinkedEffect)
+
+					if !linkedDifference.IsZero() {
+						err = s.updateAccountBalanceByEffect(linkedTx.AccountID, linkedDifference)
+						if err != nil {
+							return err
+						}
 					}
 				}
 			}
@@ -737,7 +764,7 @@ func (s *TransactionsServiceInstance) handleAccountBalanceUpdates(oldTx *dto.Tra
 // handleAccountBalanceOnDelete handles balance changes when a transaction is deleted
 func (s *TransactionsServiceInstance) handleAccountBalanceOnDelete(tx *dto.TransactionDetailRaw) error {
 	// Reverse the transaction effect
-	effect := s.calculateTransactionEffect(tx.AccountID, tx.Amount, tx.IsIncome, tx.IsTransfer, false)
+	effect := s.calculateTransactionEffect(tx.Amount, tx.IsIncome, tx.IsTransfer, false)
 	err := s.updateAccountBalanceByEffect(tx.AccountID, effect.Neg())
 	if err != nil {
 		return err
@@ -747,7 +774,7 @@ func (s *TransactionsServiceInstance) handleAccountBalanceOnDelete(tx *dto.Trans
 	if tx.IsTransfer && tx.LinkedTransactionID != nil {
 		linkedTx, err := s.transactionsRepository.GetTransactionDetail(*tx.LinkedTransactionID, tx.UserID)
 		if err == nil && linkedTx != nil {
-			linkedEffect := s.calculateTransactionEffect(linkedTx.AccountID, linkedTx.Amount, linkedTx.IsIncome, linkedTx.IsTransfer, true)
+			linkedEffect := s.calculateTransactionEffect(linkedTx.Amount, linkedTx.IsIncome, linkedTx.IsTransfer, true)
 			err = s.updateAccountBalanceByEffect(linkedTx.AccountID, linkedEffect.Neg())
 			if err != nil {
 				return err
@@ -759,7 +786,7 @@ func (s *TransactionsServiceInstance) handleAccountBalanceOnDelete(tx *dto.Trans
 }
 
 // calculateTransactionEffect calculates how a transaction affects account balance
-func (s *TransactionsServiceInstance) calculateTransactionEffect(accountID int, amount decimal.Decimal, isIncome, isTransfer, isLinkedTransaction bool) decimal.Decimal {
+func (s *TransactionsServiceInstance) calculateTransactionEffect(amount decimal.Decimal, isIncome, isTransfer, isLinkedTransaction bool) decimal.Decimal {
 	if isTransfer {
 		if isLinkedTransaction {
 			// For linked transactions in transfers, it's always the opposite effect
@@ -793,7 +820,10 @@ func (s *TransactionsServiceInstance) updateAccountBalanceByEffect(accountID int
 }
 
 // updateLinkedTransferTransaction updates the linked transaction for a transfer
-func (s *TransactionsServiceInstance) updateLinkedTransferTransaction(existingTx *dto.TransactionDetailRaw, updatedSourceTx *models.Transaction, targetAmount *decimal.Decimal) error {
+func (s *TransactionsServiceInstance) updateLinkedTransferTransaction(existingTx *dto.TransactionDetailRaw,
+	updatedSourceTx *models.Transaction,
+	targetAmount *decimal.Decimal,
+	newTargetAccountID *int) error {
 	// Get the linked transaction details
 	linkedTx, err := s.transactionsRepository.GetTransactionDetail(*existingTx.LinkedTransactionID, existingTx.UserID)
 	if err != nil {
@@ -809,8 +839,25 @@ func (s *TransactionsServiceInstance) updateLinkedTransferTransaction(existingTx
 		linkedAmount = *targetAmount // Use target amount if specified
 	}
 
-	// Get current balance for the linked account (already updated by handleAccountBalanceUpdates)
-	linkedCurrentBalance, err := s.sm.AccountsService.GetAccountBalance(linkedTx.AccountID)
+	// sync dates of both transactions
+	if updatedSourceTx.DateTime != nil {
+		linkedTx.DateTime = updatedSourceTx.DateTime
+	}
+
+	// sync labels of both transactions
+	linkedTx.Label = updatedSourceTx.Label
+
+	// sync notes of both transactions
+	linkedTx.Notes = updatedSourceTx.Notes
+
+	// Determine which account to use for the linked transaction
+	targetAccountID := linkedTx.AccountID
+	if newTargetAccountID != nil {
+		targetAccountID = *newTargetAccountID
+	}
+
+	// Get current balance for the target account (already updated by handleAccountBalanceUpdates)
+	linkedCurrentBalance, err := s.sm.AccountsService.GetAccountBalance(targetAccountID)
 	if err != nil {
 		return fmt.Errorf("error getting linked account balance: %w", err)
 	}
@@ -820,11 +867,11 @@ func (s *TransactionsServiceInstance) updateLinkedTransferTransaction(existingTx
 	updatedLinkedTx := models.Transaction{
 		ID:                  linkedTx.ID,
 		UserID:              linkedTx.UserID,
-		AccountID:           linkedTx.AccountID,
-		Amount:              linkedAmount,          // Use the determined amount
-		CategoryID:          linkedTx.CategoryID,   // Keep existing category
-		Label:               updatedSourceTx.Label, // Sync label with source
-		IsIncome:            linkedTx.IsIncome,     // Keep original direction
+		AccountID:           targetAccountID,          // Use new target account if changed
+		Amount:              linkedAmount,             // Use the determined amount
+		CategoryID:          linkedTx.CategoryID,      // Keep existing category
+		Label:               updatedSourceTx.Label,    // Sync label with source
+		IsIncome:            linkedTx.IsIncome,        // Keep original direction
 		IsTransfer:          linkedTx.IsTransfer,
 		LinkedTransactionID: updatedSourceTx.ID,       // Link back to source
 		Notes:               updatedSourceTx.Notes,    // Sync notes with source
@@ -843,10 +890,10 @@ func (s *TransactionsServiceInstance) updateLinkedTransferTransaction(existingTx
 }
 
 func (s *TransactionsServiceInstance) GetExpenseTransactionsForBudget(userId int, categoryIds []int, startDate time.Time, endDate time.Time, transactionIds []int) ([]models.Transaction, error) {
-	transactions, err := s.transactionsRepository.GetExpenseTransactionsForBudget(userId, categoryIds, startDate, endDate, transactionIds)
+	txList, err := s.transactionsRepository.GetExpenseTransactionsForBudget(userId, categoryIds, startDate, endDate, transactionIds)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get expense transactions for user %d: %w", userId, err)
 	}
 
-	return transactions, nil
+	return txList, nil
 }
