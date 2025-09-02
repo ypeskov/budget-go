@@ -6,8 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/labstack/echo/v4"
 	"ypeskov/budget-go/internal/logger"
+
+	"github.com/labstack/echo/v4"
 
 	"ypeskov/budget-go/internal/dto"
 	"ypeskov/budget-go/internal/models"
@@ -207,7 +208,9 @@ func UpdateTransaction(c echo.Context) error {
 	}
 
 	if transactionDTO.ID == 0 {
-		return utils.LogAndReturnError(c, &routeErrors.BadRequestError{Message: "Transaction ID is required"}, http.StatusBadRequest)
+		return utils.LogAndReturnError(c,
+			&routeErrors.BadRequestError{Message: "Transaction ID is required"},
+			http.StatusBadRequest)
 	}
 
 	// Check that transaction exists and belongs to user

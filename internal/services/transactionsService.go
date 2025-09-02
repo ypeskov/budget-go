@@ -572,6 +572,11 @@ func (s *TransactionsServiceInstance) UpdateTransaction(transactionDTO dto.PutTr
 		UpdatedAt:  &now,
 	}
 
+	// Preserve linked transaction ID if it exists
+	if existingTransaction.LinkedTransactionID != nil {
+		transaction.LinkedTransactionID = existingTransaction.LinkedTransactionID
+	}
+
 	transaction.Notes = transactionDTO.Notes
 
 	// Handle account balance updates
@@ -795,7 +800,9 @@ func (s *TransactionsServiceInstance) updateAccountBalanceByEffect(accountID int
 }
 
 // updateLinkedTransferTransaction updates the linked transaction for a transfer
-func (s *TransactionsServiceInstance) updateLinkedTransferTransaction(existingTx *dto.TransactionDetailRaw, updatedSourceTx *models.Transaction, targetAmount *decimal.Decimal) error {
+func (s *TransactionsServiceInstance) updateLinkedTransferTransaction(existingTx *dto.TransactionDetailRaw,
+	updatedSourceTx *models.Transaction,
+	targetAmount *decimal.Decimal) error {
 	// Get the linked transaction details
 	linkedTx, err := s.transactionsRepository.GetTransactionDetail(*existingTx.LinkedTransactionID, existingTx.UserID)
 	if err != nil {
