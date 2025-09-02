@@ -1,9 +1,10 @@
 package database
 
 import (
+	"ypeskov/budget-go/internal/logger"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
-	"ypeskov/budget-go/internal/logger"
 
 	"ypeskov/budget-go/internal/config"
 )
