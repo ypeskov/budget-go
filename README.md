@@ -30,3 +30,10 @@ We use [goose](https://github.com/pressly/goose) for migrations.
 ```bash
 go install github.com/pressly/goose/v3/cmd/goose@latest
 ```
+
+## Build and Push Docker Image
+The next command builds and pushes a Docker image to your Docker registry.
+It build all three images: API, worker, and scheduler (Asynq)
+```bash
+./build-and-push.sh push VersionTag
+```
